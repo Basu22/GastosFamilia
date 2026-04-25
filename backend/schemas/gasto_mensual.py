@@ -1,0 +1,30 @@
+from pydantic import BaseModel, Field
+from typing import Optional
+
+class GastoMensualCreate(BaseModel):
+    descripcion: str
+    categoria: Optional[str] = None
+    monto: float = Field(gt=0)
+    mes: int = Field(ge=1, le=12)
+    anio: int = Field(gt=2000)
+    es_fijo: bool = False
+    notas: Optional[str] = None
+
+class GastoMensualUpdate(BaseModel):
+    descripcion: Optional[str] = None
+    categoria: Optional[str] = None
+    monto: Optional[float] = Field(None, gt=0)
+    mes: Optional[int] = Field(None, ge=1, le=12)
+    anio: Optional[int] = Field(None, gt=2000)
+    es_fijo: Optional[bool] = None
+    notas: Optional[str] = None
+
+class GastoMensualResponse(BaseModel):
+    id: int
+    descripcion: str
+    categoria: Optional[str]
+    monto: float
+    mes: int
+    anio: int
+    es_fijo: bool
+    notas: Optional[str]
