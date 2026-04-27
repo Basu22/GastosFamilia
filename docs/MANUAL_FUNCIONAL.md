@@ -62,14 +62,19 @@ La autenticación está simulada (mock). Cualquier usuario/contraseña permite e
 
 Es la pantalla principal. Muestra el **resumen financiero del mes actual**.
 
-#### Sección A — Métricas Principales (4 cards)
+| Card | ¿Qué muestra? | Color esperado | Comportamiento |
+|---|---|---|---|
+| **Ingresos** | Suma de todos los sueldos/bonos cargados para este mes. | Verde | Clic para filtrar solo ingresos. |
+| **Cuotas** | Total mensual de todas las cuotas de tarjeta activas. | Amarillo | Clic para filtrar solo cuotas. |
+| **Gastos Fijos/Var** | Suma de servicios, expensas y gastos únicos del mes. | Amarillo | Clic para filtrar solo gastos fijos. |
+| **Ahorro Neto** | `Ingresos - (Cuotas + Gastos)`. | Verde / Rojo | Clic para limpiar filtros y ver todo. |
 
-| Card | ¿Qué muestra? | Color esperado |
-|---|---|---|
-| **Ingresos** | Suma de todos los sueldos/bonos cargados para este mes (o fijos). | Verde |
-| **Cuotas** | Total mensual de todas las cuotas de tarjeta activas. | Amarillo |
-| **Gastos Fijos/Var** | Suma de servicios, expensas y gastos únicos del mes. | Amarillo |
-| **Ahorro Neto** | `Ingresos - (Cuotas + Gastos)`. Positivo = verde, negativo = rojo. | Verde / Rojo |
+---
+
+#### Sección B — Navegación Temporal y Selector de Meses
+Ubicada en la cabecera del Dashboard, permite navegar entre meses:
+- **Flechas `<-` y `->`**: Permiten retroceder o avanzar entre los meses que tienen registros.
+- **Selector de Mes (Título)**: Al hacer clic en el nombre del mes, se despliega una lista de todos los meses y años que contienen datos en el sistema para un salto rápido.
 
 **Regla de negocio clave:**  
 Un gasto fijo (ej: expensas) aparece en **todos los meses** desde el mes en que fue creado en adelante. Un ingreso fijo (ej: sueldo) funciona de la misma manera.
@@ -102,9 +107,12 @@ Las tarjetas con monto $0 en el mes **no aparecen** en el gráfico.
 
 ---
 
-#### Sección D — Proyección a 6 Meses (Gráfico de Líneas)
+#### Sección E — Detalle de Movimientos y Totalizador
 
-Muestra la evolución de los gastos totales para los próximos 6 meses.
+Muestra el desglose de todo lo que compone el resumen del mes. 
+- **Filtrado dinámico**: Si se activó un filtro desde las MetricCards, la tabla solo muestra esos ítems y el encabezado lo indica.
+- **Totalizador (Pie de Tabla)**: Una fila final que suma automáticamente los montos de lo que se está viendo en pantalla (si hay filtro, suma solo lo filtrado).
+- **Acceso a Edición**: El icono del lápiz (`Edit3`) lleva directamente a la pantalla de edición correspondiente (`/nuevo` para cuotas, `/gastos` para el resto).
 
 - **Línea violeta**: Total de cuotas mes a mes.
 - **Línea roja**: Gasto total (cuotas + gastos fijos/var).
@@ -227,3 +235,4 @@ Permite gestionar (ABM completo) todos los ingresos (sueldos, bonos) y egresos m
 | Abr 2026 | Pantalla visual de Gestión de Tarjetas (`/tarjetas`) con alta, listado, edición y baja. |
 | Abr 2026 | Pantalla unificada de ABM de Egresos Mensuales e Ingresos (`/gastos`) mediante pestañas interactivas. |
 | Abr 2026 | Actualización de estándares de usabilidad móvil (Mobile First) para optimización en dispositivos de alta densidad (Samsung A56). |
+| Abr 2026 | **Dashboard Interactivo**: Navegación por meses con datos, filtros rápidos vía MetricCards y totalizador automático en tabla de movimientos. |

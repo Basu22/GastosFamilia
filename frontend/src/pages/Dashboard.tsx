@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getDashboardInfo, getMesesDisponibles } from '../api/client';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, ReferenceLine } from 'recharts';
-import { TrendingUp, Wallet, CreditCard, PiggyBank, Clock, Edit3, ChevronLeft, ChevronRight, FilterX } from 'lucide-react';
+import { TrendingUp, Wallet, CreditCard, PiggyBank, Clock, Edit3, ChevronLeft, ChevronRight, FilterX, Calendar } from 'lucide-react';
 import { formatARS, formatARSCompact, MESES_CORTO } from '../utils/format';
 import MetricCard from '../components/ui/MetricCard';
 
@@ -30,6 +30,7 @@ export default function Dashboard() {
   const [anio, setAnio] = useState(now.getFullYear());
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [pickerYear, setPickerYear] = useState(now.getFullYear());
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['dashboard', mes, anio],
@@ -41,7 +42,6 @@ export default function Dashboard() {
     queryFn: getMesesDisponibles
   });
 
-  // Navegación de meses
   const handlePrevMonth = () => {
     if (!mesesDisponibles) return;
     const currentIndex = mesesDisponibles.findIndex((m: any) => m.mes === mes && m.anio === anio);
@@ -71,7 +71,10 @@ export default function Dashboard() {
   }, [data, activeFilter]);
 
   const totalFiltrado = useMemo(() => {
-    return filteredMovimientos.reduce((acc: number, curr: any) => acc + curr.monto, 0);
+    if (!filteredMovimientos) return 0;
+    return filteredMovimientos.reduce((acc: number, curr: any) => {
+      return curr.tipo === 'ingreso' ? acc + curr.monto : acc - curr.monto;
+    }, 0);
   }, [filteredMovimientos]);
 
   if (isLoading) return <DashboardSkeleton />;
@@ -88,8 +91,12 @@ export default function Dashboard() {
 
   const cuotasTarjetas = data.cuotas_por_tarjeta || [];
   const alturaBarras = Math.max(200, cuotasTarjetas.filter((t: any) => t.monto > 0).length * 48);
-
   const nombreMes = new Date(anio, mes - 1).toLocaleString('es-ES', { month: 'long' });
+
+  // Ayudante para saber si un mes tiene datos en el picker
+  const hasData = (m: number, a: number) => {
+    return mesesDisponibles?.some((item: any) => item.mes === m && item.anio === a);
+  };
 
   return (
     <main id="page-dashboard" className="space-y-6 px-4 py-4 lg:px-8 lg:py-8 pb-24 lg:pb-8">
@@ -99,7 +106,7 @@ export default function Dashboard() {
           <button 
             id="btn-prev-month"
             onClick={handlePrevMonth}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-full transition-colors disabled:opacity-30"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-full transition-colors disabled:opacity-10"
             disabled={!mesesDisponibles || mesesDisponibles.findIndex((m: any) => m.mes === mes && m.anio === anio) === mesesDisponibles.length - 1}
           >
             <ChevronLeft size={24} />
@@ -108,8 +115,11 @@ export default function Dashboard() {
           <div className="relative">
             <button 
               id="btn-month-picker"
-              onClick={() => setShowMonthPicker(!showMonthPicker)}
-              className="group flex flex-col items-start"
+              onClick={() => {
+                setShowMonthPicker(!showMonthPicker);
+                setPickerYear(anio);
+              }}
+              className="group flex flex-col items-start outline-none"
             >
               <p id="dashboard-subtitle" className="text-gray-500 dark:text-neutral-500 font-medium text-[10px] lg:text-xs uppercase tracking-wider">Estado Financiero</p>
               <h1 id="dashboard-title" className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-neutral-100 capitalize flex items-center gap-2 group-hover:text-blue-600 transition-colors">
@@ -118,23 +128,65 @@ export default function Dashboard() {
               </h1>
             </button>
 
+            {/* Modal Selector Estilo Calendario */}
             {showMonthPicker && (
-              <div id="dropdown-month-picker" className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-xl shadow-xl z-50 py-2 max-h-80 overflow-y-auto">
-                {mesesDisponibles?.map((m: any) => (
-                  <button
-                    key={`${m.anio}-${m.mes}`}
-                    id={`btn-select-month-${m.anio}-${m.mes}`}
-                    onClick={() => {
-                      setMes(m.mes);
-                      setAnio(m.anio);
-                      setShowMonthPicker(false);
-                      setActiveFilter('all');
-                    }}
-                    className={`w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors ${m.mes === mes && m.anio === anio ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'text-gray-700 dark:text-neutral-300'}`}
-                  >
-                    {new Date(m.anio, m.mes - 1).toLocaleString('es-ES', { month: 'long' })} {m.anio}
+              <div id="calendar-month-picker" className="absolute top-full left-0 mt-3 w-72 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-2xl shadow-2xl z-50 p-4 transition-all">
+                <div className="flex items-center justify-between mb-4 border-b border-gray-100 dark:border-neutral-800 pb-2">
+                  <button onClick={() => setPickerYear(pickerYear - 1)} className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-full transition-colors">
+                    <ChevronLeft size={18} />
                   </button>
-                ))}
+                  <span className="text-sm font-bold text-gray-900 dark:text-neutral-100">{pickerYear}</span>
+                  <button onClick={() => setPickerYear(pickerYear + 1)} className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-full transition-colors">
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-2">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => {
+                    const active = hasData(m, pickerYear);
+                    const isSelected = m === mes && pickerYear === anio;
+                    
+                    return (
+                      <button
+                        key={m}
+                        onClick={() => {
+                          if (active) {
+                            setMes(m);
+                            setAnio(pickerYear);
+                            setShowMonthPicker(false);
+                            setActiveFilter('all');
+                          }
+                        }}
+                        disabled={!active}
+                        className={`
+                          relative h-12 rounded-xl text-xs font-bold uppercase transition-all
+                          flex flex-col items-center justify-center gap-1
+                          ${isSelected ? 'bg-blue-600 text-white shadow-lg scale-105 z-10' : 
+                            active ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40' : 
+                            'bg-gray-50 dark:bg-neutral-950 text-gray-300 dark:text-neutral-700 cursor-not-allowed'}
+                        `}
+                      >
+                        {MESES_CORTO[m]}
+                        {active && !isSelected && (
+                          <span className="absolute bottom-1 w-1 h-1 bg-red-500 rounded-full" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <div className="mt-4 pt-2 border-t border-gray-100 dark:border-neutral-800 flex justify-center">
+                  <button 
+                    onClick={() => {
+                      setMes(now.getMonth() + 1);
+                      setAnio(now.getFullYear());
+                      setShowMonthPicker(false);
+                    }}
+                    className="text-[10px] font-bold text-gray-400 hover:text-blue-600 flex items-center gap-1 transition-colors"
+                  >
+                    <Calendar size={12} /> VOLVER A HOY
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -142,7 +194,7 @@ export default function Dashboard() {
           <button 
             id="btn-next-month"
             onClick={handleNextMonth}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-full transition-colors disabled:opacity-30"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-full transition-colors disabled:opacity-10"
             disabled={!mesesDisponibles || mesesDisponibles.findIndex((m: any) => m.mes === mes && m.anio === anio) === 0}
           >
             <ChevronRight size={24} />
@@ -362,8 +414,8 @@ export default function Dashboard() {
                   Total {activeFilter !== 'all' ? 'Filtrado' : 'Movimientos'}
                 </td>
                 <td className="px-4 py-4 text-right">
-                  <p id="total-sum-value" className="text-lg font-bold text-gray-900 dark:text-neutral-100">
-                    {formatARS(totalFiltrado)}
+                  <p id="total-sum-value" className={`text-lg font-bold ${totalFiltrado >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {totalFiltrado >= 0 ? '+' : ''} {formatARS(totalFiltrado)}
                   </p>
                 </td>
                 <td></td>
