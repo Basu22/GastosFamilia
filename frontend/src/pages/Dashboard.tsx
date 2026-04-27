@@ -1,8 +1,9 @@
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getDashboardInfo } from '../api/client';
+import { getDashboardInfo, getMesesDisponibles } from '../api/client';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, ReferenceLine } from 'recharts';
-import { TrendingUp, Wallet, CreditCard, PiggyBank, Clock, Edit3 } from 'lucide-react';
+import { TrendingUp, Wallet, CreditCard, PiggyBank, Clock, Edit3, ChevronLeft, ChevronRight, FilterX } from 'lucide-react';
 import { formatARS, formatARSCompact, MESES_CORTO } from '../utils/format';
 import MetricCard from '../components/ui/MetricCard';
 
@@ -20,17 +21,60 @@ const DashboardSkeleton = () => (
   </div>
 );
 
+type FilterType = 'all' | 'ingreso' | 'tarjeta' | 'gasto';
+
 export default function Dashboard() {
   const navigate = useNavigate();
-  const currentDate = new Date();
-  
+  const now = new Date();
+  const [mes, setMes] = useState(now.getMonth() + 1);
+  const [anio, setAnio] = useState(now.getFullYear());
+  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ['dashboard', currentDate.getMonth() + 1, currentDate.getFullYear()],
-    queryFn: () => getDashboardInfo(currentDate.getMonth() + 1, currentDate.getFullYear())
+    queryKey: ['dashboard', mes, anio],
+    queryFn: () => getDashboardInfo(mes, anio)
   });
 
+  const { data: mesesDisponibles } = useQuery({
+    queryKey: ['meses-disponibles'],
+    queryFn: getMesesDisponibles
+  });
+
+  // Navegación de meses
+  const handlePrevMonth = () => {
+    if (!mesesDisponibles) return;
+    const currentIndex = mesesDisponibles.findIndex((m: any) => m.mes === mes && m.anio === anio);
+    if (currentIndex < mesesDisponibles.length - 1) {
+      const next = mesesDisponibles[currentIndex + 1];
+      setMes(next.mes);
+      setAnio(next.anio);
+      setActiveFilter('all');
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (!mesesDisponibles) return;
+    const currentIndex = mesesDisponibles.findIndex((m: any) => m.mes === mes && m.anio === anio);
+    if (currentIndex > 0) {
+      const next = mesesDisponibles[currentIndex - 1];
+      setMes(next.mes);
+      setAnio(next.anio);
+      setActiveFilter('all');
+    }
+  };
+
+  const filteredMovimientos = useMemo(() => {
+    if (!data?.movimientos_mes) return [];
+    if (activeFilter === 'all') return data.movimientos_mes;
+    return data.movimientos_mes.filter((m: any) => m.tipo === activeFilter);
+  }, [data, activeFilter]);
+
+  const totalFiltrado = useMemo(() => {
+    return filteredMovimientos.reduce((acc: number, curr: any) => acc + curr.monto, 0);
+  }, [filteredMovimientos]);
+
   if (isLoading) return <DashboardSkeleton />;
-  
   if (error || !data) return (
     <div id="dashboard-error-state" className="m-4 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 text-sm">
       Error cargando el dashboard. Por favor, intente nuevamente.
@@ -45,27 +89,97 @@ export default function Dashboard() {
   const cuotasTarjetas = data.cuotas_por_tarjeta || [];
   const alturaBarras = Math.max(200, cuotasTarjetas.filter((t: any) => t.monto > 0).length * 48);
 
+  const nombreMes = new Date(anio, mes - 1).toLocaleString('es-ES', { month: 'long' });
+
   return (
     <main id="page-dashboard" className="space-y-6 px-4 py-4 lg:px-8 lg:py-8 pb-24 lg:pb-8">
-      <header id="dashboard-header" className="flex justify-between items-end mb-2 lg:mb-6">
-        <div>
-          <p id="dashboard-subtitle" className="text-gray-500 dark:text-neutral-500 font-medium text-xs uppercase tracking-wider">Estado Financiero</p>
-          <h1 id="dashboard-title" className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-neutral-100 capitalize">
-            {currentDate.toLocaleString('es-ES', { month: 'long' })} {data.anio}
-          </h1>
+      {/* Header con Navegación */}
+      <header id="dashboard-header" className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-2 lg:mb-6">
+        <div className="flex items-center gap-4">
+          <button 
+            id="btn-prev-month"
+            onClick={handlePrevMonth}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-full transition-colors disabled:opacity-30"
+            disabled={!mesesDisponibles || mesesDisponibles.findIndex((m: any) => m.mes === mes && m.anio === anio) === mesesDisponibles.length - 1}
+          >
+            <ChevronLeft size={24} />
+          </button>
+          
+          <div className="relative">
+            <button 
+              id="btn-month-picker"
+              onClick={() => setShowMonthPicker(!showMonthPicker)}
+              className="group flex flex-col items-start"
+            >
+              <p id="dashboard-subtitle" className="text-gray-500 dark:text-neutral-500 font-medium text-[10px] lg:text-xs uppercase tracking-wider">Estado Financiero</p>
+              <h1 id="dashboard-title" className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-neutral-100 capitalize flex items-center gap-2 group-hover:text-blue-600 transition-colors">
+                {nombreMes} {anio}
+                <ChevronLeft size={16} className={`transform transition-transform ${showMonthPicker ? 'rotate-90' : '-rotate-90'}`} />
+              </h1>
+            </button>
+
+            {showMonthPicker && (
+              <div id="dropdown-month-picker" className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-xl shadow-xl z-50 py-2 max-h-80 overflow-y-auto">
+                {mesesDisponibles?.map((m: any) => (
+                  <button
+                    key={`${m.anio}-${m.mes}`}
+                    id={`btn-select-month-${m.anio}-${m.mes}`}
+                    onClick={() => {
+                      setMes(m.mes);
+                      setAnio(m.anio);
+                      setShowMonthPicker(false);
+                      setActiveFilter('all');
+                    }}
+                    className={`w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors ${m.mes === mes && m.anio === anio ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'text-gray-700 dark:text-neutral-300'}`}
+                  >
+                    {new Date(m.anio, m.mes - 1).toLocaleString('es-ES', { month: 'long' })} {m.anio}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button 
+            id="btn-next-month"
+            onClick={handleNextMonth}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-full transition-colors disabled:opacity-30"
+            disabled={!mesesDisponibles || mesesDisponibles.findIndex((m: any) => m.mes === mes && m.anio === anio) === 0}
+          >
+            <ChevronRight size={24} />
+          </button>
         </div>
       </header>
 
+      {/* MetricCards Clickables */}
       <section id="dashboard-metrics" className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-6">
-        <MetricCard id="metric-ingresos" label="Ingresos" value={data.ingreso} icon={TrendingUp} variant="success" />
-        <MetricCard id="metric-cuotas" label="Cuotas" value={data.total_cuotas} icon={CreditCard} variant="warning" />
-        <MetricCard id="metric-gastos" label="Gastos Fijos" value={data.total_gastos_mensuales} icon={Wallet} variant="warning" />
-        <MetricCard id="metric-ahorro" 
-          label="Ahorro Neto" 
-          value={data.ahorro_proyectado} 
-          icon={PiggyBank} 
-          variant={data.ahorro_proyectado >= 0 ? "success" : "danger"} 
-        />
+        <button id="btn-filter-ingresos" onClick={() => setActiveFilter(activeFilter === 'ingreso' ? 'all' : 'ingreso')} className="text-left outline-none">
+          <MetricCard 
+            id="metric-ingresos" label="Ingresos" value={data.ingreso} icon={TrendingUp} variant="success" 
+            subtitle={activeFilter === 'ingreso' ? 'Filtrando...' : 'Clic para filtrar'}
+          />
+        </button>
+        <button id="btn-filter-cuotas" onClick={() => setActiveFilter(activeFilter === 'tarjeta' ? 'all' : 'tarjeta')} className="text-left outline-none">
+          <MetricCard 
+            id="metric-cuotas" label="Cuotas" value={data.total_cuotas} icon={CreditCard} variant="warning" 
+            subtitle={activeFilter === 'tarjeta' ? 'Filtrando...' : 'Clic para filtrar'}
+          />
+        </button>
+        <button id="btn-filter-gastos" onClick={() => setActiveFilter(activeFilter === 'gasto' ? 'all' : 'gasto')} className="text-left outline-none">
+          <MetricCard 
+            id="metric-gastos" label="Gastos Fijos" value={data.total_gastos_mensuales} icon={Wallet} variant="warning" 
+            subtitle={activeFilter === 'gasto' ? 'Filtrando...' : 'Clic para filtrar'}
+          />
+        </button>
+        <button id="btn-filter-reset" onClick={() => setActiveFilter('all')} className="text-left outline-none">
+          <MetricCard 
+            id="metric-ahorro" 
+            label="Ahorro Neto" 
+            value={data.ahorro_proyectado} 
+            icon={PiggyBank} 
+            variant={data.ahorro_proyectado >= 0 ? "success" : "danger"} 
+            subtitle={activeFilter === 'all' ? 'Ver todo' : 'Clic para limpiar'}
+          />
+        </button>
       </section>
 
       {/* Próximos Vencimientos */}
@@ -169,13 +283,26 @@ export default function Dashboard() {
 
       {/* Detalle de Movimientos del Mes */}
       <section id="section-movimientos-detalle" className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-800 transition-all overflow-hidden mt-6">
-        <header id="header-movimientos-detalle" className="p-4 lg:p-6 border-b border-gray-100 dark:border-neutral-800 flex items-center justify-between">
-          <h2 id="title-movimientos-detalle" className="font-semibold text-gray-900 dark:text-neutral-100 flex items-center gap-2">
-            <Wallet className="text-blue-500" size={20}/> Movimientos del Mes
-          </h2>
-          <span id="badge-movimientos-count" className="text-xs font-medium text-gray-400 bg-gray-50 dark:bg-neutral-950 px-2 py-1 rounded">
-            {data.movimientos_mes?.length || 0} ítems
-          </span>
+        <header id="header-movimientos-detalle" className="p-4 lg:p-6 border-b border-gray-100 dark:border-neutral-800 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2">
+            <Wallet className="text-blue-500" size={20}/>
+            <h2 id="title-movimientos-detalle" className="font-semibold text-gray-900 dark:text-neutral-100">
+              Movimientos {activeFilter !== 'all' ? `(${activeFilter === 'ingreso' ? 'Ingresos' : activeFilter === 'tarjeta' ? 'Cuotas' : 'Gastos Fijos'})` : ''}
+            </h2>
+            <span id="badge-movimientos-count" className="text-xs font-medium text-gray-400 bg-gray-50 dark:bg-neutral-950 px-2 py-1 rounded ml-2">
+              {filteredMovimientos.length} ítems
+            </span>
+          </div>
+
+          {activeFilter !== 'all' && (
+            <button 
+              id="btn-clear-filter"
+              onClick={() => setActiveFilter('all')}
+              className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-lg transition-all"
+            >
+              <FilterX size={14} /> LIMPIAR FILTRO
+            </button>
+          )}
         </header>
         
         <div id="wrapper-table-movimientos" className="overflow-x-auto">
@@ -189,7 +316,7 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody id="body-table-movimientos" className="divide-y divide-gray-100 dark:divide-neutral-800">
-              {data.movimientos_mes?.map((mov: any) => (
+              {filteredMovimientos.map((mov: any) => (
                 <tr key={`${mov.tipo}-${mov.id}`} id={`row-movimiento-${mov.tipo}-${mov.id}`} className="hover:bg-gray-50/50 transition-colors">
                   <td className="px-4 py-4">
                     <p className="text-sm font-semibold text-gray-900 dark:text-neutral-100">{mov.descripcion}</p>
@@ -203,7 +330,7 @@ export default function Dashboard() {
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-600 dark:text-neutral-400 font-medium">
-                        {mov.tipo === 'tarjeta' ? mov.tarjeta_nombre : mov.tipo}
+                        {mov.tipo === 'tarjeta' ? mov.tarjeta_nombre : (mov.tipo === 'ingreso' ? 'Ingreso' : 'Gasto Fijo')}
                       </span>
                     </div>
                   </td>
@@ -217,7 +344,7 @@ export default function Dashboard() {
                       id={`btn-edit-movimiento-${mov.tipo}-${mov.id}`}
                       onClick={() => {
                         if (mov.tipo === 'tarjeta') navigate(`/nuevo?edit=${mov.id}`);
-                        else navigate(`/gastos?edit=${mov.id}&type=${mov.tipo}`);
+                        else navigate(`/gastos?edit=${mov.id}&type=${mov.tipo === 'ingreso' ? 'ingreso' : 'egreso'}`);
                       }}
                       className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                       title="Editar"
@@ -228,6 +355,20 @@ export default function Dashboard() {
                 </tr>
               ))}
             </tbody>
+            {/* Totalizador */}
+            <tfoot id="table-totalizer" className="bg-gray-50 dark:bg-neutral-950 border-t-2 border-gray-100 dark:border-neutral-800">
+              <tr>
+                <td colSpan={2} className="px-4 py-4 text-right text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase tracking-widest">
+                  Total {activeFilter !== 'all' ? 'Filtrado' : 'Movimientos'}
+                </td>
+                <td className="px-4 py-4 text-right">
+                  <p id="total-sum-value" className="text-lg font-bold text-gray-900 dark:text-neutral-100">
+                    {formatARS(totalFiltrado)}
+                  </p>
+                </td>
+                <td></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </section>

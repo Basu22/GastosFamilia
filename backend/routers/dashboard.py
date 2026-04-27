@@ -11,7 +11,13 @@ from services.cuotas import get_cuotas_mes, get_cuotas_por_tarjeta, cuota_activa
 from models.movimiento import Movimiento
 from schemas.dashboard import DashboardSummary, DebugCuotasResponse
 
+from services.disponibilidad import get_meses_disponibles
+
 router = APIRouter()
+
+@router.get("/meses-disponibles", response_model=List[Dict[str, int]])
+def list_meses_disponibles(session: Session = Depends(get_session)) -> List[Dict[str, int]]:
+    return get_meses_disponibles(session)
 
 @router.get("/debug/cuotas", response_model=DebugCuotasResponse)
 def debug_cuotas(mes: int, anio: int, db: Session = Depends(get_session)) -> DebugCuotasResponse:

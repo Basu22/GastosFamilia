@@ -17,3 +17,8 @@ export const getDashboardInfo = async (mes?: number, anio?: number) => {
   const response = await apiClient.get('/dashboard/', { params });
   return response.data;
 };
+
+export const getMesesDisponibles = async () => {
+  const response = await apiClient.get('/dashboard/meses-disponibles');
+  return response.data;
+};

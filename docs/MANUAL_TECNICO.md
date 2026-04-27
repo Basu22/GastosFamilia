@@ -393,7 +393,25 @@ Por seguridad, los siguientes archivos **TIENEN PROHIBIDO** subir a GitHub:
 
 ---
 
-## 12. Historial de Cambios Técnicos
+## 13. Resolución de Problemas (Troubleshooting)
+
+### 13.1 Fallos en el Build de Frontend (TypeScript)
+Si `npm run build` falla con errores de tipo o variables no usadas:
+- **Variables no usadas**: El linter de producción (`tsc`) bloquea el build si hay variables o imports declarados pero no usados. Se deben limpiar antes de deployar.
+- **Tipos de Vite**: Si `import.meta.env` no se reconoce, verificar la existencia de `src/vite-env.d.ts` con la referencia `/// <reference types="vite/client" />`.
+
+### 13.2 Error "ModuleNotFoundError: No module named 'dateutil'"
+Este error ocurre si el backend intenta calcular fechas proyectadas sin la librería `python-dateutil`. 
+**Solución**: Asegurarse de que esté en `requirements.txt` y reconstruir la imagen (`--build`).
+
+### 13.3 Error "502 Bad Gateway" en Nginx
+Suele deberse a dos causas en esta infraestructura:
+1. **Nombres de Host**: Docker DNS resuelve servicios usando el nombre del *Service* en el compose (ej: `gastos-backend`), NO el `container_name`. Si el `nginx.conf` tiene guiones bajos `_` en lugar de medios `-`, el proxy fallará.
+2. **Crasheos del Backend**: Si el backend entra en un bucle de reinicio (ver `docker ps`), Nginx no podrá conectarse. Ver logs con `docker logs gastos_backend`.
+
+---
+
+## 14. Historial de Cambios Técnicos
 
 | Fecha | Cambio |
 |---|---|
@@ -412,6 +430,8 @@ Por seguridad, los siguientes archivos **TIENEN PROHIBIDO** subir a GitHub:
 | Abr 2026 | Backend: CRUD APIs implementadas para Movimientos, Gastos Mensuales e Ingresos. |
 | Abr 2026 | Frontend: Adopción estricta de `MANUAL_BUENAS_PRACTICAS_HTML_CSS.md` con IDs y etiquetas semánticas (`<main>`, `<section>`, etc). |
 | Abr 2026 | Backend: Soporte de pagos Efectivo/Transferencia haciendo `tarjeta_id` nulo. |
+| Abr 2026 | **Infraestructura**: Migración exitosa a RPi 4. Unificación de proyectos en `infra-unificada` con nombres de servicio estandarizados (`gastos-frontend`, `gastos-backend`). |
+| Abr 2026 | **Fixes**: Corrección de dependencias (`python-dateutil`) y limpieza de tipos de TypeScript para build de producción. |
 | Abr 2026 | Frontend: Formulario `/tarjetas` creado con `react-hook-form` y validaciones `zod`. Soporte de edición (click en card) y baja (botón de basura). |
 | Abr 2026 | Bugfix: Corregido error 404 en APIs al remover prefijos duplicados en los `APIRouter` (ya se incluían en `main.py`). |
 | Abr 2026 | Backend: `PUT /tarjetas/{id}` y `DELETE /tarjetas/{id}` (Soft Delete) implementados. |
@@ -422,3 +442,22 @@ Por seguridad, los siguientes archivos **TIENEN PROHIBIDO** subir a GitHub:
 | Abr 2026 | Backend: Nuevo router `routers/proyeccion.py` con endpoints GET /proyeccion/, POST /proyeccion/override, DELETE /proyeccion/override/{id}. |
 | Abr 2026 | Frontend: Nueva página `/proyeccion` con gráfico de barras apiladas (Recharts) y tabla interactiva con edición inline de valores proyectados. |
 | Abr 2026 | Docs: Actualización de Guía de Buenas Prácticas con foco estricto en Mobile First y Touch Targets para dispositivos modernos (Samsung A56). |
+
+---
+
+## 15. Mantenimiento y Despliegue Seguro (Zero Downtime)
+
+Dado que este proyecto convive con otros en una **Infraestructura Unificada**, se deben seguir estas reglas para evitar caídas de servicio:
+
+### 14.1 El Mandamiento del Despliegue Quirúrgico
+**NUNCA** ejecutar `docker compose up -d` a secas en la Raspberry. Siempre se debe especificar el servicio para no afectar a los demás proyectos. 
+El script `deploy.sh` de la PC ya lo hace automáticamente:
+`docker compose up -d --build gastos_backend gastos_frontend`
+
+### 14.2 Prohibición del `down`
+No usar `docker compose down` en la carpeta `infra-unificada` a menos que se desee apagar TODOS los servicios de la casa (incluyendo Dashboard e Internet).
+
+### 14.3 Actualización de Nginx
+Si se modifica el archivo `nginx.conf`, no es necesario reiniciar todo. Basta con:
+`docker restart proxy_unificado`
+
