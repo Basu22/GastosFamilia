@@ -138,6 +138,59 @@ def get_dashboard_summary(
     # Sort by less remaining first
     vencimientos.sort(key=lambda x: x["cuotas_restantes"])
 
+    # 7. Listado Unificado de Movimientos del Mes
+    movimientos_mes = []
+    
+    # Agregar Ingresos
+    for i in ingresos_db:
+        i_val = i.anio * 12 + i.mes
+        if (i.mes == mes and i.anio == anio) or (i.es_fijo and mes_actual_val >= i_val):
+            movimientos_mes.append({
+                "id": i.id,
+                "tipo": "ingreso",
+                "descripcion": i.descripcion,
+                "monto": i.monto,
+                "es_fijo": i.es_fijo,
+                "fecha_referencia": f"{i.anio}-{i.mes:02d}-01"
+            })
+            
+    # Agregar Gastos Mensuales
+    for g in gastos_db:
+        g_val = g.anio * 12 + g.mes
+        if (g.mes == mes and g.anio == anio) or (g.es_fijo and mes_actual_val >= g_val):
+            movimientos_mes.append({
+                "id": g.id,
+                "tipo": "gasto",
+                "descripcion": g.descripcion,
+                "monto": g.monto,
+                "es_fijo": g.es_fijo,
+                "fecha_referencia": f"{g.anio}-{g.mes:02d}-01"
+            })
+            
+    # Agregar Movimientos de Tarjeta (Cuotas activas)
+    for m in movs_all:
+        if cuota_activa_en_mes(m, mes, anio):
+            t = tarjetas_dict.get(m.tarjeta_id)
+            # Calcular que numero de cuota es
+            inicio_val = m.fecha_primera_cuota.year * 12 + m.fecha_primera_cuota.month
+            actual_cuota = (mes_actual_val - inicio_val) + 1
+            
+            movimientos_mes.append({
+                "id": m.id,
+                "tipo": "tarjeta",
+                "descripcion": m.descripcion,
+                "monto": m.monto_cuota,
+                "monto_total": m.monto_total,
+                "cuota_actual": actual_cuota,
+                "cuotas_total": m.cuotas,
+                "tarjeta_nombre": t.nombre if t else "N/A",
+                "tarjeta_color": t.color if t else "#gray-400",
+                "fecha_referencia": str(m.fecha_primera_cuota)
+            })
+
+    # Ordenar por tipo e importe
+    movimientos_mes.sort(key=lambda x: (x["tipo"], -x["monto"]))
+
     return DashboardSummary(
         mes=mes,
         anio=anio,
@@ -148,5 +201,6 @@ def get_dashboard_summary(
         ahorro_proyectado=ahorro_proyectado,
         cuotas_por_tarjeta=cuotas_por_tarjeta,
         proximos_6_meses=proximos_6_meses,
-        proximos_vencimientos=vencimientos
+        proximos_vencimientos=vencimientos,
+        movimientos_mes=movimientos_mes
     )

@@ -21,6 +21,19 @@ class ProxVencimiento(BaseModel):
     cuotas_restantes: int # 1 o 2
     monto_cuota: float
 
+class MovimientoDetalle(BaseModel):
+    id: int
+    tipo: str # "ingreso", "gasto", "tarjeta"
+    descripcion: str
+    monto: float
+    monto_total: Optional[float] = None
+    cuota_actual: Optional[int] = None
+    cuotas_total: Optional[int] = None
+    tarjeta_nombre: Optional[str] = None
+    tarjeta_color: Optional[str] = None
+    es_fijo: bool = False
+    fecha_referencia: str # Para ordenar
+
 class DashboardSummary(BaseModel):
     mes: int
     anio: int
@@ -32,6 +45,7 @@ class DashboardSummary(BaseModel):
     cuotas_por_tarjeta: List[CuotaTarjeta]
     proximos_6_meses: List[ProyeccionMes]
     proximos_vencimientos: List[ProxVencimiento]
+    movimientos_mes: List[MovimientoDetalle]
 
 class MovimientoDebug(BaseModel):
     descripcion: str

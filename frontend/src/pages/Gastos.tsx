@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -21,8 +22,12 @@ type FormValues = z.infer<typeof schema>;
 
 export default function Gastos() {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState<'egresos' | 'ingresos'>('egresos');
   const [editingId, setEditingId] = useState<number | null>(null);
+
+  const editIdParam = searchParams.get('edit');
+  const typeParam = searchParams.get('type');
 
   const { data: egresos, isLoading: loadingEgresos } = useQuery({ queryKey: ['gastos_mensuales'], queryFn: () => getGastosMensuales() });
   const { data: ingresos, isLoading: loadingIngresos } = useQuery({ queryKey: ['ingresos'], queryFn: () => getIngresos() });
@@ -35,6 +40,24 @@ export default function Gastos() {
       es_fijo: false
     }
   });
+
+  // Efecto para capturar edición desde Dashboard
+  useEffect(() => {
+    if (editIdParam && typeParam && (egresos || ingresos)) {
+      const id = parseInt(editIdParam);
+      const isIngreso = typeParam === 'ingreso';
+      setTab(isIngreso ? 'ingresos' : 'egresos');
+      
+      const list = isIngreso ? ingresos : egresos;
+      const item = list?.find((x: any) => x.id === id);
+      
+      if (item) {
+        handleEditClick(item);
+        // Limpiar parámetros para no re-editar al recargar
+        setSearchParams({});
+      }
+    }
+  }, [editIdParam, typeParam, egresos, ingresos]);
 
   // Mutations
   const createMutation = useMutation({
@@ -98,53 +121,54 @@ export default function Gastos() {
   const isEditingEgreso = tab === 'egresos';
 
   return (
-    <main id="page-gastos" className="max-w-4xl mx-auto space-y-6">
-      <header id="header-gastos" className="flex items-center justify-between">
-        <h1 id="title-gastos" className="text-2xl font-bold text-gray-900 dark:text-neutral-100">Ingresos & Egresos</h1>
+    <main id="page-gastos" className="max-w-4xl mx-auto space-y-6 px-4 py-4 lg:px-8 lg:py-8 pb-24">
+      <header id="header-gastos" className="mb-2 lg:mb-6">
+        <p id="gastos-subtitle" className="text-gray-500 dark:text-neutral-500 font-medium text-xs uppercase tracking-wider">Gestión de Flujo</p>
+        <h1 id="title-gastos" className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-neutral-100">Ingresos & Egresos</h1>
       </header>
 
       {/* Tabs */}
-      <nav id="nav-tabs-gastos" className="flex bg-gray-100 dark:bg-neutral-900 p-1.5 rounded-2xl transition-colors">
+      <nav id="nav-tabs-gastos" className="flex bg-gray-100 dark:bg-neutral-900 p-1 rounded-xl transition-colors">
         <button
           id="btn-tab-egresos"
           onClick={() => { setTab('egresos'); handleCancelEdit(); }}
-          className={`flex-1 h-12 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${tab === 'egresos' ? 'bg-white dark:bg-black text-gray-900 dark:text-neutral-100 shadow-sm' : 'text-gray-500 dark:text-neutral-500 active:text-gray-700 dark:active:text-neutral-300'}`}
+          className={`flex-1 h-11 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2 ${tab === 'egresos' ? 'bg-white dark:bg-neutral-800 text-gray-900 dark:text-neutral-100 shadow-sm' : 'text-gray-500 dark:text-neutral-500'}`}
         >
-          <TrendingDown size={18} className={tab === 'egresos' ? 'text-red-500' : ''} /> Egresos
+          <TrendingDown size={16} className={tab === 'egresos' ? 'text-red-500' : ''} /> Egresos
         </button>
         <button
           id="btn-tab-ingresos"
           onClick={() => { setTab('ingresos'); handleCancelEdit(); }}
-          className={`flex-1 h-12 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${tab === 'ingresos' ? 'bg-white dark:bg-black text-gray-900 dark:text-neutral-100 shadow-sm' : 'text-gray-500 dark:text-neutral-500 active:text-gray-700 dark:active:text-neutral-300'}`}
+          className={`flex-1 h-11 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2 ${tab === 'ingresos' ? 'bg-white dark:bg-neutral-800 text-gray-900 dark:text-neutral-100 shadow-sm' : 'text-gray-500 dark:text-neutral-500'}`}
         >
-          <TrendingUp size={18} className={tab === 'ingresos' ? 'text-emerald-500' : ''} /> Ingresos
+          <TrendingUp size={16} className={tab === 'ingresos' ? 'text-emerald-500' : ''} /> Ingresos
         </button>
       </nav>
 
       {/* Formulario */}
-      <section id="section-form-gastos" className={`rounded-3xl border shadow-sm p-4 lg:p-6 transition-colors ${isEditingEgreso ? 'bg-red-50/30 dark:bg-red-950/20 border-red-100 dark:border-red-900/50' : 'bg-emerald-50/30 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/50'}`}>
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-neutral-100 flex items-center gap-2">
+      <section id="section-form-gastos" className={`rounded-xl border shadow-sm p-4 lg:p-6 transition-all ${isEditingEgreso ? 'bg-red-50/20 border-red-100 dark:border-red-900/30' : 'bg-emerald-50/20 border-emerald-100 dark:border-emerald-900/30'}`}>
+        <header id="header-form-gastos" className="mb-6">
+          <h2 id="title-form-gastos" className="text-lg font-bold text-gray-900 dark:text-neutral-100 flex items-center gap-2">
             {editingId ? (
               <><Edit3 size={20} className={isEditingEgreso ? 'text-red-500' : 'text-emerald-500'} /> Editando {isEditingEgreso ? 'Egreso' : 'Ingreso'}</>
             ) : (
               <><Plus size={20} className={isEditingEgreso ? 'text-red-500' : 'text-emerald-500'} /> Agregar Nuevo {isEditingEgreso ? 'Egreso' : 'Ingreso'}</>
             )}
           </h2>
-        </div>
+        </header>
         
-        <form id="form-gastos" onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1">
+        <form id="form-gastos" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex flex-col gap-2">
               <label htmlFor="input-desc" className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Descripción</label>
               <input 
-                id="input-desc" type="text" {...register('descripcion')} placeholder={isEditingEgreso ? 'Ej: Expensas, Luz...' : 'Ej: Sueldo, Aguinaldo...'}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-gray-900 dark:text-neutral-100 placeholder:text-gray-400 dark:placeholder:text-neutral-600 focus:ring-2 focus:ring-blue-500 transition-all"
+                id="input-desc" type="text" {...register('descripcion')} placeholder={isEditingEgreso ? 'Ej: Expensas, Luz...' : 'Ej: Sueldo...'}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-gray-900 dark:text-neutral-100 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
               />
-              {errors.descripcion && <p className="text-xs text-red-500">{errors.descripcion.message}</p>}
+              {errors.descripcion && <p id="error-desc" className="text-xs text-red-500 font-medium">{errors.descripcion.message}</p>}
             </div>
 
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-2">
               <label htmlFor="input-monto" className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Monto ($)</label>
               <Controller
                 name="monto"
@@ -154,65 +178,73 @@ export default function Gastos() {
                     id="input-monto"
                     getInputRef={ref}
                     value={value}
-                    onValueChange={(values) => {
-                      onChange(values.floatValue);
-                    }}
+                    onValueChange={(values) => onChange(values.floatValue)}
                     thousandSeparator="."
                     decimalSeparator=","
                     prefix="$ "
                     placeholder="$ 0,00"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-gray-900 dark:text-neutral-100 font-bold text-lg placeholder:text-gray-400 dark:placeholder:text-neutral-600 focus:ring-2 focus:ring-blue-500 transition-all"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-gray-900 dark:text-neutral-100 font-bold text-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   />
                 )}
               />
-              {errors.monto && <p className="text-xs text-red-500">{errors.monto.message}</p>}
+              {errors.monto && <p id="error-monto" className="text-xs text-red-500 font-medium">{errors.monto.message}</p>}
             </div>
 
             <div className="flex gap-4">
-              <div className="flex-1 flex flex-col gap-1">
+              <div className="flex-1 flex flex-col gap-2">
                 <label htmlFor="input-mes" className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Mes (1-12)</label>
                 <input 
                   id="input-mes" type="number" {...register('mes', { valueAsNumber: true })}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-gray-900 dark:text-neutral-100 focus:ring-2 focus:ring-blue-500 transition-all"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-gray-900 dark:text-neutral-100 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
-              <div className="flex-1 flex flex-col gap-1">
+              <div className="flex-1 flex flex-col gap-2">
                 <label htmlFor="input-anio" className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Año</label>
                 <input 
                   id="input-anio" type="number" {...register('anio', { valueAsNumber: true })}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-gray-900 dark:text-neutral-100 focus:ring-2 focus:ring-blue-500 transition-all"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-gray-900 dark:text-neutral-100 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
             </div>
 
-            <div className="flex items-center gap-3 bg-white dark:bg-neutral-950 px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 transition-colors">
+            <div id="wrapper-fijo" className="flex items-center gap-3 bg-white dark:bg-neutral-950 px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 transition-colors">
               <input 
                 id="input-fijo" type="checkbox" {...register('es_fijo')}
-                className="w-5 h-5 text-blue-600 rounded border-gray-300 dark:border-neutral-700 dark:bg-neutral-900 focus:ring-blue-500"
+                className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
               />
               <label htmlFor="input-fijo" className="text-sm font-semibold text-gray-700 dark:text-neutral-300 cursor-pointer">
-                Es un valor FIJO (se repite todos los meses)
+                Es un valor FIJO mensual
               </label>
             </div>
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <div id="actions-form-gastos" className="flex gap-3 pt-4">
             {editingId && (
               <>
                 <button 
-                  type="button" onClick={() => { if(window.confirm('¿Eliminar registro?')) deleteMutation.mutate(editingId); }}
-                  className="px-4 py-4 rounded-xl font-bold text-red-600 bg-red-50 hover:bg-red-100 flex-shrink-0"
-                ><Trash2 size={20} /></button>
+                  id="btn-delete-gasto"
+                  type="button" 
+                  onClick={() => { if(window.confirm('¿Eliminar registro?')) deleteMutation.mutate(editingId); }}
+                  className="px-5 py-4 rounded-xl font-bold text-red-600 bg-red-50 hover:bg-red-100 transition-all flex-shrink-0"
+                  title="Eliminar"
+                >
+                  <Trash2 size={20} />
+                </button>
                 <button 
+                  id="btn-cancel-edit"
                   type="button" onClick={handleCancelEdit}
-                  className="w-full md:w-auto px-8 py-4 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200"
-                >Cancelar</button>
+                  className="w-full md:w-auto px-8 py-4 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all"
+                >
+                  Cancelar
+                </button>
               </>
             )}
             <button 
-              type="submit" disabled={isSubmitting || createMutation.isPending || updateMutation.isPending}
-              className={`w-full md:w-auto px-8 flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-white transition-all ${
-                editingId ? 'bg-blue-600 hover:bg-blue-700' : (isEditingEgreso ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600 hover:bg-emerald-700')
+              id="btn-submit-gasto"
+              type="submit" 
+              disabled={isSubmitting || createMutation.isPending || updateMutation.isPending}
+              className={`w-full md:w-auto px-8 flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-white shadow-lg transition-all active:scale-95 disabled:opacity-50 ${
+                editingId ? 'bg-blue-600 hover:bg-blue-700' : (isEditingEgreso ? 'bg-red-600 hover:bg-red-700 shadow-red-200' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200')
               }`}
             >
               <Save size={20} /> {editingId ? 'Actualizar' : 'Guardar'}
@@ -224,33 +256,33 @@ export default function Gastos() {
       {/* Listado */}
       <section id="section-listado-gastos" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {isLoading ? (
-          <div className="animate-pulse h-24 bg-gray-200 rounded-xl col-span-full" />
+          <div id="skeleton-listado" className="animate-pulse h-24 bg-gray-100 rounded-xl col-span-full" />
         ) : listToRender?.length === 0 ? (
-          <div className="col-span-full text-center py-12 text-gray-400">
-            <p className="text-4xl mb-3">📭</p>
-            <p className="font-medium">No hay registros</p>
-          </div>
+          <article id="empty-state-gastos" className="col-span-full text-center py-16 text-gray-400 bg-white dark:bg-neutral-900 rounded-xl border border-dashed border-gray-200">
+            <p className="text-5xl mb-4">📭</p>
+            <p className="font-semibold text-gray-500">No hay registros este mes</p>
+          </article>
         ) : (
           listToRender?.map((item: any) => (
             <article 
               key={item.id} 
+              id={`item-gasto-${item.id}`}
               onClick={() => handleEditClick(item)}
-              className="bg-white dark:bg-neutral-900 rounded-xl border border-gray-200 dark:border-neutral-800 p-4 flex flex-col justify-between cursor-pointer hover:shadow-md dark:hover:border-neutral-700 transition-all relative overflow-hidden"
+              className="bg-white dark:bg-neutral-900 rounded-xl border border-gray-200 dark:border-neutral-800 p-4 flex flex-col justify-between cursor-pointer hover:shadow-md hover:border-gray-300 dark:hover:border-neutral-700 transition-all relative overflow-hidden"
             >
-              <div className={`absolute top-0 left-0 w-1 h-full ${isEditingEgreso ? 'bg-red-400' : 'bg-emerald-400'}`} />
-              <div className="pl-2">
-                <div className="flex justify-between items-start">
-                  <h3 className="font-bold text-gray-900 dark:text-neutral-100">{item.descripcion}</h3>
-                  {item.es_fijo && <span className="text-[10px] uppercase font-bold tracking-wider bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded">FIJO</span>}
-                </div>
-                <p className="text-sm text-gray-500 dark:text-neutral-500 mt-1">Desde: {item.mes}/{item.anio}</p>
-                <p className="text-xl font-bold mt-2 text-gray-900 dark:text-neutral-100">{formatARS(item.monto)}</p>
+              <div className={`absolute top-0 left-0 w-1 h-full ${isEditingEgreso ? 'bg-red-500' : 'bg-emerald-500'}`} />
+              <div className="pl-3">
+                <header className="flex justify-between items-start mb-1">
+                  <h3 className="font-bold text-gray-900 dark:text-neutral-100 truncate pr-2">{item.descripcion}</h3>
+                  {item.es_fijo && <span className="text-[9px] uppercase font-bold bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded flex-shrink-0">FIJO</span>}
+                </header>
+                <p className="text-xs text-gray-400 dark:text-neutral-500">Vigente: {item.mes}/{item.anio}</p>
+                <p className="text-xl font-bold mt-3 text-gray-900 dark:text-neutral-100">{formatARS(item.monto)}</p>
               </div>
             </article>
           ))
         )}
       </section>
-
     </main>
   );
 }

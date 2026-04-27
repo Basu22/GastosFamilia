@@ -1,48 +1,42 @@
 #!/bin/bash
-# deploy.sh — Script de deploy para Raspberry Pi
-# Uso: ./deploy.sh [--prod]
 
-set -e
+# 💰 Gastos Familia - Deploy V1 (Infra Unificada)
 
-echo "🚀 Gastos Familiares — Deploy Script"
-echo "======================================"
+# --- CONFIGURACIÓN REMOTA ---
+RPI_HOST="bossvald@192.168.1.185" 
+RPI_PATH="/home/bossvald/GastosFamilia"
+INFRA_PATH="/home/bossvald/infra-unificada"
+# ----------------------------
 
-# Cargar variables de entorno
-if [ -f .env ]; then
-  export $(cat .env | grep -v '^#' | xargs)
-  echo "✅ Variables de entorno cargadas"
-else
-  echo "⚠️  No se encontró .env — copiando .env.example..."
-  cp .env.example .env
-  echo "⚠️  Editá .env antes de continuar"
-  exit 1
+REAL_USER=${SUDO_USER:-$(whoami)}
+
+echo "🚀 Iniciando flujo de despliegue para Gastos Familia..."
+
+# 1. Sincronizar GitHub
+echo "📥 Sincronizando con GitHub..."
+git add .
+git commit -m "Deploy: $(date '+%Y-%m-%d %H:%M:%S')" 2>/dev/null
+if ! sudo -u $REAL_USER git push origin main; then
+    echo "❌ ERROR FATAL: El push falló. El despliegue se detiene."
+    exit 1
 fi
 
-# Pull de últimos cambios
-echo ""
-echo "📦 Actualizando código..."
-git pull origin main
+# 2. Sincronizar secretos (.env)
+echo "🔑 Sincronizando variables de entorno (.env)..."
+sudo -u $REAL_USER scp backend/.env "$RPI_HOST:$RPI_PATH/backend/.env"
 
-# Build y restart de contenedores
-echo ""
-echo "🐳 Reiniciando contenedores..."
+# 3. ACTUALIZACIÓN REMOTA
+echo "📡 Conectando a la Raspberry Pi ($RPI_HOST)..."
+echo "🏗️  Actualizando código y reiniciando contenedores..."
 
-if [ "$1" = "--prod" ]; then
-  echo "   Modo: PRODUCCIÓN (con Cloudflare Tunnel)"
-  docker compose --profile production down
-  docker compose --profile production up -d --build
-else
-  echo "   Modo: LOCAL (sin Cloudflare Tunnel)"
-  docker compose down
-  docker compose up -d --build
-fi
+sudo -u $REAL_USER ssh -t $RPI_HOST "
+    echo '--- Actualizando repositorio ---' && \
+    cd $RPI_PATH && \
+    git fetch origin && \
+    git reset --hard origin/main && \
+    echo '--- Reconstruyendo contenedores de Gastos ---' && \
+    cd $INFRA_PATH && \
+    docker compose up -d --build gastos_backend gastos_frontend
+"
 
-# Verificar que los servicios estén corriendo
-echo ""
-echo "🔍 Verificando servicios..."
-sleep 5
-docker compose ps
-
-echo ""
-echo "✅ Deploy completado!"
-echo "   App disponible en: http://localhost:8080"
+echo "✅ Proceso finalizado. Revisá http://192.168.1.185:8080"

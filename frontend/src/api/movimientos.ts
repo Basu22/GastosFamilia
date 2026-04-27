@@ -17,8 +17,18 @@ export const previewMovimiento = async (monto_total: number, cuotas: number, fec
   return response.data;
 };
 
+export const getMovimiento = async (id: number) => {
+  const response = await apiClient.get(`/movimientos/${id}`);
+  return response.data;
+};
+
 export const createMovimiento = async (data: MovimientoCreate) => {
   const response = await apiClient.post('/movimientos/', data);
+  return response.data;
+};
+
+export const updateMovimiento = async (id: number, data: Partial<MovimientoCreate>) => {
+  const response = await apiClient.put(`/movimientos/${id}`, data);
   return response.data;
 };
 

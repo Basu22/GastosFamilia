@@ -35,28 +35,32 @@
 ### Infraestructura
 | Tecnología | Rol |
 |---|---|
-| Docker + Docker Compose | Orquestación de servicios |
-| Nginx | Reverse proxy (unifica frontend y backend en un solo puerto) |
-| Cloudflare Tunnel | Exposición segura a internet sin abrir puertos del router |
-| Raspberry Pi 3B+ | Servidor de producción |
+| Docker + Docker Compose | Orquestación de servicios unificada |
+| Nginx (proxy_unificado) | Reverse proxy compartido (Dashboard + Gastos) |
+| Cloudflare Tunnel | Exposición segura vía `graficosagiles.site` |
+| Raspberry Pi 4 | Servidor de producción (8GB RAM) |
 
 ---
 
-## 2. Arquitectura de Servicios
+## 2. Arquitectura de Servicios Unificada
 
 ```
-Internet
+Internet (graficosagiles.site)
     │
     ▼
-Cloudflare Tunnel (gastos_tunnel)
+Cloudflare Tunnel (tunnel_unificado)
     │
     ▼
-Nginx :8080 (gastos_nginx)
-    ├── /api/*  → Backend FastAPI :8000 (gastos_backend)
-    └── /*      → Frontend Vite  :80   (gastos_frontend)
+Nginx :80 / :8080 (proxy_unificado)
+    │
+    ├── Puerto 80: Agility Dashboard (Externo)
+    │
+    └── Puerto 8080: Gastos Familia (Interno/VPN)
+         ├── /api/*  → Backend FastAPI :8000 (gastos_backend)
+         └── /*      → Frontend React   :80   (gastos_frontend)
 
-Red interna Docker: gastos_net (bridge)
-Volumen persistente: ./data/gastos.db
+Red interna Docker: app_network (bridge)
+Volumen persistente: ~/GastosFamilia/backend/data/
 ```
 
 ### En desarrollo local
@@ -360,16 +364,28 @@ VITE_API_URL=           # URL base del backend (vacío = usa proxy Vite local)
 
 ---
 
-## 11. Flujo de Deploy (Producción)
+## 11. Flujo de Trabajo con GitHub
 
-```
-1. Desarrollo local → commit + push a GitHub
-2. En Raspberry Pi: ./deploy.sh
-   a. git pull (trae últimos cambios)
-   b. docker compose down
-   c. docker compose up -d --build
-3. El Cloudflare Tunnel retoma automáticamente
-```
+El repositorio en GitHub actúa como el puente de sincronización entre el entorno de desarrollo y producción.
+
+### 11.1 El Ciclo de Vida del Cambio
+1. **Desarrollo (PC Lenovo):** Se realizan los cambios, se prueban localmente con `bash start-dev-local.sh`.
+2. **Commit y Push:** Se suben los cambios a GitHub.
+3. **Pull (Raspberry Pi 4):** Se ingresa por SSH y se ejecuta `git pull` dentro de la carpeta del proyecto.
+4. **Redeploy:** Se ejecuta `./deploy.sh` para reconstruir los contenedores con el código nuevo.
+
+### 11.2 Seguridad y Secretos (.gitignore)
+Por seguridad, los siguientes archivos **TIENEN PROHIBIDO** subir a GitHub:
+- `.env`: Contiene claves de API y secretos de JWT.
+- `backend/data/*.db`: La base de datos real con tus gastos.
+- `node_modules/` y `__pycache__/`: Basura técnica.
+
+> [!IMPORTANT]
+> Si clonás el repo en una máquina nueva, deberás crear el `.env` manualmente y copiar la base de datos `gastos.db` desde el backup.
+
+---
+
+## 12. Flujo de Deploy (Producción)
 
 > [!NOTE]
 > El volumen `./data/` está montado fuera del contenedor. La base de datos **no se borra** al hacer un redeploy normal.  

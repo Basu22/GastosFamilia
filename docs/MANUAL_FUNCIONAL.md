@@ -1,4 +1,6 @@
 # Manual Funcional — Gastos Familiares
+
+> **URL de Acceso (Producción):** `http://192.168.1.185:8080` (Acceso interno/VPN)  
 > **⚠️ Documento Vivo**: Este manual DEBE actualizarse cada vez que se agrega, modifica o elimina una funcionalidad del sistema.  
 > Última actualización: Abril 2026
 

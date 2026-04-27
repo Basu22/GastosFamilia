@@ -15,6 +15,30 @@ def calcular_fecha_ultima_cuota(primera: date, cuotas: int) -> date:
     # Restamos 1 mes porque la primera cuota ya es el mes 1
     return primera + relativedelta(months=cuotas - 1)
 
+@router.get("/{mov_id}", response_model=MovimientoResponse)
+def get_movimiento(mov_id: int, session: Session = Depends(get_session)):
+    query = select(Movimiento, Tarjeta).join(Tarjeta, isouter=True).where(Movimiento.id == mov_id)
+    resultado = session.exec(query).first()
+    
+    if not resultado:
+        raise HTTPException(status_code=404, detail="Movimiento no encontrado")
+    
+    mov, tarj = resultado
+    return MovimientoResponse(
+        id=mov.id,
+        tarjeta_id=mov.tarjeta_id,
+        tarjeta_nombre=tarj.nombre if tarj else "N/A",
+        tarjeta_color=tarj.color if tarj else None,
+        descripcion=mov.descripcion,
+        categoria=mov.categoria,
+        monto_total=mov.monto_total,
+        cuotas=mov.cuotas,
+        monto_cuota=mov.monto_cuota,
+        fecha_primera_cuota=mov.fecha_primera_cuota,
+        fecha_ultima_cuota=mov.fecha_ultima_cuota,
+        notas=mov.notas
+    )
+
 @router.get("/", response_model=List[MovimientoResponse])
 def get_movimientos(
     mes: Optional[int] = None,
@@ -115,6 +139,45 @@ def create_movimiento(data: MovimientoCreate, session: Session = Depends(get_ses
         tarjeta_id=mov.tarjeta_id,
         tarjeta_nombre=tarjeta.nombre,
         tarjeta_color=tarjeta.color,
+        descripcion=mov.descripcion,
+        categoria=mov.categoria,
+        monto_total=mov.monto_total,
+        cuotas=mov.cuotas,
+        monto_cuota=mov.monto_cuota,
+        fecha_primera_cuota=mov.fecha_primera_cuota,
+        fecha_ultima_cuota=mov.fecha_ultima_cuota,
+        notas=mov.notas
+    )
+
+@router.put("/{mov_id}", response_model=MovimientoResponse)
+def update_movimiento(mov_id: int, data: MovimientoUpdate, session: Session = Depends(get_session)):
+    mov = session.get(Movimiento, mov_id)
+    if not mov:
+        raise HTTPException(status_code=404, detail="Movimiento no encontrado")
+        
+    update_data = data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(mov, key, value)
+        
+    # Recalcular campos derivados si cambiaron los valores base
+    if "monto_total" in update_data or "cuotas" in update_data:
+        mov.monto_cuota = mov.monto_total / mov.cuotas
+        
+    if "fecha_primera_cuota" in update_data or "cuotas" in update_data:
+        mov.fecha_ultima_cuota = calcular_fecha_ultima_cuota(mov.fecha_primera_cuota, mov.cuotas)
+        
+    session.add(mov)
+    session.commit()
+    session.refresh(mov)
+    
+    # Obtener info de la tarjeta para la respuesta
+    tarjeta = session.get(Tarjeta, mov.tarjeta_id) if mov.tarjeta_id else None
+    
+    return MovimientoResponse(
+        id=mov.id,
+        tarjeta_id=mov.tarjeta_id,
+        tarjeta_nombre=tarjeta.nombre if tarjeta else "N/A",
+        tarjeta_color=tarjeta.color if tarjeta else None,
         descripcion=mov.descripcion,
         categoria=mov.categoria,
         monto_total=mov.monto_total,
