@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getGastosMensuales, createGastoMensual, updateGastoMensual, deleteGastoMensual } from '../api/gastos_mensuales';
 import { getIngresos, createIngreso, updateIngreso, deleteIngreso } from '../api/ingresos';
 import { formatARS } from '../utils/format';
-import { Plus, Save, Edit3, X, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
+import { Plus, Save, Edit3, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
 import { NumericFormat } from 'react-number-format';
 
 const schema = z.object({

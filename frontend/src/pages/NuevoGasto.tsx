@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -7,7 +7,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getTarjetas } from '../api/tarjetas';
 import { createMovimiento, previewMovimiento, getMovimiento, updateMovimiento, deleteMovimiento } from '../api/movimientos';
 import { formatARS } from '../utils/format';
-import { CreditCard, Info, Save, X, Trash2, Edit3 } from 'lucide-react';
+import { CreditCard, Info, Save, Trash2, Edit3 } from 'lucide-react';
 import { NumericFormat } from 'react-number-format';
 
 const schema = z.object({
@@ -30,7 +30,7 @@ export default function NuevoGasto() {
   const editIdParam = searchParams.get('edit');
   const editingId = editIdParam ? parseInt(editIdParam) : null;
 
-  const { data: tarjetas, isLoading: loadingTarjetas } = useQuery({
+  const { data: tarjetas } = useQuery({
     queryKey: ['tarjetas'],
     queryFn: getTarjetas
   });

@@ -1,8 +1,9 @@
-import React from 'react';
+import { FC } from 'react';
 import { LucideIcon } from 'lucide-react';
 import { formatARS } from '../../utils/format';
 
 interface MetricCardProps {
+  id?: string;
   label: string;
   value: number;
   icon: LucideIcon;
@@ -10,7 +11,8 @@ interface MetricCardProps {
   subtitle?: string;
 }
 
-const MetricCard: React.FC<MetricCardProps> = ({ 
+const MetricCard: FC<MetricCardProps> = ({ 
+  id,
   label, 
   value, 
   icon: Icon, 
@@ -25,7 +27,10 @@ const MetricCard: React.FC<MetricCardProps> = ({
   };
 
   return (
-    <article id={`metric-card-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`} className={`p-3 lg:p-4 rounded-xl shadow-sm border flex flex-col gap-1 lg:gap-2 transition-all ${colors[variant]}`}>
+    <article 
+      id={id || `metric-card-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`} 
+      className={`p-3 lg:p-4 rounded-xl shadow-sm border flex flex-col gap-1 lg:gap-2 transition-all ${colors[variant]}`}
+    >
       <div className="flex items-center gap-1.5 opacity-70">
         <Icon size={14} className="lg:w-4 lg:h-4" />
         <p className="text-[10px] lg:text-xs font-bold uppercase tracking-wider">

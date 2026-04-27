@@ -1,13 +1,12 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback, FC } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  ReferenceLine, CartesianGrid, Legend
+  CartesianGrid, Legend
 } from 'recharts';
-import { TrendingUp, TrendingDown, PiggyBank, Edit3, RotateCcw, ChevronDown, ChevronUp, BarChart2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Edit3, ChevronDown, ChevronUp, BarChart2 } from 'lucide-react';
 import { NumericFormat } from 'react-number-format';
 import { getProyeccion, upsertOverride, MesProyectado, DetalleItem } from '../api/proyeccion';
-import { getOverrides } from '../api/proyeccion';
 import { formatARS, formatARSCompact, MESES_CORTO } from '../utils/format';
 
 // ─── Tipos locales ────────────────────────────────────────────────────────────
@@ -64,7 +63,7 @@ interface CeldaEditableProps {
   onGuardar: (celda: CeldaEditando, nuevo_monto: number) => void;
 }
 
-const CeldaEditable: React.FC<CeldaEditableProps> = ({
+const CeldaEditable: FC<CeldaEditableProps> = ({
   item, tipo, mes, anio, esPasado, onGuardar
 }) => {
   const [editando, setEditando] = useState(false);
@@ -125,7 +124,7 @@ interface FilaMesProps {
   onToggleExpand: () => void;
 }
 
-const FilaMes: React.FC<FilaMesProps> = ({ mes_data, onGuardar, expandido, onToggleExpand }) => {
+const FilaMes: FC<FilaMesProps> = ({ mes_data, onGuardar, expandido, onToggleExpand }) => {
   const ahorro = mes_data.ahorro_proyectado;
   const esPositivo = ahorro >= 0;
   const esPasado = mes_data.es_pasado;
