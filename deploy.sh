@@ -40,7 +40,7 @@ sudo -u $REAL_USER ssh -t $RPI_HOST "
     git reset --hard origin/main && \
     echo '--- Reconstruyendo contenedores de Gastos ---' && \
     cd $INFRA_PATH && \
-    docker compose up -d --build backend frontend
+    docker compose up -d --build gastos-backend gastos-frontend
 "
 
 echo "✅ Proceso finalizado. Revisá http://192.168.1.185:8080"
