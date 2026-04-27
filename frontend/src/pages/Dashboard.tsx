@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getDashboardInfo, getMesesDisponibles } from '../api/client';
@@ -6,6 +6,7 @@ import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, LineCh
 import { TrendingUp, Wallet, CreditCard, PiggyBank, Clock, Edit3, ChevronLeft, ChevronRight, FilterX, Calendar } from 'lucide-react';
 import { formatARS, formatARSCompact, MESES_CORTO } from '../utils/format';
 import MetricCard from '../components/ui/MetricCard';
+import InlineEditForm from '../components/dashboard/InlineEditForm';
 
 const DashboardSkeleton = () => (
   <div className="space-y-6 animate-pulse px-4 py-4 lg:px-8 lg:py-8">
@@ -31,6 +32,7 @@ export default function Dashboard() {
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [pickerYear, setPickerYear] = useState(now.getFullYear());
+  const [editingItem, setEditingItem] = useState<{id: number, tipo: any} | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['dashboard', mes, anio],
@@ -369,42 +371,62 @@ export default function Dashboard() {
             </thead>
             <tbody id="body-table-movimientos" className="divide-y divide-gray-100 dark:divide-neutral-800">
               {filteredMovimientos.map((mov: any) => (
-                <tr key={`${mov.tipo}-${mov.id}`} id={`row-movimiento-${mov.tipo}-${mov.id}`} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-4 py-4">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-neutral-100">{mov.descripcion}</p>
-                    {mov.tipo === 'tarjeta' && (
-                      <p className="text-[10px] text-blue-500 font-bold uppercase mt-0.5">Cuota {mov.cuota_actual}/{mov.cuotas_total}</p>
-                    )}
-                    {mov.es_fijo && (
-                      <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-bold mt-1 inline-block">FIJO</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-600 dark:text-neutral-400 font-medium">
-                        {mov.tipo === 'tarjeta' ? mov.tarjeta_nombre : (mov.tipo === 'ingreso' ? 'Ingreso' : 'Gasto Fijo')}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-right">
-                    <p className={`text-sm font-bold ${mov.tipo === 'ingreso' ? 'text-emerald-600' : 'text-gray-900 dark:text-neutral-100'}`}>
-                      {mov.tipo === 'ingreso' ? '+' : '-'} {formatARS(mov.monto)}
-                    </p>
-                  </td>
-                  <td className="px-4 py-4 text-right">
-                    <button 
-                      id={`btn-edit-movimiento-${mov.tipo}-${mov.id}`}
-                      onClick={() => {
-                        if (mov.tipo === 'tarjeta') navigate(`/nuevo?edit=${mov.id}`);
-                        else navigate(`/gastos?edit=${mov.id}&type=${mov.tipo === 'ingreso' ? 'ingreso' : 'egreso'}`);
-                      }}
-                      className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                      title="Editar"
-                    >
-                      <Edit3 size={18} />
-                    </button>
-                  </td>
-                </tr>
+                <Fragment key={`${mov.tipo}-${mov.id}`}>
+                  <tr 
+                    id={`row-movimiento-${mov.tipo}-${mov.id}`} 
+                    className={`hover:bg-gray-50/50 transition-colors ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''}`}
+                  >
+                    <td className="px-4 py-4">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-neutral-100">{mov.descripcion}</p>
+                      {mov.tipo === 'tarjeta' && (
+                        <p className="text-[10px] text-blue-500 font-bold uppercase mt-0.5">Cuota {mov.cuota_actual}/{mov.cuotas_total}</p>
+                      )}
+                      {mov.es_fijo && (
+                        <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-bold mt-1 inline-block">FIJO</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-600 dark:text-neutral-400 font-medium">
+                          {mov.tipo === 'tarjeta' ? mov.tarjeta_nombre : (mov.tipo === 'ingreso' ? 'Ingreso' : 'Gasto Fijo')}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-right">
+                      <p className={`text-sm font-bold ${mov.tipo === 'ingreso' ? 'text-emerald-600' : 'text-gray-900 dark:text-neutral-100'}`}>
+                        {mov.tipo === 'ingreso' ? '+' : '-'} {formatARS(mov.monto)}
+                      </p>
+                    </td>
+                    <td className="px-4 py-4 text-right">
+                      <button 
+                        id={`btn-edit-movimiento-${mov.tipo}-${mov.id}`}
+                        onClick={() => {
+                          if (editingItem?.id === mov.id && editingItem?.tipo === mov.tipo) {
+                            setEditingItem(null);
+                          } else {
+                            setEditingItem({ id: mov.id, tipo: mov.tipo });
+                          }
+                        }}
+                        className={`p-3 rounded-lg transition-all ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'text-blue-600 bg-blue-100 dark:bg-blue-900/40' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`}
+                        title="Editar"
+                      >
+                        <Edit3 size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                  {/* Formulario Inline */}
+                  {editingItem?.id === mov.id && editingItem?.tipo === mov.tipo && (
+                    <tr id={`row-edit-${mov.tipo}-${mov.id}`}>
+                      <td colSpan={4} className="p-0 border-none">
+                        <InlineEditForm 
+                          id={mov.id} 
+                          tipo={mov.tipo} 
+                          onClose={() => setEditingItem(null)} 
+                        />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
             </tbody>
             {/* Totalizador */}

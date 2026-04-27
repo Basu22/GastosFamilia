@@ -422,16 +422,11 @@ Suele deberse a dos causas en esta infraestructura:
 | Abr 2026 | Motor de fechas corregido: comparación por mes absoluto (`año*12+mes`) |
 | Abr 2026 | Campo `es_fijo` agregado a modelo `Ingreso` |
 | Abr 2026 | Ciclo de vida de gastos/ingresos fijos: no retroactivos, desde mes de creación |
-| Abr 2026 | Sección "Cuotas a Finalizar" (filtro: tarjeta asignada + cuotas > 1) |
-| Abr 2026 | Proxy de Vite configurado (`/api` → `http://127.0.0.1:8000`) |
-| Abr 2026 | `MetricCard.tsx` extraído como componente reutilizable con tipado estricto |
-| Abr 2026 | `utils/format.ts`: `formatARS()`, `formatARSCompact()`, `MESES_CORTO` centralizados |
-| Abr 2026 | **Fase 2**: Migración a carga manual. Google Sheets import script deprecado y removido del pipeline. |
-| Abr 2026 | Backend: CRUD APIs implementadas para Movimientos, Gastos Mensuales e Ingresos. |
-| Abr 2026 | Frontend: Adopción estricta de `MANUAL_BUENAS_PRACTICAS_HTML_CSS.md` con IDs y etiquetas semánticas (`<main>`, `<section>`, etc). |
-| Abr 2026 | Backend: Soporte de pagos Efectivo/Transferencia haciendo `tarjeta_id` nulo. |
-| Abr 2026 | **Infraestructura**: Migración exitosa a RPi 4. Unificación de proyectos en `infra-unificada` con nombres de servicio estandarizados (`gastos-frontend`, `gastos-backend`). |
+| Abr 2026 | **Smart Forms**: Lógica de entrada dual (Monto Total vs Cuota) con sincronización vía `setValue` y redondeo `toFixed(2)`. |
+| Abr 2026 | **Refactor Maestro**: Unificación de `NuevoGasto.tsx` y `Gastos.tsx` en `Movimientos.tsx`. Simplificación de rutas y menú de navegación. |
+| Abr 2026 | **Frontend**: Centralización de lógica de edición en `InlineEditForm.tsx`. Refactor de Dashboard para usar `Fragment` y renderizado de filas expansivas. |
 | Abr 2026 | **Fixes**: Corrección de dependencias (`python-dateutil`) y limpieza de tipos de TypeScript para build de producción. |
+| Abr 2026 | **Frontend**: Centralización de lógica de edición en `InlineEditForm.tsx`. Refactor de Dashboard para usar `Fragment` y renderizado de filas expansivas. |
 | Abr 2026 | Frontend: Formulario `/tarjetas` creado con `react-hook-form` y validaciones `zod`. Soporte de edición (click en card) y baja (botón de basura). |
 | Abr 2026 | Bugfix: Corregido error 404 en APIs al remover prefijos duplicados en los `APIRouter` (ya se incluían en `main.py`). |
 | Abr 2026 | Backend: `PUT /tarjetas/{id}` y `DELETE /tarjetas/{id}` (Soft Delete) implementados. |

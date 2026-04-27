@@ -7,8 +7,7 @@ export default function Sidebar() {
 
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { name: 'Gastos', path: '/gastos', icon: Wallet },
-    { name: 'Nuevo Gasto', path: '/nuevo', icon: PlusCircle },
+    { name: 'Movimientos', path: '/movimientos', icon: PlusCircle },
     { name: 'Tarjetas', path: '/tarjetas', icon: CreditCard },
     { name: 'Proyección', path: '/proyeccion', icon: BarChart2 },
   ];

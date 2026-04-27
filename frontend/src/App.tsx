@@ -3,9 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AppShell from './components/layout/AppShell';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import NuevoGasto from './pages/NuevoGasto';
 import Tarjetas from './pages/Tarjetas';
-import Gastos from './pages/Gastos';
+import Movimientos from './pages/Movimientos';
 import Proyeccion from './pages/Proyeccion';
 import { useThemeStore } from './stores/themeStore';
 
@@ -29,8 +28,10 @@ function App() {
         <Route element={<AppShell />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/gastos" element={<Gastos />} />
-          <Route path="/nuevo" element={<NuevoGasto />} />
+          <Route path="/movimientos" element={<Movimientos />} />
+          {/* Redirecciones de compatibilidad */}
+          <Route path="/gastos" element={<Navigate to="/movimientos?tab=egresos" replace />} />
+          <Route path="/nuevo" element={<Navigate to="/movimientos?tab=tarjetas" replace />} />
           <Route path="/tarjetas" element={<Tarjetas />} />
           <Route path="/proyeccion" element={<Proyeccion />} />
         </Route>

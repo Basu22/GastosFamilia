@@ -4,8 +4,7 @@ import { LayoutDashboard, Wallet, PlusCircle, CreditCard, BarChart2 } from 'luci
 export default function BottomNav({ className = "" }: { className?: string }) {
   const menuItems = [
     { name: 'Inicio', path: '/dashboard', icon: LayoutDashboard },
-    { name: 'Gastos', path: '/gastos', icon: Wallet },
-    { name: 'Nuevo', path: '/nuevo', icon: PlusCircle },
+    { name: 'Movimientos', path: '/movimientos', icon: PlusCircle },
     { name: 'Tarjetas', path: '/tarjetas', icon: CreditCard },
     { name: 'Proyección', path: '/proyeccion', icon: BarChart2 },
   ];
@@ -19,13 +18,24 @@ export default function BottomNav({ className = "" }: { className?: string }) {
             id={`bottom-nav-link-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
             to={item.path}
             className={({ isActive }) =>
-              `flex flex-col items-center justify-center gap-1 flex-1 py-3 px-1 transition-colors ${
-                isActive ? 'text-blue-600 dark:text-blue-500' : 'text-gray-500 dark:text-neutral-500 active:text-gray-900 dark:active:text-neutral-300'
+              `flex-1 flex flex-col items-center justify-center h-full transition-all ${
+                isActive ? 'text-blue-600 dark:text-blue-500' : 'text-gray-400 dark:text-neutral-500'
               }`
             }
           >
-            <item.icon className={`w-5 h-5 ${item.name === 'Nuevo' ? 'w-6 h-6 text-blue-500 dark:text-blue-400' : ''}`} />
-            <span className="text-[10px] font-bold tracking-tight">{item.name}</span>
+            {({ isActive }) => (
+              <div className="flex flex-col items-center justify-center w-full py-1">
+                <div className={`p-1.5 rounded-xl transition-all ${isActive ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
+                  <item.icon 
+                    size={item.name === 'Movimientos' ? 26 : 22} 
+                    strokeWidth={isActive ? 2.5 : 2} 
+                  />
+                </div>
+                <span className={`text-[9px] font-bold tracking-tight uppercase mt-1 text-center ${isActive ? 'opacity-100' : 'opacity-60'}`}>
+                  {item.name}
+                </span>
+              </div>
+            )}
           </NavLink>
         ))}
       </div>

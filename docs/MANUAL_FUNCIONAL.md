@@ -33,9 +33,9 @@ El sistema tiene una barra de navegación lateral en **desktop** y una barra inf
 
 ```
 /dashboard     → Dashboard principal (pantalla de inicio)
-/gastos        → Gastos mensuales fijos y variables (en desarrollo)
-/nuevo         → Formulario de nuevo gasto (en desarrollo)
-/tarjetas      → Listado y gestión de tarjetas (en desarrollo)
+/movimientos   → Centro de mandos: Egresos, Tarjetas e Ingresos
+/tarjetas      → Listado y gestión de tarjetas
+/proyeccion    → Análisis financiero a largo plazo
 /login         → Pantalla de inicio de sesión
 ```
 
@@ -74,7 +74,7 @@ Es la pantalla principal. Muestra el **resumen financiero del mes actual**.
 #### Sección B — Navegación Temporal y Selector de Meses
 Ubicada en la cabecera del Dashboard, permite navegar entre meses:
 - **Flechas `<-` y `->`**: Permiten retroceder o avanzar entre los meses que tienen registros.
-- **Selector de Mes (Título)**: Al hacer clic en el nombre del mes, se despliega una lista de todos los meses y años que contienen datos en el sistema para un salto rápido.
+- **Selector de Mes (Título)**: Al hacer clic en el nombre del mes, se despliega una **grilla estilo calendario** (3x4 meses) que permite navegar por años y saltar a cualquier mes que tenga un punto rojo (indicador de datos).
 
 **Regla de negocio clave:**  
 Un gasto fijo (ej: expensas) aparece en **todos los meses** desde el mes en que fue creado en adelante. Un ingreso fijo (ej: sueldo) funciona de la misma manera.
@@ -107,12 +107,12 @@ Las tarjetas con monto $0 en el mes **no aparecen** en el gráfico.
 
 ---
 
-#### Sección E — Detalle de Movimientos y Totalizador
+#### Sección E — Detalle de Movimientos y Edición Inline
 
 Muestra el desglose de todo lo que compone el resumen del mes. 
-- **Filtrado dinámico**: Si se activó un filtro desde las MetricCards, la tabla solo muestra esos ítems y el encabezado lo indica.
-- **Totalizador (Pie de Tabla)**: Una fila final que suma automáticamente los montos de lo que se está viendo en pantalla (si hay filtro, suma solo lo filtrado).
-- **Acceso a Edición**: El icono del lápiz (`Edit3`) lleva directamente a la pantalla de edición correspondiente (`/nuevo` para cuotas, `/gastos` para el resto).
+- **Filtrado dinámico**: Si se activó un filtro desde las MetricCards, la tabla solo muestra esos ítems.
+- **Edición Inline (Novedad)**: Al presionar el icono de edición (`Edit3`), el sistema **no cambia de pantalla**. En su lugar, la fila se expande hacia abajo revelando un formulario de edición rápida.
+- **Totalizador (Pie de Tabla)**: Una fila final que suma automáticamente los montos de lo que se está viendo en pantalla.
 
 - **Línea violeta**: Total de cuotas mes a mes.
 - **Línea roja**: Gasto total (cuotas + gastos fijos/var).
@@ -134,16 +134,28 @@ Si el servidor no responde o devuelve un error, se muestra un recuadro rojo con 
 
 ---
 
-### 4.3 Nuevo Gasto (`/nuevo`)
+### 4.3 Movimientos (`/movimientos`)
 
 **¿Qué hace?**  
-Permite cargar manualmente una compra en cuotas al sistema.
+Es el corazón del sistema para la carga de datos. Centraliza todo lo que afecta al flujo de caja en tres pestañas.
 
-**Comportamiento esperado:**
-- Formulario Mobile First, validado en tiempo real.
-- El usuario selecciona la Tarjeta (desplegable), ingresa Descripción, Monto Total, Primera Cuota (mes y año) y selecciona la cantidad de Cuotas (1, 3, 6, 12, 18, 24).
-- **Preview Dinámico**: Al llenar el monto y las cuotas, aparece un recuadro informativo indicando el monto exacto por mes y la fecha de la última cuota, para que el usuario verifique antes de guardar.
-- Al guardar, el sistema recarga el Dashboard para reflejar el impacto.
+**Pestañas y Comportamiento:**
+
+1.  **Egresos (Rojo)**:
+    *   Para cargar gastos mensuales que no son cuotas (Luz, Alquiler, Súper).
+    *   Permite marcar un gasto como **"FIJO"** para que se repita todos los meses automáticamente.
+2.  **Tarjetas (Azul)**:
+    *   Para compras en cuotas.
+    *   **Entrada Dual de Montos**: El usuario puede elegir entre ingresar el **Monto Total** de la compra o el **Valor de la Cuota**. El sistema bloquea el campo opuesto y calcula el valor faltante automáticamente.
+    *   **Redondeo Inteligente**: Los cálculos automáticos se redondean a 2 decimales para mantener la claridad visual.
+    *   **Preview Dinámico**: Al poner monto y cuotas, te dice cuánto pagarás por mes y cuándo terminas antes de guardar.
+3.  **Ingresos (Verde)**:
+    *   Para cargar sueldos, aguinaldos o ingresos extra.
+    *   También soporta la opción de **"FIJO"**.
+
+**Historial**: Debajo de cada formulario, se muestra una lista de los últimos 10 movimientos cargados en esa categoría para referencia rápida.
+
+---
 
 ### 4.4 Tarjetas (`/tarjetas`)
 
@@ -156,17 +168,6 @@ Permite listar visualmente las tarjetas activas y cargar nuevas.
 - Debajo, un formulario permite agregar nuevas tarjetas o editar la seleccionada.
 - El usuario debe especificar un "Color" que servirá luego para la generación de gráficos en el Dashboard.
 
-### 4.5 Gastos & Ingresos (`/gastos`)
-
-**¿Qué hace?**  
-Permite gestionar (ABM completo) todos los ingresos (sueldos, bonos) y egresos mensuales (expensas, servicios, súper).
-
-**Comportamiento esperado:**
-- **Pestañas (Tabs)**: La pantalla está dividida en dos vistas alternables: "Egresos Mensuales" (rojo) e "Ingresos" (verde).
-- El listado inferior muestra tarjetas con el detalle de cada movimiento, indicando el mes desde el cual aplican y un badge especial de **"FIJO"** si el ítem es recurrente.
-- **Edición rápida**: Al tocar cualquier tarjeta del listado, los datos suben al formulario y se habilita la edición o eliminación del registro.
-- Todo cambio impacta de inmediato en los cálculos y gráficos del Dashboard.
-
 ---
 
 ## 5. Flujos de Usuario Principales
@@ -178,14 +179,13 @@ Permite gestionar (ABM completo) todos los ingresos (sueldos, bonos) y egresos m
 3. Aparece el skeleton de carga mientras trae los datos del mes actual.
 4. Se muestran las 4 métricas, los vencimientos cercanos y los gráficos.
 
-### Flujo 2: Cargar una nueva compra en cuotas
+### Flujo 2: Cargar una nueva compra o gasto
 
-1. El usuario navega a la sección **Nuevo Gasto** desde la barra inferior (o menú lateral).
-2. Completa los datos requeridos: Tarjeta, Descripción, Monto Total, Fecha de Primera Cuota.
-3. Selecciona la cantidad de cuotas usando los botones rápidos.
-4. Revisa el cuadro de "Preview" que le anticipa cuánto pagará por mes y cuándo termina.
-5. Presiona "Guardar Gasto".
-6. El sistema guarda la información y redirige al Dashboard, donde las métricas (Cuotas, Ahorro Neto) y los gráficos se actualizan automáticamente.
+1. El usuario navega a **Movimientos** desde la barra inferior.
+2. Selecciona la pestaña correspondiente (**Egresos**, **Tarjetas** o **Ingresos**).
+3. Completa el formulario (en Tarjetas verá el preview automático).
+4. Presiona "Guardar".
+5. El sistema actualiza los datos y el usuario puede volver al Dashboard para ver el impacto.
 
 ---
 
@@ -236,3 +236,6 @@ Permite gestionar (ABM completo) todos los ingresos (sueldos, bonos) y egresos m
 | Abr 2026 | Pantalla unificada de ABM de Egresos Mensuales e Ingresos (`/gastos`) mediante pestañas interactivas. |
 | Abr 2026 | Actualización de estándares de usabilidad móvil (Mobile First) para optimización en dispositivos de alta densidad (Samsung A56). |
 | Abr 2026 | **Dashboard Interactivo**: Navegación por meses con datos, filtros rápidos vía MetricCards y totalizador automático en tabla de movimientos. |
+| Abr 2026 | **UX Pro**: Implementación de edición inline descendente en el Dashboard (sin cambio de pantalla). |
+| Abr 2026 | **Refactor Maestro**: Unificación de todas las cargas en `/movimientos` y rediseño de barra de navegación móvil (iconos 24px). |
+| Abr 2026 | **Smart Forms**: Sistema de entrada dual de montos (Total/Cuota) con redondeo automático a 2 decimales. |
