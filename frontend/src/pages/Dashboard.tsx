@@ -1,5 +1,4 @@
 import { useState, useMemo, Fragment } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getDashboardInfo, getMesesDisponibles } from '../api/client';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, ReferenceLine } from 'recharts';
@@ -25,7 +24,6 @@ const DashboardSkeleton = () => (
 type FilterType = 'all' | 'ingreso' | 'tarjeta' | 'gasto';
 
 export default function Dashboard() {
-  const navigate = useNavigate();
   const now = new Date();
   const [mes, setMes] = useState(now.getMonth() + 1);
   const [anio, setAnio] = useState(now.getFullYear());

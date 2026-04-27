@@ -13,7 +13,7 @@ import { createMovimiento, previewMovimiento, getMovimientos, updateMovimiento, 
 
 // UI
 import { formatARS } from '../utils/format';
-import { Plus, Save, Edit3, Trash2, TrendingDown, TrendingUp, CreditCard, Info, Wallet, History } from 'lucide-react';
+import { Plus, Edit3, Trash2, TrendingDown, TrendingUp, CreditCard, Info, History } from 'lucide-react';
 import { NumericFormat } from 'react-number-format';
 
 // Esquemas de Validación
@@ -34,6 +34,9 @@ const schemaCuotas = z.object({
   notas: z.string().optional()
 });
 
+type FijosType = z.infer<typeof schemaFijos>;
+type CuotasType = z.infer<typeof schemaCuotas>;
+
 type TabType = 'egresos' | 'tarjetas' | 'ingresos';
 
 export default function Movimientos() {
@@ -46,25 +49,38 @@ export default function Movimientos() {
 
   // Queries
   const { data: tarjetas } = useQuery({ queryKey: ['tarjetas'], queryFn: getTarjetas });
-  const { data: egresos, isLoading: loadingEgresos } = useQuery({ queryKey: ['gastos_mensuales'], queryFn: getGastosMensuales });
-  const { data: ingresos, isLoading: loadingIngresos } = useQuery({ queryKey: ['ingresos'], queryFn: getIngresos });
-  const { data: movimientos, isLoading: loadingMovimientos } = useQuery({ queryKey: ['movimientos'], queryFn: getMovimientos });
+  const { data: egresos, isLoading: loadingEgresos } = useQuery({ queryKey: ['gastos_mensuales'], queryFn: () => getGastosMensuales() });
+  const { data: ingresos, isLoading: loadingIngresos } = useQuery({ queryKey: ['ingresos'], queryFn: () => getIngresos() });
+  const { data: movimientos, isLoading: loadingMovimientos } = useQuery({ queryKey: ['movimientos'], queryFn: () => getMovimientos() });
 
   // Forms
-  const formFijos = useForm({
+  const formFijos = useForm<FijosType>({
     resolver: zodResolver(schemaFijos),
-    defaultValues: { mes: new Date().getMonth() + 1, anio: new Date().getFullYear(), es_fijo: false }
+    defaultValues: { 
+      descripcion: '',
+      monto: 0,
+      mes: new Date().getMonth() + 1, 
+      anio: new Date().getFullYear(), 
+      es_fijo: false 
+    }
   });
 
-  const formCuotas = useForm({
+  const formCuotas = useForm<CuotasType>({
     resolver: zodResolver(schemaCuotas),
-    defaultValues: { cuotas: 1, fecha_primera_cuota: new Date().toISOString().split('T')[0] }
+    defaultValues: { 
+      tarjeta_id: '',
+      descripcion: '',
+      monto_total: 0,
+      cuotas: 1, 
+      fecha_primera_cuota: new Date().toISOString().split('T')[0],
+      notas: ''
+    }
   });
 
   // Lógica de cálculo dual de montos
-  const montoTotal = formCuotas.watch('monto_total');
-  const cantCuotas = formCuotas.watch('cuotas');
-  const fechaInicio = formCuotas.watch('fecha_primera_cuota');
+  const montoTotal = formCuotas.watch('monto_total') as number;
+  const cantCuotas = formCuotas.watch('cuotas') as number;
+  const fechaInicio = formCuotas.watch('fecha_primera_cuota') as string;
 
   const handleMontoCuotaChange = (val: number | undefined) => {
     if (val && cantCuotas) {
@@ -282,7 +298,7 @@ export default function Movimientos() {
                 <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Cantidad de Cuotas</label>
                 <div className="grid grid-cols-6 gap-2">
                   {[1, 3, 6, 12, 18, 24].map(n => (
-                    <button key={n} type="button" onClick={() => formCuotas.setValue('cuotas', n)} className={`py-3 rounded-xl font-bold border transition-all ${formCuotas.watch('cuotas') === n ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white dark:bg-neutral-900 text-gray-500 border-gray-100 dark:border-neutral-800 hover:bg-gray-50'}`}>{n}</button>
+                    <button key={n} type="button" onClick={() => formCuotas.setValue('cuotas', n)} className={`py-3 rounded-xl font-bold border transition-all ${cantCuotas === n ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white dark:bg-neutral-900 text-gray-500 border-gray-100 dark:border-neutral-800 hover:bg-gray-50'}`}>{n}</button>
                   ))}
                 </div>
               </div>

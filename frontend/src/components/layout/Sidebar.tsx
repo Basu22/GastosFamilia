@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Wallet, PlusCircle, CreditCard, LogOut, Sun, Moon, BarChart2 } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, CreditCard, LogOut, Sun, Moon, BarChart2 } from 'lucide-react';
 import { useThemeStore } from '../../stores/themeStore';
 
 export default function Sidebar() {

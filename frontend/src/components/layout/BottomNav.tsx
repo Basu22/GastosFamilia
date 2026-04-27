@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Wallet, PlusCircle, CreditCard, BarChart2 } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, CreditCard, BarChart2 } from 'lucide-react';
 
 export default function BottomNav({ className = "" }: { className?: string }) {
   const menuItems = [

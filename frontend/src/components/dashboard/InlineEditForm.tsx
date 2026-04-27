@@ -7,9 +7,8 @@ import { getTarjetas } from '../../api/tarjetas';
 import { getMovimiento, updateMovimiento, deleteMovimiento } from '../../api/movimientos';
 import { updateGastoMensual, deleteGastoMensual, getGastosMensuales } from '../../api/gastos_mensuales';
 import { updateIngreso, deleteIngreso, getIngresos } from '../../api/ingresos';
-import { Save, Trash2, X, CreditCard, Calendar, Info } from 'lucide-react';
+import { Save, Trash2 } from 'lucide-react';
 import { NumericFormat } from 'react-number-format';
-import { formatARS } from '../../utils/format';
 
 // Esquema unificado (soporta ambos tipos de datos)
 const schema = z.object({
