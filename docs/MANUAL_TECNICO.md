@@ -422,8 +422,10 @@ Suele deberse a dos causas en esta infraestructura:
 | Abr 2026 | Motor de fechas corregido: comparación por mes absoluto (`año*12+mes`) |
 | Abr 2026 | Campo `es_fijo` agregado a modelo `Ingreso` |
 | Abr 2026 | Ciclo de vida de gastos/ingresos fijos: no retroactivos, desde mes de creación |
-| Abr 2026 | **Smart Forms**: Lógica de entrada dual (Monto Total vs Cuota) con sincronización vía `setValue` y redondeo `toFixed(2)`. |
-| Abr 2026 | **Refactor Maestro**: Unificación de `NuevoGasto.tsx` y `Gastos.tsx` en `Movimientos.tsx`. Simplificación de rutas y menú de navegación. |
+| Abr 2026 | **Base de Datos**: Migración de tabla `gastomensual` para incluir `tarjeta_id` (FOREIGN KEY a `tarjeta`). |
+| Abr 2026 | **Lógica**: Refactor de `get_cuotas_por_tarjeta` para incluir gastos fijos vinculados a tarjetas en los totales. |
+| Abr 2026 | **UI**: Implementación de CSS global para ocultar flechas en inputs de tipo `number`. |
+| Abr 2026 | **Smart Forms**: Lógica de entrada de cuotas (Sugerencias vs Manual) con estados locales `cuotasMode`. |
 | Abr 2026 | **Frontend**: Centralización de lógica de edición en `InlineEditForm.tsx`. Refactor de Dashboard para usar `Fragment` y renderizado de filas expansivas. |
 | Abr 2026 | **Fixes**: Corrección de dependencias (`python-dateutil`) y limpieza de tipos de TypeScript para build de producción. |
 | Abr 2026 | **Frontend**: Centralización de lógica de edición en `InlineEditForm.tsx`. Refactor de Dashboard para usar `Fragment` y renderizado de filas expansivas. |

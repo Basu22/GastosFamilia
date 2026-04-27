@@ -164,12 +164,15 @@ def get_dashboard_summary(
     for g in gastos_db:
         g_val = g.anio * 12 + g.mes
         if (g.mes == mes and g.anio == anio) or (g.es_fijo and mes_actual_val >= g_val):
+            t = tarjetas_dict.get(g.tarjeta_id) if g.tarjeta_id else None
             movimientos_mes.append({
                 "id": g.id,
                 "tipo": "gasto",
                 "descripcion": g.descripcion,
                 "monto": g.monto,
                 "es_fijo": g.es_fijo,
+                "tarjeta_nombre": t.nombre if t else None,
+                "tarjeta_color": t.color if t else None,
                 "fecha_referencia": f"{g.anio}-{g.mes:02d}-01"
             })
             

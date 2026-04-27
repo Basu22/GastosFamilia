@@ -22,7 +22,8 @@ const schemaFijos = z.object({
   monto: z.number({ invalid_type_error: 'Debe ser numérico' }).positive('Debe ser mayor a 0'),
   mes: z.number().min(1).max(12),
   anio: z.number().min(2020).max(2050),
-  es_fijo: z.boolean().default(false)
+  es_fijo: z.boolean().default(false),
+  tarjeta_id: z.string().optional()
 });
 
 const schemaCuotas = z.object({
@@ -46,6 +47,7 @@ export default function Movimientos() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [previewData, setPreviewData] = useState<any>(null);
   const [entryMode, setEntryMode] = useState<'total' | 'cuota'>('total');
+  const [cuotasMode, setCuotasMode] = useState<'preset' | 'manual'>('preset');
 
   // Queries
   const { data: tarjetas } = useQuery({ queryKey: ['tarjetas'], queryFn: getTarjetas });
@@ -61,7 +63,8 @@ export default function Movimientos() {
       monto: 0,
       mes: new Date().getMonth() + 1, 
       anio: new Date().getFullYear(), 
-      es_fijo: false 
+      es_fijo: false,
+      tarjeta_id: ''
     }
   });
 
@@ -116,8 +119,9 @@ export default function Movimientos() {
   // Mutations
   const mutationFijos = useMutation({
     mutationFn: (data: any) => {
-      if (editingId) return activeTab === 'egresos' ? updateGastoMensual(editingId, data) : updateIngreso(editingId, data);
-      return activeTab === 'egresos' ? createGastoMensual(data) : createIngreso(data);
+      const payload = { ...data, tarjeta_id: data.tarjeta_id ? parseInt(data.tarjeta_id) : null };
+      if (editingId) return activeTab === 'egresos' ? updateGastoMensual(editingId, payload) : updateIngreso(editingId, payload);
+      return activeTab === 'egresos' ? createGastoMensual(payload) : createIngreso(payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
@@ -168,7 +172,8 @@ export default function Movimientos() {
         monto: item.monto,
         mes: item.mes,
         anio: item.anio,
-        es_fijo: item.es_fijo
+        es_fijo: item.es_fijo,
+        tarjeta_id: item.tarjeta_id?.toString() || ""
       });
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -294,13 +299,46 @@ export default function Movimientos() {
                 <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Fecha Inicio</label>
                 <input type="date" {...formCuotas.register('fecha_primera_cuota')} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-              <div className="col-span-full space-y-2">
-                <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Cantidad de Cuotas</label>
-                <div className="grid grid-cols-6 gap-2">
-                  {[1, 3, 6, 12, 18, 24].map(n => (
-                    <button key={n} type="button" onClick={() => formCuotas.setValue('cuotas', n)} className={`py-3 rounded-xl font-bold border transition-all ${cantCuotas === n ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white dark:bg-neutral-900 text-gray-500 border-gray-100 dark:border-neutral-800 hover:bg-gray-50'}`}>{n}</button>
-                  ))}
+              <div className="col-span-full space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Cantidad de Cuotas</label>
+                  <div className="flex bg-gray-100 dark:bg-neutral-900 p-1 rounded-xl w-48">
+                    <button 
+                      type="button" 
+                      onClick={() => setCuotasMode('preset')}
+                      className={`flex-1 py-1.5 text-[10px] font-bold rounded-lg transition-all ${cuotasMode === 'preset' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-sm' : 'text-gray-500'}`}
+                    >
+                      SUGERENCIAS
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => setCuotasMode('manual')}
+                      className={`flex-1 py-1.5 text-[10px] font-bold rounded-lg transition-all ${cuotasMode === 'manual' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-sm' : 'text-gray-500'}`}
+                    >
+                      MANUAL
+                    </button>
+                  </div>
                 </div>
+
+                {cuotasMode === 'preset' ? (
+                  <div className="grid grid-cols-6 gap-2">
+                    {[1, 3, 6, 12, 18, 24].map(n => (
+                      <button key={n} type="button" onClick={() => formCuotas.setValue('cuotas', n)} className={`py-3 rounded-xl font-bold border transition-all ${cantCuotas === n ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white dark:bg-neutral-900 text-gray-500 border-gray-100 dark:border-neutral-800 hover:bg-gray-50'}`}>{n}</button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      {...formCuotas.register('cuotas', { valueAsNumber: true })} 
+                      className="w-full px-4 pr-20 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-xl font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                      min="1"
+                    />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-neutral-500 font-bold text-[10px] uppercase tracking-[0.2em] pointer-events-none">
+                      CUOTAS
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             {previewData && (
@@ -339,6 +377,17 @@ export default function Movimientos() {
                   <input type="number" {...formFijos.register('anio', { valueAsNumber: true })} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm outline-none" />
                 </div>
               </div>
+              
+              {activeTab === 'egresos' && (
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Medio de Pago</label>
+                  <select {...formFijos.register('tarjeta_id')} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Efectivo / Transferencia</option>
+                    {tarjetas?.map((t: any) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                  </select>
+                </div>
+              )}
+
               <div className="flex items-center gap-3 bg-white dark:bg-neutral-950 px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800">
                 <input type="checkbox" {...formFijos.register('es_fijo')} id="check-fijo" className="w-5 h-5 rounded border-gray-300 text-blue-600" />
                 <label htmlFor="check-fijo" className="text-sm font-semibold text-gray-700 dark:text-neutral-300 cursor-pointer">Valor FIJO mensual</label>

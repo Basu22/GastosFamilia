@@ -142,13 +142,16 @@ Es el corazón del sistema para la carga de datos. Centraliza todo lo que afecta
 **Pestañas y Comportamiento:**
 
 1.  **Egresos (Rojo)**:
-    *   Para cargar gastos mensuales que no son cuotas (Luz, Alquiler, Súper).
-    *   Permite marcar un gasto como **"FIJO"** para que se repita todos los meses automáticamente.
+    *   Para gastos del mes (Luz, Alquiler, etc.).
+    *   **Asociación de Tarjeta**: Ahora podés seleccionar una tarjeta para gastos fijos o variables. Esto permite que débitos automáticos o gastos ocasionales se sumen al total de la tarjeta en el Dashboard sin ser tratados como compras en cuotas.
+    *   **Valor Fijo**: Marcando esta opción, el gasto se proyectará automáticamente en los meses futuros.
 2.  **Tarjetas (Azul)**:
-    *   Para compras en cuotas.
-    *   **Entrada Dual de Montos**: El usuario puede elegir entre ingresar el **Monto Total** de la compra o el **Valor de la Cuota**. El sistema bloquea el campo opuesto y calcula el valor faltante automáticamente.
-    *   **Redondeo Inteligente**: Los cálculos automáticos se redondean a 2 decimales para mantener la claridad visual.
-    *   **Preview Dinámico**: Al poner monto y cuotas, te dice cuánto pagarás por mes y cuándo terminas antes de guardar.
+    *   Para compras en cuotas tradicionales.
+    *   **Carga de Montos**: Podés ingresar el **Monto Total** o el **Valor de la Cuota**. El sistema calcula el resto.
+    *   **Cantidad de Cuotas**: 
+        *   **Sugerencias**: Botones rápidos para las cuotas más comunes.
+        *   **Manual**: Permite ingresar cualquier número (ej. 15 cuotas) si la compra no se ajusta a los estándares.
+    *   **Preview**: Muestra el detalle de pago antes de confirmar.
 3.  **Ingresos (Verde)**:
     *   Para cargar sueldos, aguinaldos o ingresos extra.
     *   También soporta la opción de **"FIJO"**.

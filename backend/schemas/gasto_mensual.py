@@ -8,6 +8,7 @@ class GastoMensualCreate(BaseModel):
     mes: int = Field(ge=1, le=12)
     anio: int = Field(gt=2000)
     es_fijo: bool = False
+    tarjeta_id: Optional[int] = None
     notas: Optional[str] = None
 
 class GastoMensualUpdate(BaseModel):
@@ -17,6 +18,7 @@ class GastoMensualUpdate(BaseModel):
     mes: Optional[int] = Field(None, ge=1, le=12)
     anio: Optional[int] = Field(None, gt=2000)
     es_fijo: Optional[bool] = None
+    tarjeta_id: Optional[int] = None
     notas: Optional[str] = None
 
 class GastoMensualResponse(BaseModel):
@@ -27,4 +29,5 @@ class GastoMensualResponse(BaseModel):
     mes: int
     anio: int
     es_fijo: bool
+    tarjeta_id: Optional[int] = None
     notas: Optional[str]

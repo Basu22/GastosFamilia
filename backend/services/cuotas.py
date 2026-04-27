@@ -2,6 +2,7 @@ from datetime import date
 from sqlmodel import Session, select
 from models.movimiento import Movimiento
 from models.tarjeta import Tarjeta
+from models.gasto_mensual import GastoMensual
 from typing import List, Dict, Any
 
 def cuota_activa_en_mes(movimiento: Movimiento, mes: int, anio: int) -> bool:
@@ -44,27 +45,41 @@ def get_cuotas_mes(mes: int, anio: int, session: Session) -> float:
 
 
 def get_cuotas_por_tarjeta(mes: int, anio: int, session: Session) -> List[Dict[str, Any]]:
-    """Monto por tarjeta de cuotas activas en ese mes."""
+    """Monto por tarjeta de cuotas activas + gastos mensuales con tarjeta en ese mes."""
     statement_tarjetas = select(Tarjeta).where(Tarjeta.activa == True)
     tarjetas = session.exec(statement_tarjetas).all()
     
+    mes_actual_val = anio * 12 + mes
     resultado = []
+    
     for tarjeta in tarjetas:
-        # Filtrar movimientos de esta tarjeta
+        # 1. Sumar Movimientos (Cuotas)
         statement_movs = select(Movimiento).where(Movimiento.tarjeta_id == tarjeta.id)
         movimientos = session.exec(statement_movs).all()
         
-        monto = sum(
+        monto_cuotas = sum(
             m.monto_cuota
             for m in movimientos
             if cuota_activa_en_mes(m, mes, anio)
         )
         
-        if monto > 0:
+        # 2. Sumar Gastos Mensuales vinculados a esta tarjeta
+        statement_gastos = select(GastoMensual).where(GastoMensual.tarjeta_id == tarjeta.id)
+        gastos = session.exec(statement_gastos).all()
+        
+        monto_gastos = 0.0
+        for g in gastos:
+            g_val = g.anio * 12 + g.mes
+            if (g.mes == mes and g.anio == anio) or (g.es_fijo and mes_actual_val >= g_val):
+                monto_gastos += g.monto
+        
+        total_tarjeta = monto_cuotas + monto_gastos
+        
+        if total_tarjeta > 0:
             resultado.append({
                 "tarjeta_id": tarjeta.id,
                 "nombre": tarjeta.nombre,
-                "monto": round(float(monto), 2),
+                "monto": round(float(total_tarjeta), 2),
                 "color": tarjeta.color
             })
             
