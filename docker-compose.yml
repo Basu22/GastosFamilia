@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  gastos_backend:
+  backend:
     build: ./backend
     container_name: gastos_backend
     restart: unless-stopped
@@ -15,14 +15,14 @@ services:
     networks:
       - gastos_net
 
-  gastos_frontend:
+  frontend:
     build: ./frontend
     container_name: gastos_frontend
     restart: unless-stopped
     ports:
       - "8080:80"
     depends_on:
-      - gastos_backend
+      - backend
     networks:
       - gastos_net
 
@@ -34,7 +34,7 @@ services:
     environment:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
     depends_on:
-      - gastos_frontend
+      - frontend
     networks:
       - gastos_net
     profiles:

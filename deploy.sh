@@ -22,8 +22,12 @@ if ! sudo -u $REAL_USER git push origin main; then
 fi
 
 # 2. Sincronizar secretos (.env)
+if [ ! -f .env ]; then
+    echo "⚠️ ADVERTENCIA: No se encontró el archivo .env en la raíz. Creando uno básico..."
+    cp .env.example .env
+fi
 echo "🔑 Sincronizando variables de entorno (.env)..."
-sudo -u $REAL_USER scp backend/.env "$RPI_HOST:$RPI_PATH/backend/.env"
+sudo -u $REAL_USER scp .env "$RPI_HOST:$RPI_PATH/.env"
 
 # 3. ACTUALIZACIÓN REMOTA
 echo "📡 Conectando a la Raspberry Pi ($RPI_HOST)..."
@@ -36,7 +40,7 @@ sudo -u $REAL_USER ssh -t $RPI_HOST "
     git reset --hard origin/main && \
     echo '--- Reconstruyendo contenedores de Gastos ---' && \
     cd $INFRA_PATH && \
-    docker compose up -d --build gastos_backend gastos_frontend
+    docker compose up -d --build backend frontend
 "
 
 echo "✅ Proceso finalizado. Revisá http://192.168.1.185:8080"
