@@ -17,7 +17,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def create_db_and_tables():
-    """Crea todas las tablas definidas en los modelos."""
+    """Crea todas las tablas definidas en los modelos y maneja migraciones."""
     # Importar todos los modelos para que SQLModel los registre
     from models.usuario import Usuario
     from models.tarjeta import Tarjeta
@@ -26,7 +26,36 @@ def create_db_and_tables():
     from models.ingreso import Ingreso
     from models.proyeccion_override import ProyeccionOverride
 
+    # 1. Crear tablas si no existen
     SQLModel.metadata.create_all(engine)
+
+    # 2. Migraciones Automáticas (Agregar columnas nuevas si faltan)
+    import sqlite3
+    # Extraer el path de la DB desde la URL (sqlite:///./data/gastos.db -> ./data/gastos.db)
+    db_path = engine.url.database if engine.url.database else "data/gastos.db"
+    
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Columnas a agregar
+        nuevas_columnas = ["mes_fin", "anio_fin"]
+        tablas = ["gastomensual", "ingreso"]
+        
+        for tabla in tablas:
+            # Obtener info de columnas existentes
+            cursor.execute(f"PRAGMA table_info({tabla})")
+            columnas_actuales = [row[1] for row in cursor.fetchall()]
+            
+            for col in nuevas_columnas:
+                if col not in columnas_actuales:
+                    print(f"🚀 Migración automática: Agregando {col} a tabla {tabla}...")
+                    cursor.execute(f"ALTER TABLE {tabla} ADD COLUMN {col} INTEGER")
+        
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"⚠️ Error en migración automática: {e}")
 
 
 def get_session():
