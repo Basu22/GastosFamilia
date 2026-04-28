@@ -27,10 +27,14 @@ export default function Dashboard() {
   const now = new Date();
   const [mes, setMes] = useState(now.getMonth() + 1);
   const [anio, setAnio] = useState(now.getFullYear());
-  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [activeFilter, setActiveFilter] = useState<string>('all');
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [pickerYear, setPickerYear] = useState(now.getFullYear());
-  const [editingItem, setEditingItem] = useState<{id: number, tipo: any} | null>(null);
+  const [editingItem, setEditingItem] = useState<{id: number, tipo: string} | null>(null);
+  
+  // Estados de ordenamiento para la sección inferior
+  const [sortField, setSortField] = useState<'origen' | 'medio_pago'>('origen');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['dashboard', mes, anio],
@@ -65,15 +69,33 @@ export default function Dashboard() {
   };
 
   const filteredMovimientos = useMemo(() => {
-    if (!data?.movimientos_mes) return [];
-    if (activeFilter === 'all') return data.movimientos_mes;
-    return data.movimientos_mes.filter((m: any) => m.tipo === activeFilter);
+    if (!data?.movimientos) return [];
+    return data.movimientos.filter((m: any) => {
+      if (activeFilter === 'all') return true;
+      return m.tipo === activeFilter;
+    });
   }, [data, activeFilter]);
 
+  // --- LÓGICA DE ORDENAMIENTO PERSONALIZADA ---
+  // 1. Separar Ingresos del resto
+  const finalMovimientos = useMemo(() => {
+    const ingresosList = filteredMovimientos.filter((m: any) => m.tipo === 'ingreso')
+      .sort((a: any, b: any) => b.monto - a.monto); // Mayor ingreso arriba siempre
+
+    const otrosList = filteredMovimientos.filter((m: any) => m.tipo !== 'ingreso')
+      .sort((a: any, b: any) => {
+        const valA = a[sortField]?.toLowerCase() || '';
+        const valB = b[sortField]?.toLowerCase() || '';
+        if (sortOrder === 'asc') return valA.localeCompare(valB);
+        return valB.localeCompare(valA);
+      });
+
+    return [...ingresosList, ...otrosList];
+  }, [filteredMovimientos, sortField, sortOrder]);
+
   const totalFiltrado = useMemo(() => {
-    if (!filteredMovimientos) return 0;
-    return filteredMovimientos.reduce((acc: number, curr: any) => {
-      return curr.tipo === 'ingreso' ? acc + curr.monto : acc - curr.monto;
+    return filteredMovimientos.reduce((acc: number, mov: any) => {
+      return acc + (mov.tipo === 'ingreso' ? mov.monto : -mov.monto);
     }, 0);
   }, [filteredMovimientos]);
 
@@ -362,13 +384,30 @@ export default function Dashboard() {
             <thead>
               <tr className="bg-gray-50 dark:bg-neutral-950 text-[10px] uppercase font-bold text-gray-400 dark:text-neutral-500 tracking-wider">
                 <th className="px-4 py-3">Descripción</th>
-                <th className="px-4 py-3">Tipo / Origen</th>
+                <th 
+                  className="px-4 py-3 cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => {
+                    if (sortField === 'origen') setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                    else { setSortField('origen'); setSortOrder('asc'); }
+                  }}
+                >
+                  Tipo / Origen {sortField === 'origen' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </th>
+                <th 
+                  className="px-4 py-3 cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => {
+                    if (sortField === 'medio_pago') setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                    else { setSortField('medio_pago'); setSortOrder('asc'); }
+                  }}
+                >
+                  Medio de Pago {sortField === 'medio_pago' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </th>
                 <th className="px-4 py-3 text-right">Monto</th>
                 <th className="px-4 py-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody id="body-table-movimientos" className="divide-y divide-gray-100 dark:divide-neutral-800">
-              {filteredMovimientos.map((mov: any) => (
+              {finalMovimientos.map((mov: any) => (
                 <Fragment key={`${mov.tipo}-${mov.id}`}>
                   <tr 
                     id={`row-movimiento-${mov.tipo}-${mov.id}`} 
@@ -384,11 +423,19 @@ export default function Dashboard() {
                       )}
                     </td>
                     <td className="px-4 py-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-600 dark:text-neutral-400 font-medium">
-                          {mov.tipo === 'tarjeta' ? mov.tarjeta_nombre : (mov.tipo === 'ingreso' ? 'Ingreso' : 'Gasto Fijo')}
-                        </span>
-                      </div>
+                      <span className={`text-xs font-bold px-2 py-1 rounded-lg ${
+                        mov.origen === 'Ingresos' ? 'bg-emerald-50 text-emerald-600' :
+                        mov.origen === 'Gastos Fijos' ? 'bg-blue-50 text-blue-600' :
+                        mov.origen === 'Cuotas' ? 'bg-amber-50 text-amber-600' :
+                        'bg-gray-100 text-gray-600'
+                      }`}>
+                        {mov.origen}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="text-xs text-gray-600 dark:text-neutral-400 font-medium">
+                        {mov.medio_pago}
+                      </span>
                     </td>
                     <td className="px-4 py-4 text-right">
                       <p className={`text-sm font-bold ${mov.tipo === 'ingreso' ? 'text-emerald-600' : 'text-gray-900 dark:text-neutral-100'}`}>

@@ -154,6 +154,8 @@ def get_dashboard_summary(
             movimientos_mes.append({
                 "id": i.id,
                 "tipo": "ingreso",
+                "origen": "Ingresos",
+                "medio_pago": "Efectivo / Transf.",
                 "descripcion": i.descripcion,
                 "monto": i.monto,
                 "es_fijo": i.es_fijo,
@@ -168,6 +170,8 @@ def get_dashboard_summary(
             movimientos_mes.append({
                 "id": g.id,
                 "tipo": "gasto",
+                "origen": "Gastos Fijos" if g.es_fijo else "Gastos Variados",
+                "medio_pago": t.nombre if t else "Efectivo / Transf.",
                 "descripcion": g.descripcion,
                 "monto": g.monto,
                 "es_fijo": g.es_fijo,
@@ -178,24 +182,22 @@ def get_dashboard_summary(
             
     # Agregar Movimientos de Tarjeta (Cuotas activas)
     for m in movs_all:
-        if cuota_activa_en_mes(m, mes, anio):
-            t = tarjetas_dict.get(m.tarjeta_id)
-            # Calcular que numero de cuota es
-            inicio_val = m.fecha_primera_cuota.year * 12 + m.fecha_primera_cuota.month
-            actual_cuota = (mes_actual_val - inicio_val) + 1
-            
-            movimientos_mes.append({
-                "id": m.id,
-                "tipo": "tarjeta",
-                "descripcion": m.descripcion,
-                "monto": m.monto_cuota,
-                "monto_total": m.monto_total,
-                "cuota_actual": actual_cuota,
-                "cuotas_total": m.cuotas,
-                "tarjeta_nombre": t.nombre if t else "N/A",
-                "tarjeta_color": t.color if t else "#gray-400",
-                "fecha_referencia": str(m.fecha_primera_cuota)
-            })
+        if m.monto_total > 0 and m.cuotas > 0:
+            monto_cuota, mes_cuota, anio_cuota, n_cuota = get_cuota_mes(m, mes, anio)
+            if monto_cuota > 0:
+                t = tarjetas_dict.get(m.tarjeta_id) if m.tarjeta_id else None
+                movimientos_mes.append({
+                    "id": m.id,
+                    "tipo": "tarjeta",
+                    "origen": "Cuotas",
+                    "medio_pago": t.nombre if t else "Tarjeta S/N",
+                    "descripcion": f"{m.descripcion} ({n_cuota}/{m.cuotas})",
+                    "monto": monto_cuota,
+                    "es_fijo": False,
+                    "tarjeta_nombre": t.nombre if t else None,
+                    "tarjeta_color": t.color if t else None,
+                    "fecha_referencia": f"{anio_cuota}-{mes_cuota:02d}-01"
+                })
 
     # Ordenar por tipo e importe
     movimientos_mes.sort(key=lambda x: (x["tipo"], -x["monto"]))
