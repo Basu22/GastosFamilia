@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 from database import create_db_and_tables, seed_initial_data
 from models import config # Importante para que SQLModel cree las tablas
-from routers import auth, movimientos, tarjetas, gastos_mensuales, dashboard, importar, ingresos, proyeccion, configuracion
+from routers import auth, movimientos, tarjetas, gastos_mensuales, dashboard, importar, ingresos, proyeccion, configuracion, simulador
 
 load_dotenv()
 
@@ -51,6 +51,8 @@ app.include_router(gastos_mensuales.router, prefix="/gastos-mensuales", tags=["g
 app.include_router(ingresos.router, prefix="/ingresos", tags=["ingresos"])
 app.include_router(importar.router, prefix="/importar", tags=["importar"])
 app.include_router(proyeccion.router, prefix="/proyeccion", tags=["proyeccion"])
+app.include_router(configuracion.router, prefix="/configuracion", tags=["configuracion"])
+app.include_router(simulador.router, prefix="/simulador", tags=["simulador"])
 
 
 @app.get("/health")

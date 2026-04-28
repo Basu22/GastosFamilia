@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, Legend
 } from 'recharts';
-import { TrendingUp, TrendingDown, Edit3, ChevronDown, ChevronUp, BarChart2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Edit3, ChevronDown, ChevronUp, BarChart2, CreditCard } from 'lucide-react';
 import { NumericFormat } from 'react-number-format';
 import { getProyeccion, upsertOverride, MesProyectado, DetalleItem } from '../api/proyeccion';
 import { formatARS, formatARSCompact, MESES_CORTO } from '../utils/format';
@@ -220,15 +220,15 @@ const FilaMes: FC<FilaMesProps> = ({ mes_data, onGuardar, expandido, onToggleExp
       {expandido && !esPasado && (
         <tr className="bg-gray-50/80 dark:bg-neutral-900/60 border-b border-gray-100 dark:border-neutral-800">
           <td colSpan={6} className="px-4 py-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-sm">
               {/* Detalle Ingresos */}
-              <div>
-                <p className="text-xs font-bold uppercase text-emerald-700 dark:text-emerald-500 mb-2 flex items-center gap-1">
-                  <TrendingUp size={12} /> Ingresos
+              <div className="space-y-3">
+                <p className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 rounded w-fit flex items-center gap-1">
+                  <TrendingUp size={10} /> Ingresos
                 </p>
                 <div className="space-y-1">
                   {mes_data.detalle_ingresos.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between gap-2 py-1 border-b border-gray-100 dark:border-neutral-800 last:border-0">
+                    <div key={item.id} className="flex items-center justify-between gap-2 py-1.5 border-b border-gray-100 dark:border-neutral-800 last:border-0">
                       <span className="text-gray-600 dark:text-neutral-400 truncate flex-1">{item.descripcion}</span>
                       <CeldaEditable
                         item={item}
@@ -247,13 +247,13 @@ const FilaMes: FC<FilaMesProps> = ({ mes_data, onGuardar, expandido, onToggleExp
               </div>
 
               {/* Detalle Gastos */}
-              <div>
-                <p className="text-xs font-bold uppercase text-red-600 dark:text-red-500 mb-2 flex items-center gap-1">
-                  <TrendingDown size={12} /> Gastos Fijos/Variables
+              <div className="space-y-3">
+                <p className="text-[10px] font-black uppercase text-red-600 dark:text-red-500 bg-red-50 dark:bg-red-950/30 px-2 py-1 rounded w-fit flex items-center gap-1">
+                  <TrendingDown size={10} /> Gastos Fijos
                 </p>
                 <div className="space-y-1">
                   {mes_data.detalle_gastos.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between gap-2 py-1 border-b border-gray-100 dark:border-neutral-800 last:border-0">
+                    <div key={item.id} className="flex items-center justify-between gap-2 py-1.5 border-b border-gray-100 dark:border-neutral-800 last:border-0">
                       <span className="text-gray-600 dark:text-neutral-400 truncate flex-1">{item.descripcion}</span>
                       <CeldaEditable
                         item={item}
@@ -267,6 +267,43 @@ const FilaMes: FC<FilaMesProps> = ({ mes_data, onGuardar, expandido, onToggleExp
                   ))}
                   {mes_data.detalle_gastos.length === 0 && (
                     <p className="text-gray-400 dark:text-neutral-600 text-xs italic">Sin gastos registrados</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Detalle Cuotas de Tarjeta */}
+              <div className="space-y-3">
+                <p className="text-[10px] font-black uppercase text-violet-600 dark:text-violet-500 bg-violet-50 dark:bg-violet-950/30 px-2 py-1 rounded w-fit flex items-center gap-1">
+                  <CreditCard size={10} /> Cuotas de Tarjeta
+                </p>
+                <div className="space-y-4">
+                  {mes_data.detalle_cuotas_por_tarjeta.map((tarjeta) => (
+                    <div key={tarjeta.tarjeta_id || 'sin-tarjeta'} className="space-y-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <span 
+                          className="text-[9px] font-black px-2 py-0.5 rounded-full text-white uppercase tracking-tighter"
+                          style={{ backgroundColor: tarjeta.color }}
+                        >
+                          {tarjeta.nombre}
+                        </span>
+                        <span className="text-[10px] font-bold text-gray-500">{formatARS(tarjeta.subtotal)}</span>
+                      </div>
+                      <div className="pl-1 space-y-1 border-l-2 border-gray-100 dark:border-neutral-800 ml-1">
+                        {tarjeta.movimientos.map((m, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-[11px] py-0.5">
+                            <span className="text-gray-500 dark:text-neutral-400 truncate pr-2">
+                              {m.descripcion} <span className="opacity-50 font-bold">({m.cuota_actual}/{m.cuotas_total})</span>
+                            </span>
+                            <span className="font-bold text-gray-700 dark:text-neutral-300">
+                              {formatARS(m.monto_cuota)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {mes_data.detalle_cuotas_por_tarjeta.length === 0 && (
+                    <p className="text-gray-400 dark:text-neutral-600 text-xs italic">Sin cuotas activas</p>
                   )}
                 </div>
               </div>

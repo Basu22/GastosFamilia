@@ -8,6 +8,21 @@ export interface DetalleItem {
   tiene_override: boolean;
 }
 
+export interface MovimientoCuota {
+  descripcion: string;
+  monto_cuota: number;
+  cuota_actual: number;
+  cuotas_total: number;
+}
+
+export interface CuotasPorTarjeta {
+  tarjeta_id: number | null;
+  nombre: string;
+  color: string;
+  movimientos: MovimientoCuota[];
+  subtotal: number;
+}
+
 export interface MesProyectado {
   mes: number;
   anio: number;
@@ -19,6 +34,7 @@ export interface MesProyectado {
   ahorro_proyectado: number;
   detalle_ingresos: DetalleItem[];
   detalle_gastos: DetalleItem[];
+  detalle_cuotas_por_tarjeta: CuotasPorTarjeta[];
 }
 
 export interface OverrideCreate {

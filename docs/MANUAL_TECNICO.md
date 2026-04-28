@@ -503,8 +503,8 @@ docker restart proxy_unificado
 - **Solución**: Pasar el nombre del componente sin los brackets: `icon={PiggyBank}` en lugar de `icon={<PiggyBank />}`.
 
 ### 16.2 Error: `TS6133: 'Variable' is declared but its value is never read`
-- **Causa**: El compilador de producción (`tsc`) no permite variables o imports sin uso.
-- **Solución**: Eliminar cualquier import o constante que no se esté utilizando activamente en el renderizado o la lógica.
+- **Causa**: El compilador de producción (`tsc`) no permite variables o imports sin uso. **Esto incluye funciones importadas de la API (ej: `getMesesDisponibles`)**.
+- **Solución**: Eliminar cualquier import, constante o función de API que no se esté utilizando activamente en el renderizado o la lógica.
 
 ### 16.3 Error: `Type 'string' is not assignable to type 'variant'`
 - **Causa**: Intentar usar un color de variante no definido en la interfaz del componente (ej: `info` o `primary`).

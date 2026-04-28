@@ -7,6 +7,7 @@ import Tarjetas from './pages/Tarjetas';
 import Movimientos from './pages/Movimientos';
 import Proyeccion from './pages/Proyeccion';
 import Configuracion from './pages/Configuracion';
+import Simulador from './pages/Simulador';
 import { useThemeStore } from './stores/themeStore';
 
 function App() {
@@ -36,6 +37,7 @@ function App() {
           <Route path="/tarjetas" element={<Tarjetas />} />
           <Route path="/proyeccion" element={<Proyeccion />} />
           <Route path="/configuracion" element={<Configuracion />} />
+          <Route path="/simulador" element={<Simulador />} />
         </Route>
       </Routes>
     </BrowserRouter>

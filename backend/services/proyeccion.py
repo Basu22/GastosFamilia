@@ -17,8 +17,10 @@ from sqlmodel import Session, select
 
 from models.ingreso import Ingreso
 from models.gasto_mensual import GastoMensual
+from models.movimiento import Movimiento
+from models.tarjeta import Tarjeta
 from models.proyeccion_override import ProyeccionOverride
-from services.cuotas import get_cuotas_mes
+from services.cuotas import get_cuotas_mes, cuota_activa_en_mes
 
 
 def _siguiente_mes(mes: int, anio: int) -> tuple[int, int]:
@@ -59,6 +61,10 @@ def get_proyeccion_12_meses(session: Session) -> List[Dict[str, Any]]:
     ingresos: List[Ingreso] = session.exec(select(Ingreso)).all()
     gastos: List[GastoMensual] = session.exec(select(GastoMensual)).all()
     overrides = _get_overrides_dict(session)
+    
+    # Pre-cargar movimientos y tarjetas para el detalle de cuotas
+    movimientos = session.exec(select(Movimiento)).all()
+    tarjetas_dict = {t.id: t for t in session.exec(select(Tarjeta)).all()}
 
     resultado = []
     mes = mes_actual
@@ -100,11 +106,43 @@ def get_proyeccion_12_meses(session: Session) -> List[Dict[str, Any]]:
                     "descripcion": g.descripcion,
                     "monto_base": g.monto,
                     "monto_proyectado": monto,
-                    "tiene_override": override_key in overrides
+                    "tiene_override": override_key in overrides,
+                    "es_fijo": g.es_fijo
                 })
 
         # --- Cuotas de Tarjeta ---
         total_cuotas = get_cuotas_mes(mes, anio, session)
+
+        # Detalle de cuotas agrupadas por tarjeta
+        cuotas_por_tarjeta: Dict[str, Any] = {}
+        for m in movimientos:
+            if cuota_activa_en_mes(m, mes, anio):
+                tarjeta = tarjetas_dict.get(m.tarjeta_id)
+                nombre_tarjeta = tarjeta.nombre if tarjeta else "Sin Tarjeta"
+                color_tarjeta = tarjeta.color if tarjeta else "#64748B"
+                tarjeta_key = str(m.tarjeta_id or 0)
+
+                if tarjeta_key not in cuotas_por_tarjeta:
+                    cuotas_por_tarjeta[tarjeta_key] = {
+                        "tarjeta_id": m.tarjeta_id,
+                        "nombre": nombre_tarjeta,
+                        "color": color_tarjeta,
+                        "movimientos": [],
+                        "subtotal": 0.0,
+                    }
+
+                mes_inicio_m = m.fecha_primera_cuota.year * 12 + m.fecha_primera_cuota.month
+                mes_cuota_actual = (anio * 12 + mes) - mes_inicio_m + 1
+
+                cuotas_por_tarjeta[tarjeta_key]["movimientos"].append({
+                    "descripcion": m.descripcion,
+                    "monto_cuota": m.monto_cuota,
+                    "cuota_actual": int(mes_cuota_actual),
+                    "cuotas_total": m.cuotas,
+                })
+                cuotas_por_tarjeta[tarjeta_key]["subtotal"] = round(
+                    cuotas_por_tarjeta[tarjeta_key]["subtotal"] + m.monto_cuota, 2
+                )
 
         total_egresos = total_gastos + total_cuotas
         ahorro = total_ingresos - total_egresos
@@ -120,6 +158,7 @@ def get_proyeccion_12_meses(session: Session) -> List[Dict[str, Any]]:
             "ahorro_proyectado": round(ahorro, 2),
             "detalle_ingresos": detalle_ingresos,
             "detalle_gastos": detalle_gastos,
+            "detalle_cuotas_por_tarjeta": list(cuotas_por_tarjeta.values()),
         })
 
         mes, anio = _siguiente_mes(mes, anio)

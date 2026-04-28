@@ -36,7 +36,7 @@ done
 
 # 3. Prueba de compilación TypeScript (opcional pero recomendada)
 echo -e "\n--- Validando tipos TS ---"
-cd frontend && npm run build -- --noEmit
+cd frontend && npx tsc --noEmit
 if [ $? -eq 0 ]; then
   echo "✅ No hay errores de TypeScript."
 else
