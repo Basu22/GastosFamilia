@@ -230,7 +230,13 @@ export default function Movimientos() {
         </h2>
 
         {activeTab === 'tarjetas' ? (
-          <form onSubmit={formCuotas.handleSubmit((d) => mutationCuotas.mutate(d))} className="space-y-6">
+          <form 
+            onSubmit={formCuotas.handleSubmit((d) => {
+              if (!editingId && !window.confirm('¿Confirmás el alta de esta nueva compra?')) return;
+              mutationCuotas.mutate(d);
+            })} 
+            className="space-y-6"
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Medio de Pago</label>
@@ -355,7 +361,14 @@ export default function Movimientos() {
             </div>
           </form>
         ) : (
-          <form onSubmit={formFijos.handleSubmit((d) => mutationFijos.mutate(d))} className="space-y-6">
+          <form 
+            onSubmit={formFijos.handleSubmit((d) => {
+              const label = activeTab === 'egresos' ? 'gasto' : 'ingreso';
+              if (!editingId && !window.confirm(`¿Confirmás el alta de este nuevo ${label}?`)) return;
+              mutationFijos.mutate(d);
+            })} 
+            className="space-y-6"
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Descripción</label>

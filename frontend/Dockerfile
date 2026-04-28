@@ -21,10 +21,17 @@ RUN echo 'server { \
     server_name _; \
     root /usr/share/nginx/html; \
     index index.html; \
+    \
+    # Resolver de Docker para que encuentre "gastos-backend" \
+    resolver 127.0.0.11 valid=30s; \
+    \
     location /api/ { \
-        proxy_pass http://gastos-backend:8000/; \
+        set $backend_upstream http://gastos-backend:8000; \
+        proxy_pass $backend_upstream/; \
         proxy_set_header Host $host; \
         proxy_set_header X-Real-IP $remote_addr; \
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; \
+        proxy_set_header X-Forwarded-Proto $scheme; \
     } \
     location / { \
         try_files $uri $uri/ /index.html; \

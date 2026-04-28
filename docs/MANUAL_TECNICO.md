@@ -439,6 +439,8 @@ Suele deberse a dos causas en esta infraestructura:
 | Abr 2026 | Backend: Nuevo router `routers/proyeccion.py` con endpoints GET /proyeccion/, POST /proyeccion/override, DELETE /proyeccion/override/{id}. |
 | Abr 2026 | Frontend: Nueva página `/proyeccion` con gráfico de barras apiladas (Recharts) y tabla interactiva con edición inline de valores proyectados. |
 | Abr 2026 | Docs: Actualización de Guía de Buenas Prácticas con foco estricto en Mobile First y Touch Targets para dispositivos modernos (Samsung A56). |
+| Abr 2026 | **Infra**: Diagnóstico y documentación del bug de DNS caching en `proxy_unificado`. Fix: `docker restart proxy_unificado` tras recrear contenedores de Gastos. |
+| Abr 2026 | **Infra**: Fix permanente del DNS caching agregando `resolver 127.0.0.11` al `nginx.conf` de `infra-unificada`. |
 
 ---
 
@@ -456,5 +458,41 @@ No usar `docker compose down` en la carpeta `infra-unificada` a menos que se des
 
 ### 14.3 Actualización de Nginx
 Si se modifica el archivo `nginx.conf`, no es necesario reiniciar todo. Basta con:
-`docker restart proxy_unificado`
+```bash
+docker restart proxy_unificado
+```
 
+### 14.4 ⚠️ Bug conocido: DNS Caching en Nginx (502 Bad Gateway)
+
+**Síntoma:** Después de recrear los contenedores `gastos_backend` o `gastos_frontend`, la app en `192.168.1.185:8080` muestra un error 502 Bad Gateway.
+
+**Causa raíz:** Nginx resuelve el DNS de los servicios Docker **una sola vez al arrancar**. Cuando los contenedores se recrean, obtienen nuevas IPs internas. El `proxy_unificado` (que lleva más tiempo corriendo) sigue apuntando a las IPs viejas.
+
+**Fix inmediato:**
+```bash
+docker restart proxy_unificado
+```
+
+**Fix permanente** — Agregar el `resolver` de Docker al `nginx.conf` de `infra-unificada`:
+```nginx
+server {
+    listen 8080;
+    server_name _;
+
+    # Resolver de Docker: resuelve DNS dinámicamente
+    resolver 127.0.0.11 valid=30s;
+
+    location /api/ {
+        set $gastos_backend http://gastos-backend:8000;
+        proxy_pass $gastos_backend/;
+    }
+
+    location / {
+        set $gastos_frontend http://gastos-frontend:80;
+        proxy_pass $gastos_frontend;
+    }
+}
+```
+
+> [!IMPORTANT]
+> El uso de variables (`set $backend`) junto con `resolver 127.0.0.11` hace que Nginx re-resuelva el DNS en cada request, evitando el problema permanentemente.
