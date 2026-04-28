@@ -285,7 +285,7 @@ export default function Dashboard() {
                     </article>
                     {editingItem?.id === mov.id && (
                       <div className="col-span-full bg-gray-50 dark:bg-neutral-950 p-4 rounded-2xl mb-4">
-                        <InlineEditForm id={mov.id} tipo={mov.tipo} onClose={() => setEditingItem(null)} />
+                        <InlineEditForm id={mov.id} tipo={mov.tipo} mesActual={mes} anioActual={anio} onClose={() => setEditingItem(null)} />
                       </div>
                     )}
                   </Fragment>
@@ -473,9 +473,6 @@ function GrupoDesktop({ titulo, icon: Icon, colorClass, bgClass, movimientos, ex
   }, [movimientos, tarjetaFiltro, titulo]);
 
   const totalGrupo = movimientosAMostrar.reduce((acc: number, m: any) => acc + m.monto, 0);
-  
-  if (movimientos.length === 0 && !creandoEnSeccion) return null;
-
   const tipoSeccion = titulo === 'Ingresos' ? 'ingreso' : titulo === 'Cuotas de Tarjeta' ? 'tarjeta' : 'gasto';
 
   return (
@@ -594,7 +591,7 @@ function GrupoDesktop({ titulo, icon: Icon, colorClass, bgClass, movimientos, ex
             <tr>
               <td colSpan={4} className="p-4 bg-gray-50 dark:bg-neutral-950 border-none">
                 <div className="max-w-2xl mx-auto bg-white dark:bg-neutral-900 p-6 rounded-3xl shadow-xl border border-blue-100 dark:border-blue-900/30">
-                  <InlineEditForm id={mov.id} tipo={mov.tipo} onClose={() => setEditingItem(null)} />
+                  <InlineEditForm id={mov.id} tipo={mov.tipo} mesActual={mes} anioActual={anio} onClose={() => setEditingItem(null)} />
                 </div>
               </td>
             </tr>

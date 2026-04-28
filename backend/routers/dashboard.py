@@ -52,7 +52,9 @@ def get_dashboard_summary(
     
     for i in ingresos_db:
         i_val = i.anio * 12 + i.mes
-        if (i.mes == mes and i.anio == anio) or (i.es_fijo and mes_actual_val >= i_val):
+        i_fin_val = (i.anio_fin * 12 + i.mes_fin) if i.anio_fin and i.mes_fin else 999999
+        
+        if (i.mes == mes and i.anio == anio) or (i.es_fijo and i_val <= mes_actual_val <= i_fin_val):
             total_ingreso += i.monto
     
     # 2. Total Cuotas del mes
@@ -65,10 +67,12 @@ def get_dashboard_summary(
     
     for g in gastos_db:
         g_val = g.anio * 12 + g.mes
+        g_fin_val = (g.anio_fin * 12 + g.mes_fin) if g.anio_fin and g.mes_fin else 999999
+        
         # Se suma si:
         # 1. Es el mes exacto
-        # 2. O es fijo Y el mes consultado es igual o posterior al mes en que se creó
-        if (g.mes == mes and g.anio == anio) or (g.es_fijo and mes_actual_val >= g_val):
+        # 2. O es fijo Y el mes consultado está dentro del rango de validez
+        if (g.mes == mes and g.anio == anio) or (g.es_fijo and g_val <= mes_actual_val <= g_fin_val):
             total_gastos += g.monto
             
     # Calculos principales
@@ -96,7 +100,8 @@ def get_dashboard_summary(
         step_ingreso = 0.0
         for i in ingresos_db:
             i_val = i.anio * 12 + i.mes
-            if (i.mes == curr_mes and i.anio == curr_anio) or (i.es_fijo and mes_step_val >= i_val):
+            i_fin_val = (i.anio_fin * 12 + i.mes_fin) if i.anio_fin and i.mes_fin else 999999
+            if (i.mes == curr_mes and i.anio == curr_anio) or (i.es_fijo and i_val <= mes_step_val <= i_fin_val):
                 step_ingreso += i.monto
 
         # Cuotas proyectadas
@@ -106,7 +111,8 @@ def get_dashboard_summary(
         step_gastos = 0.0
         for g in gastos_db:
             g_val = g.anio * 12 + g.mes
-            if (g.mes == curr_mes and g.anio == curr_anio) or (g.es_fijo and mes_step_val >= g_val):
+            g_fin_val = (g.anio_fin * 12 + g.mes_fin) if g.anio_fin and g.mes_fin else 999999
+            if (g.mes == curr_mes and g.anio == curr_anio) or (g.es_fijo and g_val <= mes_step_val <= g_fin_val):
                 step_gastos += g.monto
                 
         proximos_6_meses.append({
@@ -166,7 +172,8 @@ def get_dashboard_summary(
     # Agregar Gastos Mensuales
     for g in gastos_db:
         g_val = g.anio * 12 + g.mes
-        if (g.mes == mes and g.anio == anio) or (g.es_fijo and mes_actual_val >= g_val):
+        g_fin_val = (g.anio_fin * 12 + g.mes_fin) if g.anio_fin and g.mes_fin else 999999
+        if (g.mes == mes and g.anio == anio) or (g.es_fijo and g_val <= mes_actual_val <= g_fin_val):
             t = tarjetas_dict.get(g.tarjeta_id) if g.tarjeta_id else None
             movimientos_mes.append({
                 "id": g.id,

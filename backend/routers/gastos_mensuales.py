@@ -43,8 +43,45 @@ def update_gasto_mensual(gasto_id: int, data: GastoMensualUpdate, session: Sessi
     gasto = session.get(GastoMensual, gasto_id)
     if not gasto:
         raise HTTPException(status_code=404, detail="Gasto no encontrado")
+    
+    # Lógica de Split para Gastos Fijos
+    # Si es fijo y el mes de edición es posterior al mes de inicio del registro
+    if gasto.es_fijo and data.mes_edicion and data.anio_edicion:
+        orig_val = gasto.anio * 12 + gasto.mes
+        edit_val = data.anio_edicion * 12 + data.mes_edicion
         
-    for key, value in data.model_dump(exclude_unset=True).items():
+        if edit_val > orig_val:
+            # 1. Finalizar el registro viejo el mes anterior
+            prev_val = edit_val - 1
+            gasto.mes_fin = ((prev_val - 1) % 12) + 1
+            gasto.anio_fin = (prev_val - 1) // 12
+            session.add(gasto)
+            
+            # 2. Crear el registro nuevo desde este mes
+            update_data = data.model_dump(exclude_unset=True)
+            update_data.pop('mes_edicion', None)
+            update_data.pop('anio_edicion', None)
+            
+            nuevo_gasto = GastoMensual(
+                descripcion=data.descripcion if data.descripcion else gasto.descripcion,
+                monto=data.monto if data.monto is not None else gasto.monto,
+                mes=data.mes_edicion,
+                anio=data.anio_edicion,
+                es_fijo=True,
+                tarjeta_id=data.tarjeta_id if data.tarjeta_id is not None else gasto.tarjeta_id,
+                notas=data.notas if data.notas else gasto.notas
+            )
+            session.add(nuevo_gasto)
+            session.commit()
+            session.refresh(nuevo_gasto)
+            return nuevo_gasto
+
+    # Edición normal (mismo mes o no fijo)
+    update_dict = data.model_dump(exclude_unset=True)
+    update_dict.pop('mes_edicion', None)
+    update_dict.pop('anio_edicion', None)
+    
+    for key, value in update_dict.items():
         setattr(gasto, key, value)
         
     session.add(gasto)

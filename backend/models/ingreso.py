@@ -8,4 +8,6 @@ class Ingreso(SQLModel, table=True):
     mes: int
     anio: int
     es_fijo: bool = Field(default=False)
+    mes_fin: Optional[int] = Field(default=None)
+    anio_fin: Optional[int] = Field(default=None)
     notas: Optional[str] = None

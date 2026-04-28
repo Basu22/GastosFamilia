@@ -44,7 +44,38 @@ def update_ingreso(ingreso_id: int, data: IngresoUpdate, session: Session = Depe
     if not ingreso:
         raise HTTPException(status_code=404, detail="Ingreso no encontrado")
         
-    for key, value in data.model_dump(exclude_unset=True).items():
+    # Lógica de Split para Ingresos Fijos
+    if ingreso.es_fijo and data.mes_edicion and data.anio_edicion:
+        orig_val = ingreso.anio * 12 + ingreso.mes
+        edit_val = data.anio_edicion * 12 + data.mes_edicion
+        
+        if edit_val > orig_val:
+            # 1. Finalizar el viejo
+            prev_val = edit_val - 1
+            ingreso.mes_fin = ((prev_val - 1) % 12) + 1
+            ingreso.anio_fin = (prev_val - 1) // 12
+            session.add(ingreso)
+            
+            # 2. Crear nuevo
+            nuevo = Ingreso(
+                descripcion=data.descripcion if data.descripcion else ingreso.descripcion,
+                monto=data.monto if data.monto is not None else ingreso.monto,
+                mes=data.mes_edicion,
+                anio=data.anio_edicion,
+                es_fijo=True,
+                notas=data.notas if data.notas else ingreso.notas
+            )
+            session.add(nuevo)
+            session.commit()
+            session.refresh(nuevo)
+            return nuevo
+
+    # Edición normal
+    update_dict = data.model_dump(exclude_unset=True)
+    update_dict.pop('mes_edicion', None)
+    update_dict.pop('anio_edicion', None)
+    
+    for key, value in update_dict.items():
         setattr(ingreso, key, value)
         
     session.add(ingreso)

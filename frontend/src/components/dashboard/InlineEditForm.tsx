@@ -27,10 +27,12 @@ const schema = z.object({
 interface InlineEditFormProps {
   id: number;
   tipo: 'tarjeta' | 'gasto' | 'ingreso';
+  mesActual: number;
+  anioActual: number;
   onClose: () => void;
 }
 
-export default function InlineEditForm({ id, tipo, onClose }: InlineEditFormProps) {
+export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClose }: InlineEditFormProps) {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   const [entryMode, setEntryMode] = useState<'total' | 'cuota'>('total');
@@ -94,7 +96,12 @@ export default function InlineEditForm({ id, tipo, onClose }: InlineEditFormProp
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
-      const payload = { ...data, tarjeta_id: data.tarjeta_id ? parseInt(data.tarjeta_id) : null };
+      const payload = { 
+        ...data, 
+        tarjeta_id: data.tarjeta_id ? parseInt(data.tarjeta_id) : null,
+        mes_edicion: mesActual,
+        anio_edicion: anioActual
+      };
       if (tipo === 'tarjeta') {
         return updateMovimiento(id, {
           ...payload,
@@ -103,7 +110,7 @@ export default function InlineEditForm({ id, tipo, onClose }: InlineEditFormProp
       } else if (tipo === 'gasto') {
         return updateGastoMensual(id, payload);
       } else {
-        return updateIngreso(id, data);
+        return updateIngreso(id, payload);
       }
     },
     onSuccess: () => {

@@ -9,5 +9,7 @@ class GastoMensual(SQLModel, table=True):
     mes: int
     anio: int
     es_fijo: bool = Field(default=False)
+    mes_fin: Optional[int] = Field(default=None)
+    anio_fin: Optional[int] = Field(default=None)
     tarjeta_id: Optional[int] = Field(default=None, foreign_key="tarjeta.id")
     notas: Optional[str] = None

@@ -20,6 +20,8 @@ class GastoMensualUpdate(BaseModel):
     es_fijo: Optional[bool] = None
     tarjeta_id: Optional[int] = None
     notas: Optional[str] = None
+    mes_edicion: Optional[int] = None
+    anio_edicion: Optional[int] = None
 
 class GastoMensualResponse(BaseModel):
     id: int

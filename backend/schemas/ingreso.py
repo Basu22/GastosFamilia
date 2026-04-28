@@ -16,6 +16,8 @@ class IngresoUpdate(BaseModel):
     anio: Optional[int] = Field(None, gt=2000)
     es_fijo: Optional[bool] = None
     notas: Optional[str] = None
+    mes_edicion: Optional[int] = None
+    anio_edicion: Optional[int] = None
 
 class IngresoResponse(BaseModel):
     id: int
