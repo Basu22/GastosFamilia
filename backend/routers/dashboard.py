@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session, select
 from typing import List, Dict, Any
+from datetime import date
 import datetime
 
 from database import get_session
@@ -182,22 +183,26 @@ def get_dashboard_summary(
             
     # Agregar Movimientos de Tarjeta (Cuotas activas)
     for m in movs_all:
-        if m.monto_total > 0 and m.cuotas > 0:
-            monto_cuota, mes_cuota, anio_cuota, n_cuota = get_cuota_mes(m, mes, anio)
-            if monto_cuota > 0:
-                t = tarjetas_dict.get(m.tarjeta_id) if m.tarjeta_id else None
-                movimientos_mes.append({
-                    "id": m.id,
-                    "tipo": "tarjeta",
-                    "origen": "Cuotas",
-                    "medio_pago": t.nombre if t else "Tarjeta S/N",
-                    "descripcion": f"{m.descripcion} ({n_cuota}/{m.cuotas})",
-                    "monto": monto_cuota,
-                    "es_fijo": False,
-                    "tarjeta_nombre": t.nombre if t else None,
-                    "tarjeta_color": t.color if t else None,
-                    "fecha_referencia": f"{anio_cuota}-{mes_cuota:02d}-01"
-                })
+        if cuota_activa_en_mes(m, mes, anio):
+            t = tarjetas_dict.get(m.tarjeta_id) if m.tarjeta_id else None
+            
+            # Calcular que número de cuota es
+            fecha_primera = date.fromisoformat(m.fecha_primera_cuota) if isinstance(m.fecha_primera_cuota, str) else m.fecha_primera_cuota
+            inicio_val = fecha_primera.year * 12 + fecha_primera.month
+            n_cuota = (mes_actual_val - inicio_val) + 1
+            
+            movimientos_mes.append({
+                "id": m.id,
+                "tipo": "tarjeta",
+                "origen": "Cuotas",
+                "medio_pago": t.nombre if t else "Tarjeta S/N",
+                "descripcion": f"{m.descripcion} ({n_cuota}/{m.cuotas})",
+                "monto": m.monto_cuota,
+                "es_fijo": False,
+                "tarjeta_nombre": t.nombre if t else None,
+                "tarjeta_color": t.color if t else None,
+                "fecha_referencia": f"{anio}-{mes:02d}-01"
+            })
 
     # Ordenar por tipo e importe
     movimientos_mes.sort(key=lambda x: (x["tipo"], -x["monto"]))

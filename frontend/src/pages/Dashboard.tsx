@@ -68,8 +68,8 @@ export default function Dashboard() {
   };
 
   const filteredMovimientos = useMemo(() => {
-    if (!data?.movimientos) return [];
-    return data.movimientos.filter((m: any) => {
+    if (!data?.movimientos_mes) return [];
+    return data.movimientos_mes.filter((m: any) => {
       if (activeFilter === 'all') return true;
       return m.tipo === activeFilter;
     });
