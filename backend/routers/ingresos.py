@@ -50,10 +50,14 @@ def update_ingreso(ingreso_id: int, data: IngresoUpdate, session: Session = Depe
         edit_val = data.anio_edicion * 12 + data.mes_edicion
         
         if edit_val > orig_val:
-            # 1. Finalizar el viejo
-            prev_val = edit_val - 1
-            ingreso.mes_fin = ((prev_val - 1) % 12) + 1
-            ingreso.anio_fin = (prev_val - 1) // 12
+            # 1. Finalizar el viejo el mes anterior
+            if data.mes_edicion == 1:
+                ingreso.mes_fin = 12
+                ingreso.anio_fin = data.anio_edicion - 1
+            else:
+                ingreso.mes_fin = data.mes_edicion - 1
+                ingreso.anio_fin = data.anio_edicion
+                
             session.add(ingreso)
             
             # 2. Crear nuevo

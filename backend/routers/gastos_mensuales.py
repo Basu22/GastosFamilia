@@ -52,9 +52,13 @@ def update_gasto_mensual(gasto_id: int, data: GastoMensualUpdate, session: Sessi
         
         if edit_val > orig_val:
             # 1. Finalizar el registro viejo el mes anterior
-            prev_val = edit_val - 1
-            gasto.mes_fin = ((prev_val - 1) % 12) + 1
-            gasto.anio_fin = (prev_val - 1) // 12
+            if data.mes_edicion == 1:
+                gasto.mes_fin = 12
+                gasto.anio_fin = data.anio_edicion - 1
+            else:
+                gasto.mes_fin = data.mes_edicion - 1
+                gasto.anio_fin = data.anio_edicion
+            
             session.add(gasto)
             
             # 2. Crear el registro nuevo desde este mes

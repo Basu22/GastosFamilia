@@ -157,7 +157,8 @@ def get_dashboard_summary(
     # Agregar Ingresos
     for i in ingresos_db:
         i_val = i.anio * 12 + i.mes
-        if (i.mes == mes and i.anio == anio) or (i.es_fijo and mes_actual_val >= i_val):
+        i_fin_val = (i.anio_fin * 12 + i.mes_fin) if i.anio_fin and i.mes_fin else 999999
+        if (i.mes == mes and i.anio == anio) or (i.es_fijo and i_val <= mes_actual_val <= i_fin_val):
             movimientos_mes.append({
                 "id": i.id,
                 "tipo": "ingreso",

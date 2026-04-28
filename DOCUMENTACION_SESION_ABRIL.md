@@ -1,65 +1,59 @@
 # Documentación de Mejoras — Abril 2026
 
-Este documento detalla las funcionalidades implementadas durante la expansión del sistema de Gastos Familiares.
+## 1. Sistema de Versionado de Gastos e Ingresos Fijos (Timeline)
+
+Se implementó una arquitectura de "línea de tiempo" para todos los ítems recurrentes. Esto permite actualizar montos (aumentos de sueldo, incrementos de servicios) sin corromper los datos históricos de meses anteriores.
+
+### Lógica de "Split" (División)
+Al editar un gasto o ingreso marcado como `es_fijo`:
+- **Si se edita en un mes posterior al de su creación**: El sistema detecta que es una actualización de futuro.
+- **Acción en el registro original**: Se le asigna una fecha de fin (`mes_fin`, `anio_fin`) correspondiente al mes anterior al de la edición.
+- **Acción de creación**: Se crea un nuevo registro con los datos actualizados, que comienza en el mes de la edición y continúa hacia adelante.
+
+### Cambios en Base de Datos
+Se agregaron las columnas `mes_fin` e `anio_fin` a las tablas `gastomensual` e `ingreso`.
+- Si ambas son `NULL`, el registro es válido indefinidamente hacia el futuro.
+- Si tienen valor, el registro deja de contarse en los totales y de aparecer en las listas a partir del mes siguiente al indicado.
 
 ---
 
-## 1. Simulador de Cuotas (Plan 01)
-Herramienta para analizar el impacto de un nuevo gasto en cuotas sobre la salud financiera futura.
+## 2. Automatización de Infraestructura
 
-- **Frontend**: Nueva ruta `/simulador`. Interfaz con sliders para monto y cuotas. Desglose mensual colapsable.
-- **Backend**: Micro-router `/api/simulador`.
-    - **Lógica**: Realiza una proyección de 12 meses sumando el gasto hipotético a los gastos reales y comparándolo contra los ingresos.
-    - **Cálculo de Ahorro**: `Ahorro Simulado = Ahorro Real - Cuota del Mes`.
+### Auto-Migraciones
+Se integró un sistema de **Auto-Migración** en el arranque del backend (`database.py`).
+- Cada vez que el contenedor inicia, verifica la existencia de las columnas necesarias.
+- Si no existen (como en un nuevo deploy o en la Raspberry), las crea automáticamente mediante SQL directo.
+- Esto elimina la necesidad de correr scripts de migración manuales por SSH.
 
-## 2. Proyección Detallada por Tarjeta (Plan 02)
-Se mejoró la vista de proyección de 12 meses para dar visibilidad sobre los consumos de crédito.
+### Compatibilidad de Entornos
+Se ajustó la estructura de paquetes de Python (`__init__.py`) para asegurar que los imports funcionen de manera idéntica en:
+- Localhost (Docker Desktop / WSL)
+- Servidor de Producción (Raspberry Pi / Linux nativo)
 
-- **Backend**: El servicio `proyeccion.py` ahora pre-calcula y agrupa movimientos por tarjeta para cada mes.
-- **Frontend**: En `/proyeccion`, cada fila de mes es expandible y muestra una columna de **Cuotas de Tarjeta** con:
-    - Pill de color según la tarjeta (configurado en `rule-design.md`).
-    - Descripción del movimiento y progreso de cuotas (ej: `2/6`).
-    - Subtotales por tarjeta.
+---
 
-## 3. Dashboard de Alta Densidad (Plan 03 & 03.1)
-Rediseño total de la página principal para máxima eficiencia.
+## 3. Mejoras en Interfaz de Usuario (Dashboard)
 
-### Layout Desktop
-- **Estructura**: 2 columnas (Izquierda: Movimientos | Derecha: Gráficos).
-- **Grupos Colapsables**: Movimientos organizados en:
-    1. **Ingresos** (Pills verdes).
-    2. **Cuotas de Tarjeta** (Pills naranjas + Resumen por tarjeta).
-    3. **Gastos Fijos** (Pills azules).
-    4. **Gastos Variados** (Pills grises).
+### Categorías Persistentes
+Se modificó el renderizado de grupos en el Dashboard para que las categorías (Ingresos, Gastos Fijos, Gastos Variados) sean visibles permanentemente, incluso si no tienen movimientos en el mes consultado. Esto permite:
+- Mantener una UI consistente.
+- Utilizar el botón `+` (Inline Create) de forma inmediata sin navegar a otras pantallas.
 
-### Interactividad y Edición
-- **Filtro por Tarjeta**: Al hacer clic en los totales de tarjeta, se filtra la lista de movimientos automáticamente.
-- **Alta Rápida Inline**: Botón `+` en cada sección que abre un formulario de creación directamente en la tabla (usa el componente `InlineCreateForm`).
-- **Edición Inline**: Botón de lápiz que permite modificar o eliminar cualquier registro sin navegar a otra página.
-- **Navegación Avanzada de Fechas**: 
-    - Botón **HOY** para retorno instantáneo al mes actual.
-    - **Selector de Meses** (Month Picker) tipo dropdown con grilla y cambio de año integrado.
-
-### Alertas de Estrategia de Deuda (NUEVO)
-- **Sección: Cuotas próximas a vencer**:
-    - **Estructura**: Grilla de 2 columnas invertidas cronológicamente (Quedan 2 | Última Cuota).
-    - **Totales**: Cálculo automático de suma de cuotas por cada grupo para prever liberación de fondos.
-    - **Visualización**: Se eliminó el truncado de texto para permitir la lectura completa de las descripciones.
+### Estado Inicial Colapsado
+Para optimizar la carga visual y el foco del usuario, todas las secciones de movimientos en el Dashboard arrancan **colapsadas** por defecto. El usuario expande manualmente la sección que desea gestionar.
 
 ### Visualización de Datos
-- **BarChart**: Incluye etiquetas con montos compactos (`$45k`) dentro de las barras.
-- **LineChart**: Incluye etiquetas de valor sobre cada punto de tendencia de los próximos 6 meses.
-- **Texto Completo**: Se aplicó una política de "Cero Truncamiento" en descripciones para mejorar la claridad operativa.
+- Se integró `LabelList` en los gráficos de barras para mostrar importes internos.
+- Se implementó una política de **No Truncamiento** en las descripciones de los movimientos para asegurar legibilidad total de los conceptos.
 
 ---
 
-## Notas Técnicas para el Desarrollador
+## 4. Referencia Técnica para Desarrolladores
 
-### Componentes Nuevos
-- `InlineCreateForm.tsx`: Formulario optimizado para altas rápidas desde el Dashboard.
-- `GrupoDesktop`: Sub-componente en `Dashboard.tsx` que maneja la lógica de colapsables, totales y creación inline.
+- **Archivo de Lógica Crítica**: `backend/routers/dashboard.py` (Filtrado por rango de validez).
+- **Archivos de Persistencia**: `backend/models/gasto_mensual.py`, `backend/models/ingreso.py`.
+- **Componente Core Frontend**: `frontend/src/pages/Dashboard.tsx` (Gestión de estados de colapso y visibilidad).
+- **Endpoint de Edición**: `backend/routers/gastos_mensuales.py` y `backend/routers/ingresos.py` (Lógica de split/versionado).
 
-### Integridad
-- Se ha mantenido el chequeo de tipos estricto. Cualquier cambio debe validar con `bash check_integrity.sh`.
-- Todos los montos usan la utilidad `formatARS()` para consistencia visual.
-- El Dashboard soporta un modo responsive que oculta los gráficos en móviles pequeños para priorizar la lista de movimientos.
+---
+*Documentación generada el 28 de Abril de 2026.*
