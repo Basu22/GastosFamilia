@@ -19,20 +19,20 @@ import { NumericFormat } from 'react-number-format';
 // Esquemas de Validación
 const schemaFijos = z.object({
   descripcion: z.string().min(3, 'Mínimo 3 caracteres'),
-  monto: z.number({ invalid_type_error: 'Debe ser numérico' }).positive('Debe ser mayor a 0'),
+  monto: z.number({ invalid_type_error: 'Debe ser numérico' }).min(0.01, 'Debe ser mayor a 0'),
   mes: z.number().min(1).max(12),
   anio: z.number().min(2020).max(2050),
   es_fijo: z.boolean().default(false),
-  tarjeta_id: z.string().optional()
+  tarjeta_id: z.string().optional().nullable()
 });
 
 const schemaCuotas = z.object({
-  tarjeta_id: z.string().optional(),
+  tarjeta_id: z.string().optional().nullable(),
   descripcion: z.string().min(3, 'Mínimo 3 caracteres'),
-  monto_total: z.number({ invalid_type_error: 'Debe ser un número válido' }).positive('El monto debe ser mayor a 0'),
+  monto_total: z.number({ invalid_type_error: 'Debe ser un número válido' }).min(0.01, 'El monto debe ser mayor a 0'),
   cuotas: z.number().int().min(1),
   fecha_primera_cuota: z.string().min(1, 'Seleccioná una fecha'),
-  notas: z.string().optional()
+  notas: z.string().optional().nullable()
 });
 
 type FijosType = z.infer<typeof schemaFijos>;
@@ -127,6 +127,9 @@ export default function Movimientos() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: [activeTab === 'egresos' ? 'gastos_mensuales' : 'ingresos'] });
       handleCancel();
+    },
+    onError: (error: any) => {
+      alert("❌ Error al guardar: " + (error.response?.data?.detail || error.message));
     }
   });
 
@@ -140,20 +143,39 @@ export default function Movimientos() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['movimientos'] });
       handleCancel();
+    },
+    onError: (error: any) => {
+      alert("❌ Error al guardar cuotas: " + (error.response?.data?.detail || error.message));
     }
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => {
-      if (activeTab === 'tarjetas') return deleteMovimiento(id);
-      return activeTab === 'egresos' ? deleteGastoMensual(id) : deleteIngreso(id);
+      console.log("🗑️ 1. Iniciando mutationFn para ID:", id);
+      console.log("📂 Tab activa:", activeTab);
+      if (activeTab === 'tarjetas') {
+        console.log("💳 Llamando a deleteMovimiento...");
+        return deleteMovimiento(id);
+      }
+      const call = activeTab === 'egresos' ? deleteGastoMensual(id) : deleteIngreso(id);
+      console.log("💰 Llamando a deleteGasto/Ingreso...");
+      return call;
     },
     onSuccess: () => {
+      console.log("✅ 2. Eliminación exitosa en servidor");
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: [activeTab === 'egresos' ? 'gastos_mensuales' : (activeTab === 'tarjetas' ? 'movimientos' : 'ingresos')] });
       handleCancel();
+    },
+    onError: (error: any) => {
+      console.error("❌ 3. Error en eliminación:", error);
+      alert("❌ Error al eliminar: " + (error.response?.data?.detail || error.message));
     }
   });
+
+  const logErrors = (errors: any) => {
+    console.log("❌ Errores de validación:", errors);
+  };
 
   const handleEdit = (item: any) => {
     setEditingId(item.id);
@@ -181,8 +203,22 @@ export default function Movimientos() {
 
   const handleCancel = () => {
     setEditingId(null);
-    formFijos.reset();
-    formCuotas.reset({ cuotas: 1, fecha_primera_cuota: new Date().toISOString().split('T')[0] });
+    formFijos.reset({
+      descripcion: '',
+      monto: 0,
+      mes: new Date().getMonth() + 1,
+      anio: new Date().getFullYear(),
+      es_fijo: false,
+      tarjeta_id: ''
+    });
+    formCuotas.reset({ 
+      tarjeta_id: '',
+      descripcion: '',
+      monto_total: 0,
+      cuotas: 1, 
+      fecha_primera_cuota: new Date().toISOString().split('T')[0],
+      notas: ''
+    });
     setSearchParams({});
   };
 
@@ -231,10 +267,7 @@ export default function Movimientos() {
 
         {activeTab === 'tarjetas' ? (
           <form 
-            onSubmit={formCuotas.handleSubmit((d) => {
-              if (!editingId && !window.confirm('¿Confirmás el alta de esta nueva compra?')) return;
-              mutationCuotas.mutate(d);
-            })} 
+            onSubmit={formCuotas.handleSubmit((d) => mutationCuotas.mutate(d), logErrors)} 
             className="space-y-6"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -248,6 +281,7 @@ export default function Movimientos() {
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Descripción</label>
                 <input {...formCuotas.register('descripcion')} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: Supermercado" />
+                {formCuotas.formState.errors.descripcion && <p className="text-red-500 text-xs font-medium">{formCuotas.formState.errors.descripcion.message}</p>}
               </div>
 
               {/* Selector de Modo de Entrada */}
@@ -286,6 +320,7 @@ export default function Movimientos() {
                     className={`w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-xl font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-opacity ${entryMode === 'cuota' ? 'opacity-50' : ''}`} 
                   />
                 )} />
+                {formCuotas.formState.errors.monto_total && <p className="text-red-500 text-xs font-medium">{formCuotas.formState.errors.monto_total.message}</p>}
               </div>
 
               <div className="space-y-2">
@@ -362,23 +397,21 @@ export default function Movimientos() {
           </form>
         ) : (
           <form 
-            onSubmit={formFijos.handleSubmit((d) => {
-              const label = activeTab === 'egresos' ? 'gasto' : 'ingreso';
-              if (!editingId && !window.confirm(`¿Confirmás el alta de este nuevo ${label}?`)) return;
-              mutationFijos.mutate(d);
-            })} 
+            onSubmit={formFijos.handleSubmit((d) => mutationFijos.mutate(d), logErrors)} 
             className="space-y-6"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Descripción</label>
                 <input {...formFijos.register('descripcion')} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder={activeTab === 'egresos' ? 'Luz, Alquiler...' : 'Sueldo, Bono...'} />
+                {formFijos.formState.errors.descripcion && <p className="text-red-500 text-xs font-medium">{formFijos.formState.errors.descripcion.message}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Monto</label>
                 <Controller name="monto" control={formFijos.control} render={({ field: { onChange, value, ref } }) => (
                   <NumericFormat getInputRef={ref} value={value} onValueChange={(v) => onChange(v.floatValue)} thousandSeparator="." decimalSeparator="," prefix="$ " className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-xl font-bold outline-none focus:ring-2 focus:ring-blue-500" />
                 )} />
+                {formFijos.formState.errors.monto && <p className="text-red-500 text-xs font-medium">{formFijos.formState.errors.monto.message}</p>}
               </div>
               <div className="flex gap-4">
                 <div className="flex-1 space-y-2">
@@ -408,7 +441,17 @@ export default function Movimientos() {
             </div>
             <div className="flex gap-3 pt-4">
               {editingId && (
-                <button type="button" onClick={() => { if(window.confirm('¿Borrar registro?')) deleteMutation.mutate(editingId); }} className="px-5 py-4 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all"><Trash2 size={20} /></button>
+                <button 
+                  type="button" 
+                  onClick={(e) => { 
+                    console.log("🖱️ CLICK DETECTADO EN ELIMINAR (FORM)");
+                    e.preventDefault();
+                    deleteMutation.mutate(editingId);
+                  }} 
+                  className="px-5 py-4 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all z-10"
+                >
+                  <Trash2 size={20} />
+                </button>
               )}
               <button type="submit" disabled={mutationFijos.isPending} className={`flex-1 py-4 font-bold rounded-xl text-white shadow-lg active:scale-95 transition-all ${activeTab === 'egresos' ? 'bg-red-600 hover:bg-red-700 shadow-red-200 dark:shadow-none' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200 dark:shadow-none'}`}>
                 {mutationFijos.isPending ? 'Guardando...' : (editingId ? 'Actualizar' : 'Guardar')}
@@ -441,19 +484,30 @@ export default function Movimientos() {
                 <div className={`absolute left-0 top-0 w-1 h-full transition-all group-hover:w-1.5 ${activeTab === 'egresos' ? 'bg-red-500' : (activeTab === 'tarjetas' ? 'bg-blue-500' : 'bg-emerald-500')}`} />
                 <div className="pl-2">
                   <header className="flex justify-between items-start mb-1">
-                    <h4 className="font-bold text-gray-900 dark:text-neutral-100 truncate pr-2">{item.descripcion}</h4>
-                    {item.es_fijo && <span className="text-[9px] font-bold bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">FIJO</span>}
+                    <h4 className="font-bold text-gray-900 dark:text-neutral-100 truncate pr-2" onClick={() => handleEdit(item)}>{item.descripcion}</h4>
+                    <button 
+                      onClick={(e) => {
+                        console.log("🖱️ CLICK DETECTADO EN ELIMINAR (LISTA)");
+                        e.stopPropagation();
+                        deleteMutation.mutate(item.id);
+                      }}
+                      className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all z-20"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </header>
-                  <p className="text-[10px] text-gray-400 font-medium uppercase">
-                    {activeTab === 'tarjetas' ? (item.tarjeta_nombre || 'Sin Tarjeta') : `${item.mes}/${item.anio}`}
-                  </p>
-                  <div className="mt-3 flex justify-between items-end">
-                    <p className="text-lg font-bold text-gray-900 dark:text-neutral-100">
-                      {formatARS(activeTab === 'tarjetas' ? item.monto_total : item.monto)}
+                  <div onClick={() => handleEdit(item)}>
+                    <p className="text-[10px] text-gray-400 font-medium uppercase">
+                      {activeTab === 'tarjetas' ? (item.tarjeta_nombre || 'Sin Tarjeta') : `${item.mes}/${item.anio}`}
                     </p>
-                    {activeTab === 'tarjetas' && (
-                      <span className="text-[10px] font-bold text-blue-500">{item.cuotas} CUOTAS</span>
-                    )}
+                    <div className="mt-3 flex justify-between items-end">
+                      <p className="text-lg font-bold text-gray-900 dark:text-neutral-100">
+                        {formatARS(activeTab === 'tarjetas' ? item.monto_total : item.monto)}
+                      </p>
+                      {activeTab === 'tarjetas' && (
+                        <span className="text-[10px] font-bold text-blue-500">{item.cuotas} CUOTAS</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </article>

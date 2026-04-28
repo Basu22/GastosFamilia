@@ -58,26 +58,6 @@ La autenticación está simulada (mock). Cualquier usuario/contraseña permite e
 
 ---
 
-### 4.2 Dashboard (`/dashboard`)
-
-Es la pantalla principal. Muestra el **resumen financiero del mes actual**.
-
-| Card | ¿Qué muestra? | Color esperado | Comportamiento |
-|---|---|---|---|
-| **Ingresos** | Suma de todos los sueldos/bonos cargados para este mes. | Verde | Clic para filtrar solo ingresos. |
-| **Cuotas** | Total mensual de todas las cuotas de tarjeta activas. | Amarillo | Clic para filtrar solo cuotas. |
-| **Gastos Fijos/Var** | Suma de servicios, expensas y gastos únicos del mes. | Amarillo | Clic para filtrar solo gastos fijos. |
-| **Ahorro Neto** | `Ingresos - (Cuotas + Gastos)`. | Verde / Rojo | Clic para limpiar filtros y ver todo. |
-
----
-
-#### Sección B — Navegación Temporal y Selector de Meses
-Ubicada en la cabecera del Dashboard, permite navegar entre meses:
-- **Flechas `<-` y `->`**: Permiten retroceder o avanzar entre los meses que tienen registros.
-- **Selector de Mes (Título)**: Al hacer clic en el nombre del mes, se despliega una **grilla estilo calendario** (3x4 meses) que permite navegar por años y saltar a cualquier mes que tenga un punto rojo (indicador de datos).
-
-**Regla de negocio clave:**  
-Un gasto fijo (ej: expensas) aparece en **todos los meses** desde el mes en que fue creado en adelante. Un ingreso fijo (ej: sueldo) funciona de la misma manera.
 
 ---
 
