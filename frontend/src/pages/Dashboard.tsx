@@ -21,7 +21,6 @@ const DashboardSkeleton = () => (
   </div>
 );
 
-type FilterType = 'all' | 'ingreso' | 'tarjeta' | 'gasto';
 
 export default function Dashboard() {
   const now = new Date();
