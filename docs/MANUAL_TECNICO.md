@@ -496,6 +496,26 @@ docker restart proxy_unificado
 ```bash
 docker restart proxy_unificado
 ```
+## 16. Resolución de Errores Comunes de Build (TypeScript)
+
+### 16.1 Error: `Property '$$typeof' is missing` en Iconos
+- **Causa**: Pasar un elemento renderizado `<Icon />` a un prop que espera el componente base `LucideIcon`.
+- **Solución**: Pasar el nombre del componente sin los brackets: `icon={PiggyBank}` en lugar de `icon={<PiggyBank />}`.
+
+### 16.2 Error: `TS6133: 'Variable' is declared but its value is never read`
+- **Causa**: El compilador de producción (`tsc`) no permite variables o imports sin uso.
+- **Solución**: Eliminar cualquier import o constante que no se esté utilizando activamente en el renderizado o la lógica.
+
+### 16.3 Error: `Type 'string' is not assignable to type 'variant'`
+- **Causa**: Intentar usar un color de variante no definido en la interfaz del componente (ej: `info` o `primary`).
+- **Solución**: Ajustarse estrictamente a los valores definidos: `default`, `success`, `danger` o `warning`.
+
+### 16.4 Uso del Script de Integridad
+Antes de cada deploy, se recomienda ejecutar:
+```bash
+bash check_integrity.sh
+```
+Este script simula el proceso de build de producción y detecta estos errores antes de que lleguen a la Raspberry Pi.
 
 **Fix permanente** — Agregar el `resolver` de Docker al `nginx.conf` de `infra-unificada`:
 ```nginx

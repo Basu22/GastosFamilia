@@ -1,6 +1,6 @@
 import { useState, useMemo, Fragment } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getDashboardInfo, getMesesDisponibles } from '../api/client';
+import { getDashboardInfo } from '../api/client';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import { TrendingUp, Wallet, CreditCard, PiggyBank, Edit3, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { formatARS, MESES_CORTO } from '../utils/format';
