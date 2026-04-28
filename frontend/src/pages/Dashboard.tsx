@@ -1,9 +1,9 @@
 import { useState, useMemo, Fragment } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getDashboardInfo, getMesesDisponibles } from '../api/client';
-import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, ReferenceLine } from 'recharts';
-import { TrendingUp, Wallet, CreditCard, PiggyBank, Clock, Edit3, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
-import { formatARS, formatARSCompact, MESES_CORTO } from '../utils/format';
+import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
+import { TrendingUp, Wallet, CreditCard, PiggyBank, Edit3, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { formatARS, MESES_CORTO } from '../utils/format';
 import MetricCard from '../components/ui/MetricCard';
 import InlineEditForm from '../components/dashboard/InlineEditForm';
 
@@ -29,11 +29,6 @@ export default function Dashboard() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['dashboard', mes, anio],
     queryFn: () => getDashboardInfo(mes, anio)
-  });
-
-  const { data: mesesDisponibles } = useQuery({
-    queryKey: ['meses-disponibles'],
-    queryFn: getMesesDisponibles
   });
 
   const filteredMovimientos = useMemo(() => {
@@ -93,6 +88,7 @@ export default function Dashboard() {
         </div>
 
         <div id="date-selector" className="flex items-center gap-2 bg-white dark:bg-neutral-900 p-1.5 rounded-2xl border border-gray-100 dark:border-neutral-800 shadow-sm">
+          <Calendar size={16} className="text-gray-400 ml-2" />
           <button id="btn-prev-month" onClick={prevMonth} className="p-2 hover:bg-gray-50 dark:hover:bg-neutral-800 rounded-xl transition-colors"><ChevronLeft size={20} /></button>
           <div className="px-4 text-center min-w-[120px]">
             <span id="current-month" className="block text-sm font-bold text-gray-900 dark:text-neutral-100 uppercase tracking-widest">{MESES_CORTO[mes]}</span>
@@ -104,10 +100,10 @@ export default function Dashboard() {
 
       {/* Métricas Principales */}
       <section id="section-metrics" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 px-4 lg:px-0">
-        <MetricCard id="metric-ingresos" label="Ingresos" value={data.ingreso} variant="success" icon={<PiggyBank size={20} />} />
-        <MetricCard id="metric-cuotas" label="Cuotas Tarjeta" value={data.total_cuotas} variant="warning" icon={<CreditCard size={20} />} />
-        <MetricCard id="metric-gastos" label="Gastos Fijos/Var" value={data.total_gastos_mensuales} variant="danger" icon={<Wallet size={20} />} />
-        <MetricCard id="metric-ahorro" label="Balance Mes" value={data.ahorro_proyectado} variant={data.ahorro_proyectado >= 0 ? 'info' : 'danger'} icon={<TrendingUp size={20} />} subtitle="Disponible para ahorro/gastos" />
+        <MetricCard id="metric-ingresos" label="Ingresos" value={data.ingreso} variant="success" icon={PiggyBank} />
+        <MetricCard id="metric-cuotas" label="Cuotas Tarjeta" value={data.total_cuotas} variant="warning" icon={CreditCard} />
+        <MetricCard id="metric-gastos" label="Gastos Fijos/Var" value={data.total_gastos_mensuales} variant="danger" icon={Wallet} />
+        <MetricCard id="metric-ahorro" label="Balance Mes" value={data.ahorro_proyectado} variant={data.ahorro_proyectado >= 0 ? 'default' : 'danger'} icon={TrendingUp} subtitle="Disponible para ahorro/gastos" />
       </section>
 
       {/* Gráficos */}

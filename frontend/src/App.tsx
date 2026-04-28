@@ -35,6 +35,7 @@ function App() {
           <Route path="/nuevo" element={<Navigate to="/movimientos?tab=tarjetas" replace />} />
           <Route path="/tarjetas" element={<Tarjetas />} />
           <Route path="/proyeccion" element={<Proyeccion />} />
+          <Route path="/configuracion" element={<Configuracion />} />
         </Route>
       </Routes>
     </BrowserRouter>

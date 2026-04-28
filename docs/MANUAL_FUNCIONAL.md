@@ -222,3 +222,24 @@ Permite listar visualmente las tarjetas activas y cargar nuevas.
 | Abr 2026 | **UX Pro**: Implementación de edición inline descendente en el Dashboard (sin cambio de pantalla). |
 | Abr 2026 | **Refactor Maestro**: Unificación de todas las cargas en `/movimientos` y rediseño de barra de navegación móvil (iconos 24px). |
 | Abr 2026 | **Smart Forms**: Sistema de entrada dual de montos (Total/Cuota) con redondeo automático a 2 decimales. |
+| Abr 2026 | **Clasificación Avanzada**: Implementación de "Origen" (Fijos, Variados, Cuotas e Ingresos) y "Medio de Pago" explícito para una mejor trazabilidad. |
+| Abr 2026 | **Diseño Híbrido**: El Dashboard ahora alterna automáticamente entre vista de Cards (Móvil) y Tabla clásica (PC) para máxima comodidad. |
+| Abr 2026 | **Configuración Dinámica**: Nueva sección `/configuracion` para gestionar Medios de Pago y Categorías de forma autónoma sin tocar el código. |
+
+---
+
+## 9. Nuevas Secciones Avanzadas
+
+### 9.1 Configuración Dinámica (`/configuracion`)
+Ahora el sistema es flexible. Podés gestionar tus propios catálogos:
+- **Medios de Pago**: Registrá "Efectivo", "Mercado Pago", o tarjetas específicas. Cada uno con un color que se reflejará en el Dashboard.
+- **Categorías**: Creá categorías personalizadas (Comida, Salud, Ocio) con iconos descriptivos.
+
+### 9.2 Clasificación de Movimientos
+Los movimientos ahora se etiquetan con:
+- **Origen**: Indica la naturaleza del gasto (Gasto Fijo, Variado o Cuota de Tarjeta).
+- **Medio de Pago**: Indica de dónde salió el dinero exactamente.
+
+### 9.3 Comportamiento Responsivo Híbrido
+- **En PC**: Verás una tabla compacta con columnas claras de Origen y Medio de Pago. Permite ordenar los egresos haciendo clic en los encabezados.
+- **En Celular**: Los mismos datos se presentan en tarjetas (Cards) con una barra de color lateral. Es ideal para ver los detalles con claridad en pantallas pequeñas.

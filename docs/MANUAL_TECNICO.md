@@ -441,6 +441,30 @@ Suele deberse a dos causas en esta infraestructura:
 | Abr 2026 | Docs: Actualización de Guía de Buenas Prácticas con foco estricto en Mobile First y Touch Targets para dispositivos modernos (Samsung A56). |
 | Abr 2026 | **Infra**: Diagnóstico y documentación del bug de DNS caching en `proxy_unificado`. Fix: `docker restart proxy_unificado` tras recrear contenedores de Gastos. |
 | Abr 2026 | **Infra**: Fix permanente del DNS caching agregando `resolver 127.0.0.11` al `nginx.conf` de `infra-unificada`. |
+| Abr 2026 | **Backend**: Nuevos modelos `MedioPago` y `Categoria` en `models/config.py` para gestión dinámica de metadatos. |
+| Abr 2026 | **Backend**: Implementación de `routers/configuracion.py` con soporte para Pydantic v1/v2 (`model_dump` fallback). |
+| Abr 2026 | **Frontend**: Implementación de diseño híbrido en Dashboard mediante clases condicionales de Tailwind (`lg:hidden` vs `hidden lg:block`). |
+| Abr 2026 | **Infra**: Integración de `docker restart proxy_unificado` en `deploy.sh` como paso de mitigación post-deploy. |
+
+---
+
+## 15. Sistema de Configuración Dinámica
+
+### 15.1 Modelos de Configuración (`models/config.py`)
+Para desacoplar la lógica de negocio del código, se introdujeron tablas de metadatos:
+- **`MedioPago`**: Permite definir orígenes de fondos (Tarjetas, Efectivo, Billeteras Virtuales). Incluye campos de `tipo` y `color`.
+- **`Categoria`**: Permite agrupar gastos con iconos de Lucide.
+
+### 15.2 Diseño Híbrido Responsivo (Dashboard)
+El Dashboard utiliza una técnica de **renderizado dual condicional** en CSS:
+```tsx
+{/* Vista Mobile (lg:hidden) */}
+<div className="grid lg:hidden"> ... Cards ... </div>
+
+{/* Vista Desktop (hidden lg:block) */}
+<div className="hidden lg:block"> ... Table ... </div>
+```
+Esta aproximación evita la complejidad de hooks de JS (`useMediaQuery`) y garantiza que no haya "layout shift" durante la carga inicial.
 
 ---
 
