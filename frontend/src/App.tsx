@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Tarjetas from './pages/Tarjetas';
 import Movimientos from './pages/Movimientos';
 import Proyeccion from './pages/Proyeccion';
+import Configuracion from './pages/Configuracion';
 import { useThemeStore } from './stores/themeStore';
 
 function App() {

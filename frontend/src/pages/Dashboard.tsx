@@ -356,139 +356,184 @@ export default function Dashboard() {
 
       {/* Detalle de Movimientos del Mes */}
       <section id="section-movimientos-detalle" className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-800 transition-all overflow-hidden mt-6">
-        <header id="header-movimientos-detalle" className="p-4 lg:p-6 border-b border-gray-100 dark:border-neutral-800 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-2">
-            <Wallet className="text-blue-500" size={20}/>
-            <h2 id="title-movimientos-detalle" className="font-semibold text-gray-900 dark:text-neutral-100">
-              Movimientos {activeFilter !== 'all' ? `(${activeFilter === 'ingreso' ? 'Ingresos' : activeFilter === 'tarjeta' ? 'Cuotas' : 'Gastos Fijos'})` : ''}
-            </h2>
-            <span id="badge-movimientos-count" className="text-xs font-medium text-gray-400 bg-gray-50 dark:bg-neutral-950 px-2 py-1 rounded ml-2">
-              {filteredMovimientos.length} ítems
-            </span>
+        <header id="header-movimientos-detalle" className="p-4 lg:p-6 border-b border-gray-100 dark:border-neutral-800 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Wallet className="text-blue-500" size={20}/>
+              <h2 id="title-movimientos-detalle" className="font-semibold text-gray-900 dark:text-neutral-100">
+                Detalle de Movimientos
+              </h2>
+            </div>
+            {activeFilter !== 'all' && (
+              <button 
+                id="btn-clear-filter"
+                onClick={() => setActiveFilter('all')}
+                className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded-lg transition-all"
+              >
+                LIMPIAR FILTRO
+              </button>
+            )}
           </div>
 
-          {activeFilter !== 'all' && (
+          {/* Selectores de Ordenamiento Estilo Mobile */}
+          <div className="flex items-center gap-4 overflow-x-auto pb-2 scrollbar-hide">
+            <span className="text-[10px] font-bold text-gray-400 uppercase whitespace-nowrap">Ordenar por:</span>
             <button 
-              id="btn-clear-filter"
-              onClick={() => setActiveFilter('all')}
-              className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-lg transition-all"
+              onClick={() => {
+                if (sortField === 'origen') setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                else { setSortField('origen'); setSortOrder('asc'); }
+              }}
+              className={`text-[10px] font-bold px-3 py-1.5 rounded-full transition-all whitespace-nowrap ${sortField === 'origen' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-500'}`}
             >
-              <FilterX size={14} /> LIMPIAR FILTRO
+              TIPO {sortField === 'origen' && (sortOrder === 'asc' ? '↑' : '↓')}
             </button>
-          )}
+            <button 
+              onClick={() => {
+                if (sortField === 'medio_pago') setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                else { setSortField('medio_pago'); setSortOrder('asc'); }
+              }}
+              className={`text-[10px] font-bold px-3 py-1.5 rounded-full transition-all whitespace-nowrap ${sortField === 'medio_pago' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-500'}`}
+            >
+              MEDIO PAGO {sortField === 'medio_pago' && (sortOrder === 'asc' ? '↑' : '↓')}
+            </button>
+          </div>
         </header>
         
-        <div id="wrapper-table-movimientos" className="overflow-x-auto">
-          <table id="table-movimientos" className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50 dark:bg-neutral-950 text-[10px] uppercase font-bold text-gray-400 dark:text-neutral-500 tracking-wider">
-                <th className="px-4 py-3">Descripción</th>
-                <th 
-                  className="px-4 py-3 cursor-pointer hover:text-blue-600 transition-colors"
+        <div id="wrapper-movimientos-grid" className="p-4 lg:p-6">
+          {/* VISTA MÓVIL (CARDS) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:hidden">
+            {finalMovimientos.map((mov: any) => (
+              <Fragment key={`${mov.tipo}-${mov.id}`}>
+                <article 
+                  id={`card-movimiento-${mov.tipo}-${mov.id}`} 
                   onClick={() => {
-                    if (sortField === 'origen') setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                    else { setSortField('origen'); setSortOrder('asc'); }
+                    if (editingItem?.id === mov.id && editingItem?.tipo === mov.tipo) setEditingItem(null);
+                    else setEditingItem({ id: mov.id, tipo: mov.tipo });
                   }}
+                  className={`group relative bg-white dark:bg-neutral-900 p-4 rounded-2xl border transition-all cursor-pointer overflow-hidden ${
+                    editingItem?.id === mov.id && editingItem?.tipo === mov.tipo 
+                      ? 'border-blue-500 shadow-lg ring-1 ring-blue-500' 
+                      : 'border-gray-100 dark:border-neutral-800 hover:border-blue-200 dark:hover:border-blue-900/50 hover:shadow-md'
+                  }`}
                 >
-                  Tipo / Origen {sortField === 'origen' && (sortOrder === 'asc' ? '↑' : '↓')}
-                </th>
-                <th 
-                  className="px-4 py-3 cursor-pointer hover:text-blue-600 transition-colors"
-                  onClick={() => {
-                    if (sortField === 'medio_pago') setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                    else { setSortField('medio_pago'); setSortOrder('asc'); }
-                  }}
-                >
-                  Medio de Pago {sortField === 'medio_pago' && (sortOrder === 'asc' ? '↑' : '↓')}
-                </th>
-                <th className="px-4 py-3 text-right">Monto</th>
-                <th className="px-4 py-3 text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="body-table-movimientos" className="divide-y divide-gray-100 dark:divide-neutral-800">
-              {finalMovimientos.map((mov: any) => (
-                <Fragment key={`${mov.tipo}-${mov.id}`}>
-                  <tr 
-                    id={`row-movimiento-${mov.tipo}-${mov.id}`} 
-                    className={`hover:bg-gray-50/50 transition-colors ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''}`}
-                  >
-                    <td className="px-4 py-4">
-                      <p className="text-sm font-semibold text-gray-900 dark:text-neutral-100">{mov.descripcion}</p>
-                      {mov.tipo === 'tarjeta' && (
-                        <p className="text-[10px] text-blue-500 font-bold uppercase mt-0.5">Cuota {mov.cuota_actual}/{mov.cuotas_total}</p>
-                      )}
-                      {mov.es_fijo && (
-                        <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-bold mt-1 inline-block">FIJO</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className={`text-xs font-bold px-2 py-1 rounded-lg ${
-                        mov.origen === 'Ingresos' ? 'bg-emerald-50 text-emerald-600' :
-                        mov.origen === 'Gastos Fijos' ? 'bg-blue-50 text-blue-600' :
-                        mov.origen === 'Cuotas' ? 'bg-amber-50 text-amber-600' :
-                        'bg-gray-100 text-gray-600'
-                      }`}>
-                        {mov.origen}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className="text-xs text-gray-600 dark:text-neutral-400 font-medium">
-                        {mov.medio_pago}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      <p className={`text-sm font-bold ${mov.tipo === 'ingreso' ? 'text-emerald-600' : 'text-gray-900 dark:text-neutral-100'}`}>
-                        {mov.tipo === 'ingreso' ? '+' : '-'} {formatARS(mov.monto)}
-                      </p>
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      <button 
-                        id={`btn-edit-movimiento-${mov.tipo}-${mov.id}`}
-                        onClick={() => {
-                          if (editingItem?.id === mov.id && editingItem?.tipo === mov.tipo) {
-                            setEditingItem(null);
-                          } else {
-                            setEditingItem({ id: mov.id, tipo: mov.tipo });
-                          }
-                        }}
-                        className={`p-3 rounded-lg transition-all ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'text-blue-600 bg-blue-100 dark:bg-blue-900/40' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`}
-                        title="Editar"
-                      >
-                        <Edit3 size={18} />
-                      </button>
-                    </td>
-                  </tr>
-                  {/* Formulario Inline */}
-                  {editingItem?.id === mov.id && editingItem?.tipo === mov.tipo && (
-                    <tr id={`row-edit-${mov.tipo}-${mov.id}`}>
-                      <td colSpan={4} className="p-0 border-none">
-                        <InlineEditForm 
-                          id={mov.id} 
-                          tipo={mov.tipo} 
-                          onClose={() => setEditingItem(null)} 
-                        />
+                  <div className="absolute left-0 top-0 w-1.5 h-full transition-all group-hover:w-2" style={{ backgroundColor: mov.tarjeta_color || (mov.tipo === 'ingreso' ? '#10B981' : (mov.es_fijo ? '#3B82F6' : '#64748B')) }} />
+                  <div className="pl-3">
+                    <header className="flex justify-between items-start mb-2">
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-bold text-gray-900 dark:text-neutral-100 truncate pr-2">{mov.descripcion}</h4>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                            mov.origen === 'Ingresos' ? 'bg-emerald-50 text-emerald-600' :
+                            mov.origen === 'Gastos Fijos' ? 'bg-blue-50 text-blue-600' :
+                            mov.origen === 'Cuotas' ? 'bg-amber-50 text-amber-600' :
+                            'bg-gray-100 text-gray-500'
+                          }`}>
+                            {mov.origen}
+                          </span>
+                          <span className="text-[9px] font-bold text-gray-400 bg-gray-50 dark:bg-neutral-950 px-1.5 py-0.5 rounded uppercase">
+                            {mov.medio_pago}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-base font-bold ${mov.tipo === 'ingreso' ? 'text-emerald-600' : 'text-gray-900 dark:text-neutral-100'}`}>
+                          {mov.tipo === 'ingreso' ? '+' : '-'} {formatARS(mov.monto)}
+                        </p>
+                      </div>
+                    </header>
+                    <div className="flex justify-between items-center mt-4">
+                      <div className="flex items-center gap-2">
+                        {mov.tipo === 'tarjeta' && (
+                          <p className="text-[10px] text-blue-500 font-bold uppercase">Cuota {mov.cuota_actual}/{mov.cuotas_total}</p>
+                        )}
+                        {mov.es_fijo && mov.tipo !== 'ingreso' && (
+                          <span className="text-[9px] font-bold text-blue-400 uppercase">Fijo Mensual</span>
+                        )}
+                      </div>
+                      <div className={`p-1.5 rounded-lg transition-all ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'bg-blue-100 text-blue-600' : 'text-gray-300'}`}>
+                        <Edit3 size={14} />
+                      </div>
+                    </div>
+                  </div>
+                </article>
+                {editingItem?.id === mov.id && editingItem?.tipo === mov.tipo && (
+                  <div className="col-span-full mt-2"><InlineEditForm id={mov.id} tipo={mov.tipo} onClose={() => setEditingItem(null)} /></div>
+                )}
+              </Fragment>
+            ))}
+          </div>
+
+          {/* VISTA DESKTOP (TABLA) */}
+          <div className="hidden lg:block overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-neutral-950 text-[10px] uppercase font-bold text-gray-400 dark:text-neutral-500 tracking-wider border-b border-gray-100 dark:border-neutral-800">
+                  <th className="px-4 py-4">Descripción</th>
+                  <th className="px-4 py-4">Tipo / Origen</th>
+                  <th className="px-4 py-4">Medio de Pago</th>
+                  <th className="px-4 py-4 text-right">Monto</th>
+                  <th className="px-4 py-4 text-center w-20">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-neutral-800">
+                {finalMovimientos.map((mov: any) => (
+                  <Fragment key={`${mov.tipo}-${mov.id}`}>
+                    <tr className={`group hover:bg-gray-50/50 transition-colors ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'bg-blue-50/30' : ''}`}>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-1.5 h-6 rounded-full" style={{ backgroundColor: mov.tarjeta_color || (mov.tipo === 'ingreso' ? '#10B981' : (mov.es_fijo ? '#3B82F6' : '#64748B')) }} />
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-neutral-100">{mov.descripcion}</p>
+                            {mov.tipo === 'tarjeta' && (
+                              <p className="text-[10px] text-blue-500 font-bold uppercase">Cuota {mov.cuota_actual}/{mov.cuotas_total}</p>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${
+                          mov.origen === 'Ingresos' ? 'bg-emerald-50 text-emerald-600' :
+                          mov.origen === 'Gastos Fijos' ? 'bg-blue-50 text-blue-600' :
+                          mov.origen === 'Cuotas' ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {mov.origen}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <p className="text-xs font-medium text-gray-600 dark:text-neutral-400">{mov.medio_pago}</p>
+                      </td>
+                      <td className="px-4 py-4 text-right">
+                        <p className={`text-sm font-bold ${mov.tipo === 'ingreso' ? 'text-emerald-600' : 'text-gray-900 dark:text-neutral-100'}`}>
+                          {mov.tipo === 'ingreso' ? '+' : '-'} {formatARS(mov.monto)}
+                        </p>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <button 
+                          onClick={() => setEditingItem(editingItem?.id === mov.id ? null : { id: mov.id, tipo: mov.tipo })}
+                          className={`p-2 rounded-lg transition-all ${editingItem?.id === mov.id ? 'bg-blue-100 text-blue-600' : 'text-gray-300 hover:text-blue-600 hover:bg-blue-50'}`}
+                        >
+                          <Edit3 size={16} />
+                        </button>
                       </td>
                     </tr>
-                  )}
-                </Fragment>
-              ))}
-            </tbody>
-            {/* Totalizador */}
-            <tfoot id="table-totalizer" className="bg-gray-50 dark:bg-neutral-950 border-t-2 border-gray-100 dark:border-neutral-800">
-              <tr>
-                <td colSpan={2} className="px-4 py-4 text-right text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase tracking-widest">
-                  Total {activeFilter !== 'all' ? 'Filtrado' : 'Movimientos'}
-                </td>
-                <td className="px-4 py-4 text-right">
-                  <p id="total-sum-value" className={`text-lg font-bold ${totalFiltrado >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                    {totalFiltrado >= 0 ? '+' : ''} {formatARS(totalFiltrado)}
-                  </p>
-                </td>
-                <td></td>
-              </tr>
-            </tfoot>
-          </table>
+                    {editingItem?.id === mov.id && editingItem?.tipo === mov.tipo && (
+                      <tr><td colSpan={5} className="p-0 border-none"><InlineEditForm id={mov.id} tipo={mov.tipo} onClose={() => setEditingItem(null)} /></td></tr>
+                    )}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
+        {/* Totalizador Moderno */}
+        <footer className="p-4 lg:p-6 bg-gray-50/50 dark:bg-neutral-950/50 border-t border-gray-100 dark:border-neutral-800 flex justify-between items-center">
+          <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+            Saldo {activeFilter !== 'all' ? 'Filtrado' : 'del Mes'}
+          </span>
+          <p id="total-sum-value" className={`text-xl font-bold ${totalFiltrado >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+            {totalFiltrado >= 0 ? '+' : ''} {formatARS(totalFiltrado)}
+          </p>
+        </footer>
       </section>
     </main>
   );

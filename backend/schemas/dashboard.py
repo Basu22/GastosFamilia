@@ -24,6 +24,8 @@ class ProxVencimiento(BaseModel):
 class MovimientoDetalle(BaseModel):
     id: int
     tipo: str # "ingreso", "gasto", "tarjeta"
+    origen: str # "Gastos Fijos", "Gastos Variados", "Cuotas", "Ingresos"
+    medio_pago: str
     descripcion: str
     monto: float
     monto_total: Optional[float] = None

@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, CreditCard, LogOut, Sun, Moon, BarChart2 } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, CreditCard, LogOut, Sun, Moon, BarChart2, Settings } from 'lucide-react';
 import { useThemeStore } from '../../stores/themeStore';
 
 export default function Sidebar() {
@@ -10,6 +10,7 @@ export default function Sidebar() {
     { name: 'Movimientos', path: '/movimientos', icon: PlusCircle },
     { name: 'Tarjetas', path: '/tarjetas', icon: CreditCard },
     { name: 'Proyección', path: '/proyeccion', icon: BarChart2 },
+    { name: 'Configuración', path: '/configuracion', icon: Settings },
   ];
 
   return (
