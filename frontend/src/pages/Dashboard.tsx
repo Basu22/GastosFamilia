@@ -26,7 +26,7 @@ export default function Dashboard() {
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   
   // Secciones abiertas (colapsables)
-  const [seccionesAbiertas, setSeccionesAbiertas] = useState<Set<string>>(new Set(['ingresos', 'cuotas', 'fijos', 'variables']));
+  const [seccionesAbiertas, setSeccionesAbiertas] = useState<Set<string>>(new Set());
 
   const toggleSeccion = (key: string) => {
     setSeccionesAbiertas(prev => {
