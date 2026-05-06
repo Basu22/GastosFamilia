@@ -29,3 +29,19 @@ export const calcularSimulacion = async (data: SimuladorInput): Promise<Simulado
   const response = await apiClient.post('/simulador/calcular', data);
   return response.data;
 };
+
+// --- Importaciones Gmail ---
+export const ejecutarImportacion = async () => {
+  const response = await apiClient.post('/importaciones/ejecutar');
+  return response.data;
+};
+
+export const getHistorialImportacion = async () => {
+  const response = await apiClient.get('/importaciones/historial');
+  return response.data;
+};
+
+export const getArcaMes = async (mes: number, anio: number) => {
+  const response = await apiClient.get(`/importaciones/arca/${mes}/${anio}`);
+  return response.data;
+};

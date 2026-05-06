@@ -228,7 +228,20 @@ export default function Simulador() {
 
       {/* Resultados de la Simulación */}
       {mutation.data && (
-        <section id="simulacion-resultados" className="animate-in fade-in slide-in-from-bottom-4 duration-500 px-4 lg:px-0 overflow-x-auto pb-4">
+        <section id="simulacion-resultados" className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-4">
+
+          {/* VISTA MOBILE — Cápsulas de mes */}
+          <div className="lg:hidden px-4 space-y-3">
+            {mutation.data.map((mesData, idx) => (
+              <CapsulaMes key={idx} mes={mesData} />
+            ))}
+            <p className="text-[10px] text-center text-gray-400 uppercase font-bold tracking-widest pt-2">
+              * Los cálculos se basan en tu proyección actual de ingresos y gastos fijos.
+            </p>
+          </div>
+
+          {/* VISTA DESKTOP — Tabla existente */}
+          <div className="hidden lg:block px-0 overflow-x-auto pb-4">
           <div className="inline-block min-w-full align-middle">
             <div className="overflow-hidden border border-gray-100 dark:border-neutral-800 rounded-3xl shadow-sm bg-white dark:bg-neutral-900">
               <table className="min-w-full divide-y divide-gray-100 dark:divide-neutral-800">
@@ -348,6 +361,8 @@ export default function Simulador() {
           <p className="mt-4 text-[10px] text-center text-gray-400 uppercase font-bold tracking-widest">
             * Los cálculos se basan en tu proyección actual de ingresos y gastos fijos.
           </p>
+          </div>{/* fin hidden lg:block */}
+
         </section>
       )}
     </main>
@@ -417,5 +432,95 @@ function RowCategoria({ label, icon: Icon, colorClass, bgClass, data, valKey, de
         </tr>
       )}
     </>
+  );
+}
+
+// ─── Vista Mobile: Cápsula de un mes simulado ───────────────────────────────
+
+interface CapsulaMesProps {
+  mes: SimuladorMes;
+}
+
+function CapsulaMes({ mes }: CapsulaMesProps) {
+  const [expandido, setExpandido] = useState(false);
+
+  return (
+    <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-gray-100 dark:border-neutral-800 shadow-sm overflow-hidden">
+
+      {/* Header: Mes/Año + toggle */}
+      <button
+        onClick={() => setExpandido(!expandido)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-neutral-800/50 transition-colors hover:bg-gray-100 dark:hover:bg-neutral-800"
+      >
+        <span className="text-sm font-black text-gray-900 dark:text-neutral-100 uppercase tracking-wide">
+          {MESES_CORTO[mes.mes]} {mes.anio}
+        </span>
+        <ChevronDown
+          size={16}
+          className={`text-gray-400 transition-transform duration-200 ${expandido ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {/* Cuota Simulada — siempre visible */}
+      <div className="flex items-center justify-between px-4 py-3 bg-orange-50 dark:bg-orange-950/20 border-l-4 border-orange-500">
+        <div className="flex items-center gap-2">
+          <Calculator size={14} className="text-orange-600" />
+          <span className="text-[10px] font-black text-orange-700 dark:text-orange-400 uppercase tracking-widest">
+            Cuota Simulada
+          </span>
+        </div>
+        <span className={`text-base font-black text-orange-600 dark:text-orange-400 ${
+          mes.cuota_simulada === 0 ? 'opacity-30' : ''
+        }`}>
+          {formatARS(mes.cuota_simulada)}
+        </span>
+      </div>
+
+      {/* Ahorro Final — siempre visible */}
+      <div className="flex items-center justify-between px-4 py-3">
+        <span className="text-[10px] font-black text-gray-500 dark:text-neutral-400 uppercase tracking-widest">
+          Ahorro Final
+        </span>
+        <span className={`text-sm font-black px-3 py-1 rounded-xl ${
+          mes.ahorro_simulado >= 0
+            ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400'
+            : 'bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 animate-pulse'
+        }`}>
+          {formatARS(mes.ahorro_simulado)}
+        </span>
+      </div>
+
+      {/* Detalle expandible */}
+      {expandido && (
+        <div className="border-t border-gray-100 dark:border-neutral-800 px-4 py-3 space-y-2">
+          <LineaDetalle label="Ingresos"       valor={mes.total_ingresos}        colorClass="text-emerald-600" signo="+" />
+          <LineaDetalle label="Cuotas Actuales" valor={mes.total_cuotas}          colorClass="text-amber-600"  signo="-" />
+          <LineaDetalle label="Gastos Fijos"   valor={mes.total_gastos_fijos}    colorClass="text-blue-600"   signo="-" />
+          <LineaDetalle label="Gastos Variables" valor={mes.total_gastos_variables} colorClass="text-slate-600" signo="-" />
+          <div className="border-t border-gray-100 dark:border-neutral-800 pt-2">
+            <LineaDetalle label="Ahorro Real"  valor={mes.ahorro_real}            colorClass="text-gray-700 dark:text-neutral-300" signo="" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Sub-componente auxiliar para cada fila de detalle
+interface LineaDetalleProps {
+  label: string;
+  valor: number;
+  colorClass: string;
+  signo: string;
+}
+
+function LineaDetalle({ label, valor, colorClass, signo }: LineaDetalleProps) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-[10px] font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest">{label}</span>
+      <span className={`text-xs font-black ${colorClass}`}>
+        {signo && <span className="mr-0.5">{signo}</span>}{formatARS(valor)}
+      </span>
+    </div>
   );
 }

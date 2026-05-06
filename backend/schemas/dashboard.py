@@ -34,6 +34,7 @@ class MovimientoDetalle(BaseModel):
     tarjeta_nombre: Optional[str] = None
     tarjeta_color: Optional[str] = None
     es_fijo: bool = False
+    previsionado: Optional[bool] = False
     fecha_referencia: str # Para ordenar
 
 class DashboardSummary(BaseModel):

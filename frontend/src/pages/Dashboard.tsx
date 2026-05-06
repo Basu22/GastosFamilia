@@ -7,6 +7,7 @@ import { formatARS, formatARSCompact, MESES_CORTO } from '../utils/format';
 import MetricCard from '../components/ui/MetricCard';
 import InlineEditForm from '../components/dashboard/InlineEditForm';
 import InlineCreateForm from '../components/dashboard/InlineCreateForm';
+import PanelArca from '../components/dashboard/PanelArca';
 
 const DashboardSkeleton = () => (
   <div className="space-y-6 animate-pulse px-4 py-4 lg:px-8 lg:py-8">
@@ -237,6 +238,9 @@ export default function Dashboard() {
             </section>
           )}
 
+          {/* MÓDULO ARCA */}
+          <PanelArca mes={mes} anio={anio} />
+
           <section id="section-movimientos-detalle" className="bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-gray-100 dark:border-neutral-800 transition-all overflow-hidden mx-4 lg:mx-0">
             <header id="header-movimientos-detalle" className="p-6 border-b border-gray-100 dark:border-neutral-800 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -256,40 +260,75 @@ export default function Dashboard() {
             </header>
             
             <div id="wrapper-movimientos-grid">
-              {/* VISTA MÓVIL (CARDS) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:hidden p-4">
-                {data.movimientos_mes.map((mov: any) => (
-                  <Fragment key={`${mov.tipo}-${mov.id}`}>
-                    <article 
-                      onClick={() => setEditingItem(editingItem?.id === mov.id ? null : { id: mov.id, tipo: mov.tipo })}
-                      className={`group relative bg-white dark:bg-neutral-900 p-4 rounded-2xl border transition-all cursor-pointer ${
-                        editingItem?.id === mov.id ? 'border-blue-500 shadow-lg' : 'border-gray-100 dark:border-neutral-800'
-                      }`}
-                    >
-                      <div className="absolute left-0 top-0 w-1.5 h-full rounded-l-2xl" style={{ backgroundColor: mov.tarjeta_color || (mov.tipo === 'ingreso' ? '#10B981' : (mov.es_fijo ? '#3B82F6' : '#64748B')) }} />
-                      <div className="pl-3">
-                        <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-bold text-gray-900 dark:text-neutral-100 flex-1 leading-tight">{mov.descripcion}</h4>
-                          <p className={`text-sm font-black ${mov.tipo === 'ingreso' ? 'text-emerald-600' : 'text-gray-900 dark:text-neutral-100'} whitespace-nowrap ml-4`}>
-                            {mov.tipo === 'ingreso' ? '+' : '-'} {formatARS(mov.monto)}
-                          </p>
-                        </div>
-                        <div className="flex justify-between items-end">
-                          <div className="space-y-1">
-                            <span className="text-[9px] font-bold text-gray-400 bg-gray-50 dark:bg-neutral-950 px-1.5 py-0.5 rounded uppercase tracking-wider">{mov.medio_pago}</span>
-                            {mov.tipo === 'tarjeta' && <p className="text-[9px] text-blue-500 font-bold uppercase tracking-tight">Cuota {mov.cuota_actual}/{mov.cuotas_total}</p>}
-                          </div>
-                          <Edit3 size={14} className={editingItem?.id === mov.id ? 'text-blue-500' : 'text-gray-300'} />
-                        </div>
-                      </div>
-                    </article>
-                    {editingItem?.id === mov.id && (
-                      <div className="col-span-full bg-gray-50 dark:bg-neutral-950 p-4 rounded-2xl mb-4">
-                        <InlineEditForm id={mov.id} tipo={mov.tipo} mesActual={mes} anioActual={anio} onClose={() => setEditingItem(null)} />
-                      </div>
-                    )}
-                  </Fragment>
-                ))}
+              {/* VISTA MÓVIL (GRUPOS COLAPSABLES) */}
+              <div className="flex flex-col gap-3 lg:hidden p-4">
+                <GrupoMobile
+                  titulo="Ingresos"
+                  colorClass="text-emerald-600 dark:text-emerald-400"
+                  bgClass="bg-emerald-50 dark:bg-emerald-950/20"
+                  borderColor="border-emerald-200 dark:border-emerald-900/50"
+                  icon={PiggyBank}
+                  movimientos={movimientosAgrupados.ingresos}
+                  expandido={seccionesAbiertas.has('ingresos')}
+                  onToggle={() => toggleSeccion('ingresos')}
+                  editingItem={editingItem}
+                  setEditingItem={setEditingItem}
+                  creandoEnSeccion={creandoEnSeccion}
+                  setCreandoEnSeccion={setCreandoEnSeccion}
+                  mes={mes}
+                  anio={anio}
+                />
+                <GrupoMobile
+                  titulo="Cuotas de Tarjeta"
+                  colorClass="text-amber-600 dark:text-amber-400"
+                  bgClass="bg-amber-50 dark:bg-amber-950/20"
+                  borderColor="border-amber-200 dark:border-amber-900/50"
+                  icon={CreditCard}
+                  movimientos={movimientosAgrupados.cuotas}
+                  expandido={seccionesAbiertas.has('cuotas')}
+                  onToggle={() => toggleSeccion('cuotas')}
+                  editingItem={editingItem}
+                  setEditingItem={setEditingItem}
+                  creandoEnSeccion={creandoEnSeccion}
+                  setCreandoEnSeccion={setCreandoEnSeccion}
+                  totalesCards={totalesPorTarjeta}
+                  tarjetaFiltro={tarjetaFiltro}
+                  setTarjetaFiltro={setTarjetaFiltro}
+                  mes={mes}
+                  anio={anio}
+                />
+                <GrupoMobile
+                  titulo="Gastos Fijos"
+                  colorClass="text-blue-600 dark:text-blue-400"
+                  bgClass="bg-blue-50 dark:bg-blue-950/20"
+                  borderColor="border-blue-200 dark:border-blue-900/50"
+                  icon={Wallet}
+                  movimientos={movimientosAgrupados.fijos}
+                  expandido={seccionesAbiertas.has('fijos')}
+                  onToggle={() => toggleSeccion('fijos')}
+                  editingItem={editingItem}
+                  setEditingItem={setEditingItem}
+                  creandoEnSeccion={creandoEnSeccion}
+                  setCreandoEnSeccion={setCreandoEnSeccion}
+                  mes={mes}
+                  anio={anio}
+                />
+                <GrupoMobile
+                  titulo="Gastos Variados"
+                  colorClass="text-slate-600 dark:text-slate-400"
+                  bgClass="bg-slate-50 dark:bg-slate-950/20"
+                  borderColor="border-slate-200 dark:border-slate-900/50"
+                  icon={Info}
+                  movimientos={movimientosAgrupados.variables}
+                  expandido={seccionesAbiertas.has('variables')}
+                  onToggle={() => toggleSeccion('variables')}
+                  editingItem={editingItem}
+                  setEditingItem={setEditingItem}
+                  creandoEnSeccion={creandoEnSeccion}
+                  setCreandoEnSeccion={setCreandoEnSeccion}
+                  mes={mes}
+                  anio={anio}
+                />
               </div>
 
               {/* VISTA DESKTOP (TABLA AGRUPADA) */}
@@ -461,7 +500,7 @@ export default function Dashboard() {
   );
 }
 
-// Helper: Fila de Grupo para PC
+// ─── Vista Desktop: Fila de Grupo para tabla ─────────────────────────────────────────
 function GrupoDesktop({ titulo, icon: Icon, colorClass, bgClass, movimientos, expandido, onToggle, editingItem, setEditingItem, totalesCards, tarjetaFiltro, setTarjetaFiltro, creandoEnSeccion, setCreandoEnSeccion, mes, anio }: any) {
   
   // Lógica de filtrado de movimientos
@@ -563,7 +602,12 @@ function GrupoDesktop({ titulo, icon: Icon, colorClass, bgClass, movimientos, ex
               <div className="flex items-center gap-3">
                 <div className="w-1.5 h-6 rounded-full" style={{ backgroundColor: mov.tarjeta_color || (mov.tipo === 'ingreso' ? '#10B981' : (mov.es_fijo ? '#3B82F6' : '#64748B')) }} />
                 <div>
-                  <p className="text-sm font-bold text-gray-800 dark:text-neutral-200">{mov.descripcion}</p>
+                  <p className="text-sm font-bold text-gray-800 dark:text-neutral-200 flex items-center gap-2">
+                    {mov.descripcion}
+                    {mov.previsionado && (
+                      <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded uppercase font-bold tracking-widest">Previsionado</span>
+                    )}
+                  </p>
                   {mov.tipo === 'tarjeta' && (
                     <p className="text-[10px] text-blue-500 font-bold uppercase tracking-tight">Cuota {mov.cuota_actual}/{mov.cuotas_total}</p>
                   )}
@@ -602,3 +646,139 @@ function GrupoDesktop({ titulo, icon: Icon, colorClass, bgClass, movimientos, ex
   );
 }
 
+// ─── Vista Mobile: Grupo colapsable con cards ─────────────────────────────────
+function GrupoMobile({ titulo, icon: Icon, colorClass, bgClass, borderColor, movimientos, expandido, onToggle, editingItem, setEditingItem, totalesCards, tarjetaFiltro, setTarjetaFiltro, creandoEnSeccion, setCreandoEnSeccion, mes, anio }: any) {
+
+  const movimientosAMostrar = useMemo(() => {
+    if (titulo === 'Cuotas de Tarjeta' && tarjetaFiltro) {
+      return movimientos.filter((m: any) => m.medio_pago === tarjetaFiltro);
+    }
+    return movimientos;
+  }, [movimientos, tarjetaFiltro, titulo]);
+
+  const totalGrupo = movimientosAMostrar.reduce((acc: number, m: any) => acc + m.monto, 0);
+  const tipoSeccion = titulo === 'Ingresos' ? 'ingreso' : titulo === 'Cuotas de Tarjeta' ? 'tarjeta' : 'gasto';
+
+  return (
+    <div className={`rounded-2xl border ${borderColor} overflow-hidden`}>
+
+      {/* Header — siempre visible */}
+      <div className={`flex items-center justify-between px-4 py-3 ${bgClass}`}>
+        {/* Izquierda: toggle + título + badge */}
+        <button onClick={onToggle} className="flex items-center gap-2 flex-1 min-w-0">
+          <Icon size={15} className={colorClass} />
+          <ChevronDown size={13} className={`text-gray-400 transition-transform duration-200 flex-shrink-0 ${expandido ? 'rotate-180' : ''}`} />
+          <span className={`text-[11px] font-black uppercase tracking-widest ${colorClass} truncate`}>{titulo}</span>
+          <span className="text-[9px] font-bold text-gray-400 bg-white/60 dark:bg-black/20 px-1.5 py-0.5 rounded-full flex-shrink-0">
+            {movimientos.length}
+          </span>
+        </button>
+
+        {/* Derecha: total + botón + */}
+        <div className="flex items-center gap-3 flex-shrink-0 ml-2">
+          <span className={`text-sm font-black ${colorClass}`}>
+            {titulo === 'Ingresos' ? '+' : '-'} {formatARS(totalGrupo)}
+          </span>
+          <button
+            onClick={() => setCreandoEnSeccion(creandoEnSeccion === tipoSeccion ? null : tipoSeccion)}
+            className={`p-1.5 rounded-full transition-all flex-shrink-0 ${
+              creandoEnSeccion === tipoSeccion
+                ? 'bg-red-500 text-white rotate-45'
+                : 'bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-none hover:scale-110'
+            }`}
+          >
+            <Plus size={12} />
+          </button>
+        </div>
+      </div>
+
+      {/* Formulario de Creación Inline */}
+      {creandoEnSeccion === tipoSeccion && (
+        <div className="border-t border-gray-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4">
+          <InlineCreateForm tipo={tipoSeccion as any} mes={mes} anio={anio} onClose={() => setCreandoEnSeccion(null)} />
+        </div>
+      )}
+
+      {/* Cápsulas filtro por tarjeta (solo Cuotas de Tarjeta) */}
+      {expandido && totalesCards && totalesCards.length > 0 && (
+        <div className="flex flex-wrap gap-2 px-4 py-2 bg-amber-50/30 dark:bg-amber-950/10 border-t border-amber-100 dark:border-amber-900/20">
+          {totalesCards.map((t: any) => (
+            <button
+              key={t.nombre}
+              onClick={() => setTarjetaFiltro?.(tarjetaFiltro === t.nombre ? null : t.nombre)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full shadow-sm transition-all hover:scale-105 active:scale-95 ${tarjetaFiltro === t.nombre ? 'ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-black' : 'opacity-80 hover:opacity-100'}`}
+              style={{ backgroundColor: t.color }}
+            >
+              <span className="text-[9px] font-black text-white uppercase tracking-tighter">{t.nombre}</span>
+              <span className="text-[10px] font-black text-white">{formatARS(t.total)}</span>
+              {tarjetaFiltro === t.nombre && <X size={9} className="text-white ml-0.5" />}
+            </button>
+          ))}
+          {tarjetaFiltro && (
+            <button onClick={() => setTarjetaFiltro?.(null)} className="text-[9px] font-bold text-gray-400 hover:text-gray-600 px-2 py-1.5">
+              LIMPIAR
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Lista de cards (si expandido) */}
+      {expandido && (
+        <div className="divide-y divide-gray-50 dark:divide-neutral-800/50">
+          {movimientosAMostrar.length === 0 && (
+            <div className="text-center py-6 text-gray-400">
+              <p className="text-xs font-medium">Sin movimientos este mes</p>
+            </div>
+          )}
+          {movimientosAMostrar.map((mov: any) => (
+            <Fragment key={`${mov.tipo}-${mov.id}`}>
+              <article
+                onClick={() => setEditingItem(editingItem?.id === mov.id ? null : { id: mov.id, tipo: mov.tipo })}
+                className={`relative flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${
+                  editingItem?.id === mov.id
+                    ? 'bg-blue-50 dark:bg-blue-950/20'
+                    : 'bg-white dark:bg-neutral-900 hover:bg-gray-50 dark:hover:bg-neutral-800/50'
+                }`}
+              >
+                {/* Barra de color lateral */}
+                <div
+                  className="w-1 h-10 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: mov.tarjeta_color || (mov.tipo === 'ingreso' ? '#10B981' : (mov.es_fijo ? '#3B82F6' : '#64748B')) }}
+                />
+                {/* Descripción + medio pago */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-gray-900 dark:text-neutral-100 leading-tight truncate flex items-center gap-2">
+                    {mov.descripcion}
+                    {mov.previsionado && (
+                      <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded uppercase tracking-widest font-bold">Prev.</span>
+                    )}
+                  </p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[9px] font-bold text-gray-400 bg-gray-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded uppercase tracking-wider">{mov.medio_pago}</span>
+                    {mov.tipo === 'tarjeta' && (
+                      <span className="text-[9px] text-blue-500 font-bold uppercase">Cuota {mov.cuota_actual}/{mov.cuotas_total}</span>
+                    )}
+                  </div>
+                </div>
+                {/* Monto + ícono editar */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <p className={`text-sm font-black whitespace-nowrap ${mov.tipo === 'ingreso' ? 'text-emerald-600' : 'text-gray-900 dark:text-neutral-100'}`}>
+                    {mov.tipo === 'ingreso' ? '+' : '-'} {formatARS(mov.monto)}
+                  </p>
+                  <Edit3 size={14} className={editingItem?.id === mov.id ? 'text-blue-500' : 'text-gray-300'} />
+                </div>
+              </article>
+
+              {/* Formulario de edición inline */}
+              {editingItem?.id === mov.id && (
+                <div className="bg-gray-50 dark:bg-neutral-950 p-4 border-t border-blue-100 dark:border-blue-900/30">
+                  <InlineEditForm id={mov.id} tipo={mov.tipo} mesActual={mes} anioActual={anio} onClose={() => setEditingItem(null)} />
+                </div>
+              )}
+            </Fragment>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

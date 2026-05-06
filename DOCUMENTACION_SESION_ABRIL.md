@@ -56,4 +56,22 @@ Para optimizar la carga visual y el foco del usuario, todas las secciones de mov
 - **Endpoint de Edición**: `backend/routers/gastos_mensuales.py` y `backend/routers/ingresos.py` (Lógica de split/versionado).
 
 ---
-*Documentación generada el 28 de Abril de 2026.*
+
+## 5. Mejoras de Experiencia Mobile (UX)
+
+Se rediseñaron las dos pantallas principales para ofrecer una experiencia nativa y funcional en dispositivos móviles (viewport < 1024px), eliminando la necesidad de scroll horizontal y facilitando la carga de datos.
+
+### Dashboard: Grupos Colapsables Mobile
+Se reemplazó la grilla plana de movimientos por el componente `GrupoMobile`, que replica la potencia de la versión Desktop:
+- **Totales por Sección**: Ahora se ve cuánto sumás o restás por cada categoría (Ingresos, Cuotas, Fijos, Variados) directamente en el encabezado.
+- **Creación Inline (`+`)**: Se habilitó el botón de creación rápida en el móvil. Al tocarlo, se despliega el formulario `InlineCreateForm` dentro del grupo correspondiente.
+- **Edición Inline**: Al tocar cualquier card de movimiento, se abre el `InlineEditForm` justo debajo, permitiendo ajustes rápidos sin salir de la vista general.
+- **Filtros por Tarjeta**: Las cápsulas de filtrado ahora están disponibles en la sección de Cuotas, permitiendo aislar consumos de una tarjeta específica con un tap.
+
+### Simulador: Rediseño en Cápsulas
+Se abandonó el formato de tabla horizontal (ilegible en móvil) por un sistema de **Cápsulas Mensuales**:
+- **Datos Clave Siempre Visibles**: Cada mes muestra su "Cuota Simulada" y el "Ahorro Final" resultante de forma destacada.
+- **Detalle Bajo Demanda**: Cada cápsula es colapsable. Al expandirla, se muestra el desglose completo (Ingresos vs Gastos vs Ahorro Real) en formato vertical optimizado.
+
+---
+*Documentación actualizada el 29 de Abril de 2026.*

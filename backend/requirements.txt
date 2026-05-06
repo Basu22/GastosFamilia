@@ -10,3 +10,9 @@ python-dotenv==1.0.1
 httpx==0.27.0
 pdfminer.six==20231228
 python-dateutil
+google-api-python-client==2.128.0
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==1.2.0
+apscheduler==3.10.4
+beautifulsoup4==4.12.3
+pdfplumber==0.11.4

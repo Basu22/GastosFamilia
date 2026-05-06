@@ -176,6 +176,7 @@ def get_dashboard_summary(
         g_fin_val = (g.anio_fin * 12 + g.mes_fin) if g.anio_fin and g.mes_fin else 999999
         if (g.mes == mes and g.anio == anio) or (g.es_fijo and g_val <= mes_actual_val <= g_fin_val):
             t = tarjetas_dict.get(g.tarjeta_id) if g.tarjeta_id else None
+            is_previsionado = g.es_fijo and not (g.mes == mes and g.anio == anio)
             movimientos_mes.append({
                 "id": g.id,
                 "tipo": "gasto",
@@ -184,6 +185,7 @@ def get_dashboard_summary(
                 "descripcion": g.descripcion,
                 "monto": g.monto,
                 "es_fijo": g.es_fijo,
+                "previsionado": is_previsionado,
                 "tarjeta_nombre": t.nombre if t else None,
                 "tarjeta_color": t.color if t else None,
                 "fecha_referencia": f"{g.anio}-{g.mes:02d}-01"

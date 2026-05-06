@@ -24,7 +24,7 @@ export DATABASE_URL="sqlite:///../data/gastos.db"
 
 # --reload permite que los cambios en Python se vean al instante
 # Nota: Usamos main:app porque main.py está en la raíz de /backend
-uvicorn main:app --reload --host 0.0.0.0 --port 8000 > /dev/null 2>&1 &
+uvicorn main:app --reload --host 0.0.0.0 --port 8000 &
 BACK_PID=$!
 cd ..
 
