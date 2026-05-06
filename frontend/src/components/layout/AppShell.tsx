@@ -44,7 +44,7 @@ export default function AppShell({ children }: AppShellProps) {
             </div>
             <div className="flex flex-col">
               <span id="app-brand-mobile" className="text-white font-bold text-xl tracking-[0.05em] leading-none">Aura</span>
-              <span className="text-[9px] tracking-[0.15em] text-[#A7F3D0] font-bold uppercase opacity-70 mt-1">Gastos Familiares</span>
+              <span className="text-[9px] tracking-[0.15em] text-[#A7F3D0] font-bold uppercase opacity-70 mt-1">Tu Zen Financiero</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
