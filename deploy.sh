@@ -29,6 +29,11 @@ fi
 echo "🔑 Sincronizando variables de entorno (.env)..."
 sudo -u $REAL_USER scp .env "$RPI_HOST:$RPI_PATH/.env"
 
+# 2.1 Sincronizar credenciales de Gmail (ya que están en .gitignore)
+echo "🔐 Sincronizando credenciales de Gmail..."
+sudo -u $REAL_USER ssh $RPI_HOST "mkdir -p $RPI_PATH/backend/credentials"
+sudo -u $REAL_USER scp backend/credentials/*.json "$RPI_HOST:$RPI_PATH/backend/credentials/"
+
 # 3. ACTUALIZACIÓN REMOTA
 echo "📡 Conectando a la Raspberry Pi ($RPI_HOST)..."
 echo "🏗️  Actualizando código y reiniciando contenedores..."
