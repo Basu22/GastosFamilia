@@ -100,55 +100,54 @@ export default function Dashboard() {
   };
 
   return (
-    <main id="dashboard-container" className="space-y-6 lg:space-y-8 animate-in fade-in duration-500 pb-10">
+    <main id="dashboard-container" className="space-y-10 lg:space-y-12 animate-in fade-in duration-700 pb-12">
       {/* Header con Selector de Fecha */}
-      <header id="dashboard-header" className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between px-4 lg:px-0">
+      <header id="dashboard-header" className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between px-4 lg:px-0">
         <div>
-          <h1 id="dashboard-title" className="text-2xl font-bold text-gray-900 dark:text-neutral-100 tracking-tight">Estado de Cuenta</h1>
-          <p id="dashboard-subtitle" className="text-sm text-gray-500 mt-1 font-medium">Resumen mensual de ingresos y egresos</p>
+          <h1 id="dashboard-title" className="text-3xl lg:text-4xl font-bold text-white tracking-tight">Estado de Cuenta</h1>
+          <p id="dashboard-subtitle" className="text-sm lg:text-base text-gray-400 mt-2 font-medium">Gestioná el balance familiar con claridad y paz.</p>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Botón Hoy */}
+        <div className="flex items-center gap-4">
           <button 
             onClick={goToToday}
-            className="hidden md:flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-2xl text-[10px] font-black uppercase tracking-widest text-blue-600 hover:bg-blue-50 transition-all shadow-sm"
+            className="hidden md:flex items-center gap-2 px-6 py-3 bg-aura-surface/40 backdrop-blur-md border border-aura-border/50 rounded-2xl text-[10px] font-bold uppercase tracking-[0.2em] text-aura-lavender hover:bg-aura-surface/60 transition-all active:scale-95"
           >
             Hoy
           </button>
 
-          <div id="date-selector" className="relative flex items-center gap-2 bg-white dark:bg-neutral-900 p-1.5 rounded-2xl border border-gray-100 dark:border-neutral-800 shadow-sm">
-            <Calendar size={16} className="text-gray-400 ml-2" />
-            <button id="btn-prev-month" onClick={prevMonth} className="p-2 hover:bg-gray-50 dark:hover:bg-neutral-800 rounded-xl transition-colors"><ChevronLeft size={20} /></button>
+          <div id="date-selector" className="relative flex items-center gap-3 bg-aura-surface/40 backdrop-blur-md p-2 rounded-3xl border border-aura-border/50 shadow-xl">
+            <Calendar size={18} className="text-aura-lavender ml-3 opacity-70" />
+            <button id="btn-prev-month" onClick={prevMonth} className="p-3 hover:bg-white/5 rounded-2xl text-aura-lavender transition-all active:scale-75"><ChevronLeft size={24} /></button>
             
             <div 
-              className="px-4 text-center min-w-[120px] cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-800 rounded-xl py-1 transition-all"
+              className="px-6 text-center min-w-[140px] cursor-pointer hover:bg-white/5 rounded-2xl py-2 transition-all group"
               onClick={() => setShowMonthPicker(!showMonthPicker)}
             >
-              <span id="current-month" className="block text-sm font-black text-gray-900 dark:text-neutral-100 uppercase tracking-widest">{MESES_CORTO[mes]}</span>
-              <span id="current-year" className="block text-[10px] font-bold text-gray-400">{anio}</span>
+              <span id="current-month" className="block text-sm font-bold text-white uppercase tracking-[0.25em] group-hover:text-aura-lavender transition-colors">{MESES_CORTO[mes]}</span>
+              <span id="current-year" className="block text-[10px] font-bold text-aura-mint/60 mt-0.5 uppercase tracking-widest">{anio}</span>
             </div>
 
-            <button id="btn-next-month" onClick={nextMonth} className="p-2 hover:bg-gray-50 dark:hover:bg-neutral-800 rounded-xl transition-colors"><ChevronRight size={20} /></button>
+            <button id="btn-next-month" onClick={nextMonth} className="p-3 hover:bg-white/5 rounded-2xl text-aura-lavender transition-all active:scale-75"><ChevronRight size={24} /></button>
 
             {/* Selector de Meses (Dropdown) */}
             {showMonthPicker && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-2xl shadow-2xl z-50 p-4 animate-in zoom-in-95 duration-200">
-                <div className="grid grid-cols-3 gap-2">
+              <div className="absolute top-full left-0 right-0 mt-4 glass-card z-50 p-6 animate-in zoom-in-95 fade-in duration-300">
+                <div className="grid grid-cols-3 gap-3">
                   {MESES_CORTO.slice(1).map((m, idx) => (
                     <button 
                       key={m}
                       onClick={() => { setMes(idx + 1); setShowMonthPicker(false); }}
-                      className={`py-2 rounded-xl text-[10px] font-black uppercase tracking-tighter transition-all ${mes === idx + 1 ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-500'}`}
+                      className={`py-3 rounded-2xl text-[10px] font-bold uppercase tracking-wider transition-all ${mes === idx + 1 ? 'bg-aura-lavender text-aura-bg shadow-lg shadow-aura-lavender/20' : 'hover:bg-white/5 text-gray-400'}`}
                     >
                       {m}
                     </button>
                   ))}
                 </div>
-                <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-50 dark:border-neutral-800">
-                   <button onClick={() => setAnio(anio - 1)} className="p-1 hover:bg-gray-100 rounded-lg"><ChevronLeft size={16}/></button>
-                   <span className="text-xs font-black text-gray-900 dark:text-neutral-100">{anio}</span>
-                   <button onClick={() => setAnio(anio + 1)} className="p-1 hover:bg-gray-100 rounded-lg"><ChevronRight size={16}/></button>
+                <div className="flex items-center justify-between mt-6 pt-6 border-t border-aura-border/30">
+                   <button onClick={() => setAnio(anio - 1)} className="p-2 hover:bg-white/10 rounded-xl text-aura-lavender"><ChevronLeft size={20}/></button>
+                   <span className="text-sm font-bold text-white tracking-widest">{anio}</span>
+                   <button onClick={() => setAnio(anio + 1)} className="p-2 hover:bg-white/10 rounded-xl text-aura-lavender"><ChevronRight size={20}/></button>
                 </div>
               </div>
             )}
@@ -157,7 +156,7 @@ export default function Dashboard() {
       </header>
 
       {/* Métricas Principales */}
-      <section id="section-metrics" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 px-4 lg:px-0">
+      <section id="section-metrics" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-4 lg:px-0">
         <MetricCard id="metric-ingresos" label="Ingresos" value={data.ingreso} variant="success" icon={PiggyBank} />
         <MetricCard id="metric-cuotas" label="Cuotas Tarjeta" value={data.total_cuotas} variant="warning" icon={CreditCard} />
         <MetricCard id="metric-gastos" label="Gastos Fijos/Var" value={data.total_gastos_mensuales} variant="danger" icon={Wallet} />
@@ -165,7 +164,7 @@ export default function Dashboard() {
       </section>
 
       {/* GRID PRINCIPAL: Movimientos (L) | Gráficos (R - Desktop only) */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-10">
         
         {/* COLUMNA IZQUIERDA: Alertas y Detalle de Movimientos */}
         <div className="space-y-6">
@@ -424,73 +423,84 @@ export default function Dashboard() {
         </div>
 
         {/* COLUMNA DERECHA: Gráficos y Tendencia (Desktop Only) */}
-        <aside className="hidden lg:flex lg:flex-col gap-6">
-          <section className="bg-white dark:bg-neutral-900 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-neutral-800">
-            <h3 className="font-bold text-gray-900 dark:text-neutral-100 mb-6 flex items-center gap-2">
-              <CreditCard className="text-blue-500" size={18}/> Gastos x Tarjeta
+        <aside className="hidden lg:flex lg:flex-col gap-10">
+          <section className="glass-card aura-glow-lavender p-8 border-aura-lavender/10">
+            <h3 className="font-bold text-white mb-8 flex items-center gap-3 text-lg">
+              <div className="p-2 bg-aura-lavender/20 rounded-xl text-aura-lavender"><CreditCard size={20}/></div>
+              Gastos x Tarjeta
             </h3>
-            <div className="h-[280px] w-full">
+            <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.cuotas_por_tarjeta} layout="vertical">
+                <BarChart data={data.cuotas_por_tarjeta} layout="vertical" margin={{ left: -20 }}>
                   <XAxis type="number" hide />
-                  <YAxis dataKey="nombre" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 11, fontWeight: 600 }} />
-                  <Tooltip cursor={{ fill: 'transparent' }} content={({ active, payload }) => {
-                    if (active && payload?.length) {
-                      return (
-                        <div className="bg-white dark:bg-neutral-900 p-3 rounded-xl border border-gray-100 dark:border-neutral-800 shadow-xl text-xs">
-                          <p className="font-black text-gray-900 dark:text-neutral-100">{payload[0].payload.nombre}</p>
-                          <p className="text-blue-600 font-bold mt-1">{formatARS(payload[0].value as number)}</p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }} />
-                  <Bar dataKey="monto" radius={[0, 8, 8, 0]} barSize={24}>
+                  <YAxis 
+                    dataKey="nombre" 
+                    type="category" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    width={100} 
+                    tick={{ fontSize: 11, fontWeight: 600, fill: '#94a3b8' }} 
+                  />
+                  <Tooltip 
+                    cursor={{ fill: 'rgba(255, 255, 255, 0.03)' }} 
+                    content={({ active, payload }) => {
+                      if (active && payload?.length) {
+                        return (
+                          <div className="glass-card p-4 border-aura-border/50 text-xs shadow-2xl">
+                            <p className="font-bold text-white">{payload[0].payload.nombre}</p>
+                            <p className="text-aura-lavender font-bold mt-1 text-base">{formatARS(payload[0].value as number)}</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }} 
+                  />
+                  <Bar dataKey="monto" radius={[0, 12, 12, 0]} barSize={20}>
                     {data.cuotas_por_tarjeta.map((entry: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
-                    <LabelList 
-                      dataKey="monto" 
-                      position="insideRight" 
-                      content={(props: any) => {
-                        const { x, y, width, value } = props;
-                        if (width < 50) return null; // No mostrar si es muy angosta
-                        return (
-                          <text x={x + width - 10} y={y + 15} fill="#fff" fontSize={10} fontWeight="bold" textAnchor="end">
-                            {formatARSCompact(value)}
-                          </text>
-                        );
-                      }}
-                    />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </section>
 
-          <section className="bg-white dark:bg-neutral-900 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-neutral-800">
-            <h3 className="font-bold text-gray-900 dark:text-neutral-100 mb-6 flex items-center gap-2">
-              <TrendingUp className="text-emerald-500" size={18}/> Tendencia 6 Meses
+          <section className="glass-card aura-glow-mint p-8 border-aura-mint/10">
+            <h3 className="font-bold text-white mb-8 flex items-center gap-3 text-lg">
+              <div className="p-2 bg-aura-mint/20 rounded-xl text-aura-mint"><TrendingUp size={20}/></div>
+              Tendencia 6 Meses
             </h3>
-            <div className="h-[220px] w-full">
+            <div className="h-[240px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data.proximos_6_meses} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                  <XAxis dataKey="mes" tickFormatter={(m) => MESES_CORTO[m]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700 }} />
+                  <XAxis 
+                    dataKey="mes" 
+                    tickFormatter={(m) => MESES_CORTO[m]} 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} 
+                  />
                   <YAxis hide domain={['auto', 'auto']} />
-                  <Tooltip content={({ active, payload }) => {
-                    if (active && payload?.length) {
-                      return (
-                        <div className="bg-white dark:bg-neutral-900 p-2 rounded-lg border border-gray-100 dark:border-neutral-800 shadow-md text-xs font-bold">
-                          {formatARS(payload[0].value as number)}
-                        </div>
-                      );
-                    }
-                    return null;
-                  }} />
-                  <Line type="monotone" dataKey="total_mes" stroke="#3B82F6" strokeWidth={4} dot={{ r: 4, fill: '#3B82F6', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }}>
-                    <LabelList dataKey="total_mes" position="top" formatter={(v: number) => formatARSCompact(v)} style={{ fontSize: '10px', fontWeight: 'bold', fill: '#64748B' }} />
-                  </Line>
+                  <Tooltip 
+                    content={({ active, payload }) => {
+                      if (active && payload?.length) {
+                        return (
+                          <div className="glass-card p-3 border-aura-border/50 text-sm font-bold text-aura-mint">
+                            {formatARS(payload[0].value as number)}
+                          </div>
+                        );
+                      }
+                      return null;
+                    }} 
+                  />
+                  <Line 
+                    type="basis" 
+                    dataKey="total_mes" 
+                    stroke="#A7F3D0" 
+                    strokeWidth={4} 
+                    dot={{ r: 0 }} 
+                    activeDot={{ r: 6, fill: '#A7F3D0', stroke: '#0F1219', strokeWidth: 2 }}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -505,7 +515,6 @@ export default function Dashboard() {
 // ─── Vista Desktop: Fila de Grupo para tabla ─────────────────────────────────────────
 function GrupoDesktop({ titulo, icon: Icon, colorClass, bgClass, movimientos, expandido, onToggle, editingItem, setEditingItem, totalesCards, tarjetaFiltro, setTarjetaFiltro, creandoEnSeccion, setCreandoEnSeccion, mes, anio }: any) {
   
-  // Lógica de filtrado de movimientos
   const movimientosAMostrar = useMemo(() => {
     if (titulo === 'Cuotas de Tarjeta' && tarjetaFiltro) {
       return movimientos.filter((m: any) => m.medio_pago === tarjetaFiltro);
@@ -516,37 +525,37 @@ function GrupoDesktop({ titulo, icon: Icon, colorClass, bgClass, movimientos, ex
   const totalGrupo = movimientosAMostrar.reduce((acc: number, m: any) => acc + m.monto, 0);
   const tipoSeccion = titulo === 'Ingresos' ? 'ingreso' : titulo === 'Cuotas de Tarjeta' ? 'tarjeta' : 'gasto';
 
+  const auraColor = titulo === 'Ingresos' ? 'text-aura-mint' : titulo === 'Cuotas de Tarjeta' ? 'text-aura-lavender' : 'text-aura-coral';
+
   return (
     <>
-      <tr 
-        className={`transition-colors border-t border-gray-100 dark:border-neutral-800 ${bgClass}`}
-      >
+      <tr className="border-none">
         <td colSpan={4} className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center cursor-pointer" onClick={onToggle}>
-                <div className={`p-1.5 rounded-lg ${bgClass} border border-current opacity-20 mr-3`}>
-                  <Icon size={14} className={colorClass} />
+          <div className="flex items-center justify-between bg-aura-surface/30 backdrop-blur-md rounded-2xl p-4 border border-aura-border/20">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center cursor-pointer group" onClick={onToggle}>
+                <div className={`p-3 rounded-xl bg-white/5 border border-white/10 mr-4 transition-transform group-hover:scale-110`}>
+                  <Icon size={18} className={auraColor} />
                 </div>
-                <ChevronDown size={16} className={`text-gray-400 transition-transform ${expandido ? '' : '-rotate-90'}`} />
-                <span className={`text-[11px] font-black uppercase tracking-widest ${colorClass} ml-2`}>{titulo}</span>
-                <span className="text-[10px] font-bold text-gray-400 bg-white/50 px-2 py-0.5 rounded-full ml-3">{movimientos.length} items</span>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[12px] font-bold uppercase tracking-[0.2em] ${auraColor}`}>{titulo}</span>
+                    <ChevronDown size={14} className={`text-gray-500 transition-transform ${expandido ? '' : '-rotate-90'}`} />
+                  </div>
+                  <span className="text-[10px] font-medium text-gray-500 uppercase tracking-widest mt-0.5">{movimientos.length} movimientos</span>
+                </div>
               </div>
               
-              {/* Botón de creación rápida */}
               <button 
                 onClick={() => setCreandoEnSeccion(creandoEnSeccion === tipoSeccion ? null : tipoSeccion)}
-                className={`ml-4 p-1 rounded-full transition-all ${creandoEnSeccion === tipoSeccion ? 'bg-red-500 text-white rotate-45' : 'bg-blue-600 text-white hover:scale-110 shadow-lg shadow-blue-900/20'}`}
+                className={`ml-4 p-2 rounded-xl transition-all duration-300 ${creandoEnSeccion === tipoSeccion ? 'bg-aura-coral text-aura-bg rotate-45' : 'bg-aura-lavender text-aura-bg hover:scale-110 shadow-lg shadow-aura-lavender/20'}`}
               >
-                <Plus size={14} />
+                <Plus size={16} strokeWidth={3} />
               </button>
             </div>
             
-            <div className="flex items-center gap-4">
-               {tarjetaFiltro && titulo === 'Cuotas de Tarjeta' && (
-                 <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded animate-pulse uppercase">Filtrado por tarjeta</span>
-               )}
-               <span className={`text-sm font-black ${colorClass}`}>
+            <div className="flex flex-col items-end">
+              <span className={`text-xl font-bold tracking-tight ${auraColor}`}>
                 {titulo === 'Ingresos' ? '+' : '-'} {formatARS(totalGrupo)}
               </span>
             </div>
@@ -554,101 +563,102 @@ function GrupoDesktop({ titulo, icon: Icon, colorClass, bgClass, movimientos, ex
         </td>
       </tr>
 
-      {/* Formulario de Creación Inline */}
       {creandoEnSeccion === tipoSeccion && (
         <tr>
-          <td colSpan={4} className="p-0 border-none">
-            <InlineCreateForm 
-              tipo={tipoSeccion as any} 
-              mes={mes} 
-              anio={anio} 
-              onClose={() => setCreandoEnSeccion(null)} 
-            />
+          <td colSpan={4} className="px-6 pb-6">
+            <div className="glass-card p-8 border-aura-lavender/20 animate-in slide-in-from-top-4 duration-300">
+              <InlineCreateForm 
+                tipo={tipoSeccion as any} 
+                mes={mes} 
+                anio={anio} 
+                onClose={() => setCreandoEnSeccion(null)} 
+              />
+            </div>
           </td>
         </tr>
       )}
 
       {expandido && totalesCards && (
         <tr>
-          <td colSpan={4} className="px-6 py-3 bg-amber-50/20 dark:bg-amber-950/5">
-            <div className="flex flex-wrap gap-2">
+          <td colSpan={4} className="px-10 py-4">
+            <div className="flex flex-wrap gap-3">
               {totalesCards.map((t: any) => (
                 <button 
                   key={t.nombre} 
                   onClick={() => setTarjetaFiltro(tarjetaFiltro === t.nombre ? null : t.nombre)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full shadow-sm transition-all hover:scale-105 active:scale-95 ${tarjetaFiltro === t.nombre ? 'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-black' : 'opacity-70 hover:opacity-100'}`}
-                  style={{ backgroundColor: t.color }}
+                  className={`flex items-center gap-3 px-4 py-2 rounded-2xl backdrop-blur-md transition-all hover:scale-105 active:scale-95 border ${tarjetaFiltro === t.nombre ? 'ring-2 ring-white ring-offset-4 ring-offset-aura-bg border-white' : 'border-white/10 opacity-70 hover:opacity-100'}`}
+                  style={{ backgroundColor: `${t.color}33`, borderColor: `${t.color}66` }}
                 >
-                  <span className="text-[9px] font-black text-white uppercase tracking-tighter">{t.nombre}</span>
-                  <span className="text-[10px] font-black text-white">{formatARS(t.total)}</span>
-                  {tarjetaFiltro === t.nombre && <X size={10} className="text-white ml-1" />}
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: t.color }} />
+                  <span className="text-[10px] font-bold text-white uppercase tracking-wider">{t.nombre}</span>
+                  <span className="text-xs font-bold text-white">{formatARS(t.total)}</span>
                 </button>
               ))}
-              {tarjetaFiltro && (
-                <button 
-                  onClick={() => setTarjetaFiltro(null)}
-                  className="text-[9px] font-bold text-gray-400 hover:text-gray-600 px-3 py-1.5"
-                >
-                  LIMPIAR FILTRO
-                </button>
-              )}
             </div>
           </td>
         </tr>
       )}
 
-      {expandido && movimientosAMostrar.map((mov: any) => (
-        <Fragment key={`${mov.tipo}-${mov.id}`}>
-          <tr className={`group hover:bg-gray-50/80 transition-colors border-b border-gray-50 dark:border-neutral-800/50 ${editingItem?.id === mov.id ? 'bg-blue-50/50' : ''}`}>
-            <td className="px-6 py-4">
-              <div className="flex items-center gap-3">
-                <div className="w-1.5 h-6 rounded-full" style={{ backgroundColor: mov.tarjeta_color || (mov.tipo === 'ingreso' ? '#10B981' : (mov.es_fijo ? '#3B82F6' : '#64748B')) }} />
-                <div>
-                  <p className="text-sm font-bold text-gray-800 dark:text-neutral-200 flex items-center gap-2">
-                    {mov.descripcion}
-                    {mov.previsionado && (
-                      <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded uppercase font-bold tracking-widest">Previsionado</span>
-                    )}
-                  </p>
-                  {mov.tipo === 'tarjeta' && (
-                    <p className="text-[10px] text-blue-500 font-bold uppercase tracking-tight">Cuota {mov.cuota_actual}/{mov.cuotas_total}</p>
-                  )}
+      {expandido && (
+        <tr>
+          <td colSpan={4} className="px-6">
+            <div className="space-y-3 mb-6">
+              {movimientosAMostrar.map((mov: any) => (
+                <div 
+                  key={`${mov.tipo}-${mov.id}`}
+                  className={`group flex items-center justify-between p-5 rounded-2xl transition-all duration-300 ${editingItem?.id === mov.id ? 'bg-aura-lavender/10 border border-aura-lavender/30' : 'bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10'}`}
+                >
+                  <div className="flex items-center gap-5">
+                    <div className="w-1 h-10 rounded-full" style={{ backgroundColor: mov.tarjeta_color || (mov.tipo === 'ingreso' ? '#A7F3D0' : (mov.es_fijo ? '#C7D2FE' : '#94a3b8')) }} />
+                    <div>
+                      <p className="text-base font-semibold text-white">
+                        {mov.descripcion}
+                        {mov.previsionado && (
+                          <span className="ml-3 text-[9px] bg-aura-gold/20 text-aura-gold border border-aura-gold/30 px-2 py-0.5 rounded-full uppercase font-bold tracking-[0.1em]">Previsionado</span>
+                        )}
+                      </p>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{mov.medio_pago}</span>
+                        {mov.tipo === 'tarjeta' && (
+                          <span className="text-[10px] text-aura-lavender font-bold uppercase tracking-widest opacity-80">Cuota {mov.cuota_actual}/{mov.cuotas_total}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-8">
+                    <p className={`text-lg font-bold tracking-tight ${mov.tipo === 'ingreso' ? 'text-aura-mint' : 'text-white'}`}>
+                      {formatARS(mov.monto)}
+                    </p>
+                    <button 
+                      onClick={() => setEditingItem(editingItem?.id === mov.id ? null : { id: mov.id, tipo: mov.tipo })}
+                      className={`p-3 rounded-xl transition-all ${editingItem?.id === mov.id ? 'bg-aura-lavender text-aura-bg shadow-lg' : 'text-gray-500 hover:text-white hover:bg-white/10'}`}
+                    >
+                      <Edit3 size={18} />
+                    </button>
+                  </div>
                 </div>
+              ))}
+            </div>
+          </td>
+        </tr>
+      )}
+
+      {editingItem && expandido && (
+        <tr>
+          <td colSpan={4} className="px-6 pb-8">
+            {movimientosAMostrar.some((m: any) => m.id === editingItem.id) && (
+              <div className="glass-card p-10 border-aura-lavender/30 animate-in zoom-in-95 duration-300">
+                <InlineEditForm id={editingItem.id} tipo={editingItem.tipo} mesActual={mes} anioActual={anio} onClose={() => setEditingItem(null)} />
               </div>
-            </td>
-            <td className="px-6 py-4">
-              <span className="text-[10px] font-bold text-gray-400 bg-gray-50 dark:bg-neutral-900 px-2 py-1 rounded-lg uppercase tracking-wider">{mov.medio_pago}</span>
-            </td>
-            <td className="px-6 py-4 text-right">
-              <p className={`text-sm font-black ${mov.tipo === 'ingreso' ? 'text-emerald-600' : 'text-gray-900 dark:text-neutral-100'}`}>
-                {formatARS(mov.monto)}
-              </p>
-            </td>
-            <td className="px-6 py-4 text-center">
-              <button 
-                onClick={() => setEditingItem(editingItem?.id === mov.id ? null : { id: mov.id, tipo: mov.tipo })}
-                className={`p-2 rounded-xl transition-all ${editingItem?.id === mov.id ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-300 hover:text-blue-600 hover:bg-blue-50'}`}
-              >
-                <Edit3 size={16} />
-              </button>
-            </td>
-          </tr>
-          {editingItem?.id === mov.id && (
-            <tr>
-              <td colSpan={4} className="p-4 bg-gray-50 dark:bg-neutral-950 border-none">
-                <div className="max-w-2xl mx-auto bg-white dark:bg-neutral-900 p-6 rounded-3xl shadow-xl border border-blue-100 dark:border-blue-900/30">
-                  <InlineEditForm id={mov.id} tipo={mov.tipo} mesActual={mes} anioActual={anio} onClose={() => setEditingItem(null)} />
-                </div>
-              </td>
-            </tr>
-          )}
-        </Fragment>
-      ))}
+            )}
+          </td>
+        </tr>
+      )}
     </>
   );
 }
 
-// ─── Vista Mobile: Grupo colapsable con cards ─────────────────────────────────
 function GrupoMobile({ titulo, icon: Icon, colorClass, bgClass, borderColor, movimientos, expandido, onToggle, editingItem, setEditingItem, totalesCards, tarjetaFiltro, setTarjetaFiltro, creandoEnSeccion, setCreandoEnSeccion, mes, anio }: any) {
 
   const movimientosAMostrar = useMemo(() => {
@@ -660,142 +670,82 @@ function GrupoMobile({ titulo, icon: Icon, colorClass, bgClass, borderColor, mov
 
   const totalGrupo = movimientosAMostrar.reduce((acc: number, m: any) => acc + m.monto, 0);
   const tipoSeccion = titulo === 'Ingresos' ? 'ingreso' : titulo === 'Cuotas de Tarjeta' ? 'tarjeta' : 'gasto';
+  
+  const auraColor = titulo === 'Ingresos' ? 'text-aura-mint' : titulo === 'Cuotas de Tarjeta' ? 'text-aura-lavender' : 'text-aura-coral';
 
   return (
-    <div className={`rounded-2xl border ${borderColor} overflow-hidden`}>
-
-      {/* Header — siempre visible */}
-      <div className={`flex items-center justify-between px-4 py-4 ${bgClass}`}>
-        {/* Izquierda: Icono + Título + Badge */}
-        <div className="flex flex-col gap-1 min-w-0">
-          <button onClick={onToggle} className="flex items-center gap-2 text-left">
-            <Icon size={16} className={colorClass} />
-            <span className={`text-[12px] font-black uppercase tracking-wider ${colorClass} truncate`}>{titulo}</span>
-            <span className="text-[10px] font-bold text-gray-500 bg-white/80 dark:bg-black/40 px-2 py-0.5 rounded-full">
-              {movimientos.length}
-            </span>
-            <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 ${expandido ? 'rotate-180' : ''}`} />
-          </button>
-          
-          {/* Importe en segunda línea, alineado a la derecha del texto */}
-          <div className="pl-6">
-            <span className={`text-lg font-black ${colorClass}`}>
-              {titulo === 'Ingresos' ? '+' : '-'} {formatARS(totalGrupo)}
-            </span>
+    <div className={`glass-card overflow-hidden transition-all duration-500 ${expandido ? 'aura-glow-lavender border-aura-lavender/20' : 'border-aura-border/20'}`}>
+      <div className={`flex items-center justify-between px-6 py-6 transition-colors ${expandido ? 'bg-white/5' : ''}`}>
+        <div className="flex flex-col gap-1 min-w-0" onClick={onToggle}>
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-xl bg-white/5 border border-white/10`}>
+              <Icon size={18} className={auraColor} />
+            </div>
+            <div className="flex flex-col">
+              <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${auraColor}`}>{titulo}</span>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-xl font-bold text-white tracking-tight">
+                  {titulo === 'Ingresos' ? '+' : '-'} {formatARS(totalGrupo)}
+                </span>
+                <ChevronDown size={16} className={`text-gray-500 transition-transform ${expandido ? 'rotate-180' : ''}`} />
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Derecha: Botón + (centrado verticalmente respecto a las dos líneas) */}
         <button
           onClick={() => setCreandoEnSeccion(creandoEnSeccion === tipoSeccion ? null : tipoSeccion)}
-          className={`p-3 rounded-full transition-all shadow-lg ${
-            creandoEnSeccion === tipoSeccion
-              ? 'bg-red-500 text-white rotate-45'
-              : 'bg-blue-600 text-white shadow-blue-200 dark:shadow-none hover:scale-110'
-          }`}
+          className={`p-3 rounded-2xl transition-all duration-300 ${creandoEnSeccion === tipoSeccion ? 'bg-aura-coral text-aura-bg rotate-45' : 'bg-aura-lavender text-aura-bg shadow-lg shadow-aura-lavender/20'}`}
         >
-          <Plus size={16} />
+          <Plus size={20} strokeWidth={3} />
         </button>
       </div>
 
-      {/* Formulario de Creación Inline */}
       {creandoEnSeccion === tipoSeccion && (
-        <div className="border-t border-gray-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4">
+        <div className="px-6 py-6 bg-aura-surface/50 animate-in slide-in-from-top-4 duration-300">
           <InlineCreateForm tipo={tipoSeccion as any} mes={mes} anio={anio} onClose={() => setCreandoEnSeccion(null)} />
         </div>
       )}
 
-      {/* Cápsulas filtro por tarjeta (solo Cuotas de Tarjeta) */}
-      {expandido && totalesCards && totalesCards.length > 0 && (
-        <div className="flex flex-wrap gap-2 px-4 py-2 bg-amber-50/30 dark:bg-amber-950/10 border-t border-amber-100 dark:border-amber-900/20">
-          {totalesCards.map((t: any) => (
-            <button
-              key={t.nombre}
-              onClick={() => setTarjetaFiltro?.(tarjetaFiltro === t.nombre ? null : t.nombre)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full shadow-sm transition-all hover:scale-105 active:scale-95 ${tarjetaFiltro === t.nombre ? 'ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-black' : 'opacity-80 hover:opacity-100'}`}
-              style={{ backgroundColor: t.color }}
-            >
-              <span className="text-[9px] font-black text-white uppercase tracking-tighter">{t.nombre}</span>
-              <span className="text-[10px] font-black text-white">{formatARS(t.total)}</span>
-              {tarjetaFiltro === t.nombre && <X size={9} className="text-white ml-0.5" />}
-            </button>
-          ))}
-          {tarjetaFiltro && (
-            <button onClick={() => setTarjetaFiltro?.(null)} className="text-[9px] font-bold text-gray-400 hover:text-gray-600 px-2 py-1.5">
-              LIMPIAR
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Lista de cards (si expandido) */}
       {expandido && (
-        <div className="divide-y divide-gray-50 dark:divide-neutral-800/50">
-          {movimientosAMostrar.length === 0 && (
-            <div className="text-center py-6 text-gray-400">
-              <p className="text-xs font-medium">Sin movimientos este mes</p>
-            </div>
-          )}
-          {movimientosAMostrar.map((mov: any) => {
-            // Limpiar " (x/y)" del final de la descripción si es tarjeta
-            let desc = mov.descripcion;
-            if (mov.tipo === 'tarjeta') {
-              desc = desc.replace(/\s*\(\d+\/\d+\)$/, '');
-            }
-
-            return (
-              <Fragment key={`${mov.tipo}-${mov.id}`}>
-                <article
-                  onClick={() => setEditingItem(editingItem?.id === mov.id ? null : { id: mov.id, tipo: mov.tipo })}
-                  className={`relative flex items-stretch gap-3 px-4 py-4 cursor-pointer transition-colors ${
-                    editingItem?.id === mov.id
-                      ? 'bg-blue-50 dark:bg-blue-950/20'
-                      : 'bg-white dark:bg-neutral-900 hover:bg-gray-50 dark:hover:bg-neutral-800/50'
-                  }`}
-                >
-                  {/* Barra de color lateral */}
-                  <div
-                    className="w-1 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: mov.tarjeta_color || (mov.tipo === 'ingreso' ? '#10B981' : (mov.es_fijo ? '#3B82F6' : '#64748B')) }}
-                  />
-                  
-                  {/* Contenido principal en columna */}
-                  <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
-                    {/* Fila 1: Descripción */}
-                    <p className="text-sm font-bold text-gray-900 dark:text-neutral-100 leading-tight flex items-center gap-2">
-                      <span className="truncate">{desc}</span>
-                      {mov.previsionado && (
-                        <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded uppercase tracking-widest font-bold flex-shrink-0">Prev.</span>
-                      )}
-                    </p>
-                    
-                    {/* Fila 2: Medio de pago + Cuotas */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px] font-black text-gray-500 dark:text-neutral-400 bg-gray-100 dark:bg-neutral-800 px-2 py-0.5 rounded uppercase tracking-wider">{mov.medio_pago}</span>
+        <div className="px-4 pb-6 space-y-3 animate-in fade-in duration-500">
+          {movimientosAMostrar.map((mov: any) => (
+            <div 
+              key={`${mov.tipo}-${mov.id}`} 
+              className={`p-5 rounded-2xl border transition-all ${editingItem?.id === mov.id ? 'bg-aura-lavender/10 border-aura-lavender/40' : 'bg-white/5 border-white/5'}`}
+            >
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-4">
+                  <div className="w-1 h-10 rounded-full" style={{ backgroundColor: mov.tarjeta_color || (mov.tipo === 'ingreso' ? '#A7F3D0' : (mov.es_fijo ? '#C7D2FE' : '#94a3b8')) }} />
+                  <div>
+                    <p className="text-base font-bold text-white leading-tight">{mov.descripcion}</p>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{mov.medio_pago}</span>
                       {mov.tipo === 'tarjeta' && (
-                        <span className="text-[9px] text-blue-500 font-black uppercase tracking-tight">CUOTA {mov.cuota_actual}/{mov.cuotas_total}</span>
+                        <span className="text-[10px] text-aura-lavender font-bold uppercase tracking-widest">Cuota {mov.cuota_actual}/{mov.cuotas_total}</span>
                       )}
                     </div>
-                    
-                    {/* Fila 3: Monto + Lápiz */}
-                    <div className="flex items-center gap-2">
-                      <p className={`text-sm font-black ${mov.tipo === 'ingreso' ? 'text-emerald-600' : 'text-gray-900 dark:text-neutral-100'}`}>
-                        {mov.tipo === 'ingreso' ? '+' : '-'} {formatARS(mov.monto)}
-                      </p>
-                      <Edit3 size={14} className={editingItem?.id === mov.id ? 'text-blue-500' : 'text-gray-300'} />
-                    </div>
                   </div>
-                </article>
-
-                {/* Formulario de edición inline */}
-                {editingItem?.id === mov.id && (
-                  <div className="bg-gray-50 dark:bg-neutral-950 p-4 border-t border-blue-100 dark:border-blue-900/30">
-                    <InlineEditForm id={mov.id} tipo={mov.tipo} mesActual={mes} anioActual={anio} onClose={() => setEditingItem(null)} />
-                  </div>
-                )}
-              </Fragment>
-            );
-          })}
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                  <span className={`text-base font-bold tracking-tight ${mov.tipo === 'ingreso' ? 'text-aura-mint' : 'text-white'}`}>
+                    {formatARS(mov.monto)}
+                  </span>
+                  <button 
+                    onClick={() => setEditingItem(editingItem?.id === mov.id ? null : { id: mov.id, tipo: mov.tipo })}
+                    className={`p-2 rounded-xl ${editingItem?.id === mov.id ? 'bg-aura-lavender text-aura-bg' : 'text-gray-500 bg-white/5'}`}
+                  >
+                    <Edit3 size={16} />
+                  </button>
+                </div>
+              </div>
+              {editingItem?.id === mov.id && (
+                <div className="mt-6 pt-6 border-t border-aura-border/20">
+                  <InlineEditForm id={mov.id} tipo={mov.tipo} mesActual={mes} anioActual={anio} onClose={() => setEditingItem(null)} />
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

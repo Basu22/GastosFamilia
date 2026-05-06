@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 from database import create_db_and_tables, seed_initial_data
 from models import config # Importante para que SQLModel cree las tablas
-from routers import auth, movimientos, tarjetas, gastos_mensuales, dashboard, importar, ingresos, proyeccion, configuracion, simulador, importaciones
+from routers import auth, movimientos, tarjetas, gastos_mensuales, dashboard, importar, ingresos, proyeccion, configuracion, simulador, importaciones, whatsapp
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlmodel import Session
@@ -75,6 +75,7 @@ app.include_router(proyeccion.router, prefix="/proyeccion", tags=["proyeccion"])
 app.include_router(configuracion.router, prefix="/configuracion", tags=["configuracion"])
 app.include_router(simulador.router, prefix="/simulador", tags=["simulador"])
 app.include_router(importaciones.router, prefix="/importaciones", tags=["importaciones"])
+app.include_router(whatsapp.router, prefix="/whatsapp", tags=["whatsapp"])
 
 
 @app.get("/health")

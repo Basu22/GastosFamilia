@@ -1,6 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Quicksand:wght@500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #0F1219;
+    color: #f3f4f6;
+    font-family: 'Poppins', 'Quicksand', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  .glass-card {
+    background-color: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(51, 65, 85, 0.5);
+    border-radius: 24px;
+  }
+
+  .aura-glow-mint {
+    box-shadow: 0 0 40px -10px rgba(167, 243, 208, 0.15);
+  }
+
+  .aura-glow-coral {
+    box-shadow: 0 0 40px -10px rgba(252, 165, 165, 0.15);
+  }
+
+  .aura-glow-lavender {
+    box-shadow: 0 0 40px -10px rgba(199, 210, 254, 0.15);
+  }
+
+  .aura-btn-primary {
+    background: linear-gradient(to right, #C7D2FE, #A7F3D0);
+    color: #0F1219;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    transition: all 0.3s;
+  }
+
+  .aura-btn-primary:hover {
+    opacity: 0.9;
+  }
+
+  .aura-btn-primary:active {
+    transform: scale(0.95);
+  }
+
+  .aura-btn-secondary {
+    background-color: rgba(30, 41, 59, 0.5);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(199, 210, 254, 0.3);
+    color: #C7D2FE;
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    transition: all 0.3s;
+  }
+}
 
 /* Ocultar flechas de inputs numéricos */
 input::-webkit-outer-spin-button,

@@ -19,32 +19,62 @@ const MetricCard: FC<MetricCardProps> = ({
   variant = 'default', 
   subtitle 
 }) => {
-  const colors = {
-    default: 'bg-white dark:bg-neutral-900 border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-neutral-100',
-    success: 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-400',
-    danger: 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-400',
-    warning: 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50 text-amber-700 dark:text-amber-400'
+  const styles = {
+    default: {
+      card: 'glass-card aura-glow-lavender border-[#C7D2FE]/10',
+      label: 'text-[#C7D2FE]',
+      value: 'text-white'
+    },
+    success: {
+      card: 'glass-card aura-glow-mint border-[#A7F3D0]/20',
+      label: 'text-[#A7F3D0]',
+      value: 'text-white'
+    },
+    danger: {
+      card: 'glass-card aura-glow-coral border-[#FCA5A5]/20',
+      label: 'text-[#FCA5A5]',
+      value: 'text-white'
+    },
+    warning: {
+      card: 'glass-card aura-glow-gold border-[#FDE68A]/20',
+      label: 'text-[#FDE68A]',
+      value: 'text-white'
+    }
   };
+
+  const currentStyle = styles[variant];
 
   return (
     <article 
       id={id || `metric-card-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`} 
-      className={`p-3 lg:p-4 rounded-xl shadow-sm border flex flex-col gap-1 lg:gap-2 transition-all ${colors[variant]}`}
+      className={`p-6 lg:p-8 flex flex-col gap-3 transition-all duration-500 hover:scale-[1.02] group relative ${currentStyle.card}`}
     >
-      <div className="flex items-center gap-1.5 opacity-70">
-        <Icon size={14} className="lg:w-4 lg:h-4" />
-        <p className="text-[10px] lg:text-xs font-bold uppercase tracking-wider">
+      <div className="flex items-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+        <div className={`p-2 rounded-xl bg-white/5 border border-white/10 ${currentStyle.label}`}>
+          <Icon size={18} strokeWidth={2.5} />
+        </div>
+        <p className={`text-[10px] lg:text-xs font-bold uppercase tracking-[0.15em] ${currentStyle.label}`}>
           {label}
         </p>
       </div>
-      <p className="text-lg lg:text-2xl font-black mt-1 leading-tight">
-        {formatARS(value)}
-      </p>
-      {subtitle && (
-        <p className="text-[10px] lg:text-xs mt-0.5 lg:mt-1 opacity-60 font-semibold">
-          {subtitle}
+      
+      <div className="flex flex-col gap-1">
+        <p className={`text-2xl lg:text-4xl font-bold tracking-tight ${currentStyle.value}`}>
+          {formatARS(value)}
         </p>
-      )}
+        {subtitle && (
+          <p className="text-xs lg:text-sm font-medium text-gray-400/80 mt-1">
+            {subtitle}
+          </p>
+        )}
+      </div>
+
+      {/* Sutil línea de acento superior */}
+      <div className={`absolute top-0 left-0 right-0 h-1 rounded-t-full opacity-50 ${
+        variant === 'success' ? 'bg-[#A7F3D0]' : 
+        variant === 'danger' ? 'bg-[#FCA5A5]' : 
+        variant === 'warning' ? 'bg-[#FDE68A]' : 'bg-[#C7D2FE]'
+      }`} />
     </article>
   );
 };
