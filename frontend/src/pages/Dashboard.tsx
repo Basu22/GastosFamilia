@@ -172,64 +172,68 @@ export default function Dashboard() {
           {/* Alertas de Cuotas por vencer */}
           {data.proximos_vencimientos?.length > 0 && (
             <section id="section-alertas-vencimiento" className="px-4 lg:px-0">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="p-1.5 bg-blue-600 rounded-lg shadow-lg shadow-blue-900/20">
-                  <CreditCard className="text-white" size={14} />
+              <div className="flex items-center gap-3 mb-5">
+                <div className="p-2 bg-aura-lavender/20 rounded-xl border border-aura-lavender/30">
+                  <CreditCard className="text-aura-lavender" size={16} />
                 </div>
-                <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-900 dark:text-neutral-100">Cuotas próximas a vencer</h3>
+                <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-white/90">Cuotas próximas a vencer</h3>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {/* COLUMNA: QUEDAN 2 */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between px-2">
-                    <span className="text-[9px] font-black uppercase text-blue-600 tracking-tighter">Quedan 2 Cuotas</span>
-                    <span className="text-xs font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between px-3">
+                    <span className="text-[10px] font-bold uppercase text-aura-lavender tracking-widest">Quedan 2 Cuotas</span>
+                    <span className="text-[10px] font-bold text-aura-lavender bg-aura-lavender/10 px-3 py-1 rounded-full border border-aura-lavender/20 uppercase tracking-wider">
                       Total: {formatARS(data.proximos_vencimientos.filter((v: any) => v.cuotas_restantes === 2).reduce((acc: number, v: any) => acc + v.monto_cuota, 0))}
                     </span>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {data.proximos_vencimientos.filter((v: any) => v.cuotas_restantes === 2).map((v: any, i: number) => (
-                      <div key={i} className="bg-white dark:bg-neutral-900 p-3 rounded-2xl border border-blue-100 dark:border-blue-900/30 shadow-sm flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-1.5 h-6 rounded-full" style={{ backgroundColor: v.tarjeta_color }} />
+                      <div key={i} className="glass-card p-4 border-aura-lavender/10 flex items-center justify-between gap-4 transition-all hover:border-aura-lavender/30 group">
+                        <div className="flex items-center gap-4">
+                          <div className="w-1.5 h-8 rounded-full shadow-[0_0_12px_rgba(199,210,254,0.3)]" style={{ backgroundColor: v.tarjeta_color }} />
                           <div>
-                            <p className="text-xs font-bold text-gray-900 dark:text-neutral-100 leading-tight">{v.descripcion}</p>
-                            <p className="text-[9px] font-bold text-gray-400 uppercase">{v.tarjeta_nombre}</p>
+                            <p className="text-sm font-bold text-white leading-tight group-hover:text-aura-lavender transition-colors">{v.descripcion}</p>
+                            <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-1">{v.tarjeta_nombre}</p>
                           </div>
                         </div>
-                        <span className="text-[10px] font-black text-blue-600 whitespace-nowrap">{formatARS(v.monto_cuota)}</span>
+                        <span className="text-sm font-bold text-aura-lavender tracking-tight">{formatARS(v.monto_cuota)}</span>
                       </div>
                     ))}
                     {data.proximos_vencimientos.filter((v: any) => v.cuotas_restantes === 2).length === 0 && (
-                      <p className="text-[10px] text-gray-400 italic text-center py-2">Sin vencimientos el mes próximo</p>
+                      <div className="text-center py-4 glass-card border-dashed border-white/5 opacity-50">
+                        <p className="text-[10px] text-gray-400 uppercase tracking-widest">Sin vencimientos el mes próximo</p>
+                      </div>
                     )}
                   </div>
                 </div>
 
                 {/* COLUMNA: ÚLTIMA CUOTA */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between px-2">
-                    <span className="text-[9px] font-black uppercase text-emerald-600 tracking-tighter">Última Cuota</span>
-                    <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between px-3">
+                    <span className="text-[10px] font-bold uppercase text-aura-mint tracking-widest">Última Cuota</span>
+                    <span className="text-[10px] font-bold text-aura-mint bg-aura-mint/10 px-3 py-1 rounded-full border border-aura-mint/20 uppercase tracking-wider">
                       Total: {formatARS(data.proximos_vencimientos.filter((v: any) => v.cuotas_restantes === 1).reduce((acc: number, v: any) => acc + v.monto_cuota, 0))}
                     </span>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {data.proximos_vencimientos.filter((v: any) => v.cuotas_restantes === 1).map((v: any, i: number) => (
-                      <div key={i} className="bg-white dark:bg-neutral-900 p-3 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 shadow-sm flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-1.5 h-6 rounded-full" style={{ backgroundColor: v.tarjeta_color }} />
+                      <div key={i} className="glass-card p-4 border-aura-mint/10 flex items-center justify-between gap-4 transition-all hover:border-aura-mint/30 group">
+                        <div className="flex items-center gap-4">
+                          <div className="w-1.5 h-8 rounded-full shadow-[0_0_12px_rgba(167,243,208,0.3)]" style={{ backgroundColor: v.tarjeta_color }} />
                           <div>
-                            <p className="text-xs font-bold text-gray-900 dark:text-neutral-100 leading-tight">{v.descripcion}</p>
-                            <p className="text-[9px] font-bold text-gray-400 uppercase">{v.tarjeta_nombre}</p>
+                            <p className="text-sm font-bold text-white leading-tight group-hover:text-aura-mint transition-colors">{v.descripcion}</p>
+                            <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-1">{v.tarjeta_nombre}</p>
                           </div>
                         </div>
-                        <span className="text-[10px] font-black text-emerald-600 whitespace-nowrap">{formatARS(v.monto_cuota)}</span>
+                        <span className="text-sm font-bold text-aura-mint tracking-tight">{formatARS(v.monto_cuota)}</span>
                       </div>
                     ))}
                     {data.proximos_vencimientos.filter((v: any) => v.cuotas_restantes === 1).length === 0 && (
-                      <p className="text-[10px] text-gray-400 italic text-center py-2">Sin vencimientos este mes</p>
+                      <div className="text-center py-4 glass-card border-dashed border-white/5 opacity-50">
+                        <p className="text-[10px] text-gray-400 uppercase tracking-widest">Sin vencimientos este mes</p>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -242,32 +246,32 @@ export default function Dashboard() {
             <PanelArca mes={mes} anio={anio} />
           </div>
 
-          <section id="section-movimientos-detalle" className="bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-gray-100 dark:border-neutral-800 transition-all overflow-hidden mx-4 lg:mx-0">
-            <header id="header-movimientos-detalle" className="p-6 border-b border-gray-100 dark:border-neutral-800 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-2xl">
-                  <Wallet className="text-blue-600 dark:text-blue-400" size={24}/>
+          <section id="section-movimientos-detalle" className="glass-card border-white/5 mx-4 lg:mx-0 overflow-hidden shadow-2xl shadow-black/40">
+            <header id="header-movimientos-detalle" className="p-8 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-6 bg-white/5 backdrop-blur-md">
+              <div className="flex items-center gap-5">
+                <div className="p-4 bg-aura-lavender/10 rounded-2xl border border-aura-lavender/20 shadow-[0_0_20px_rgba(199,210,254,0.1)]">
+                  <Wallet className="text-aura-lavender" size={24}/>
                 </div>
-                <h2 id="title-movimientos-detalle" className="font-bold text-gray-900 dark:text-neutral-100 text-lg leading-tight">
-                  Detalle de<br />Movimientos
-                </h2>
+                <div className="flex flex-col">
+                  <h2 id="title-movimientos-detalle" className="font-bold text-white text-xl tracking-tight">
+                    Detalle de Movimientos
+                  </h2>
+                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mt-1">Gestión de flujo mensual</p>
+                </div>
               </div>
-              <div className="text-left sm:text-right sm:pb-1">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Saldo Mensual</span>
-                <p className={`text-xl font-black ${totalFiltrado >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {formatARS(totalFiltrado)}
+              <div className="flex flex-col items-start sm:items-end p-4 bg-white/5 rounded-2xl border border-white/5 min-w-[200px]">
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Balance del Mes</span>
+                <p className={`text-2xl font-black tracking-tighter ${totalFiltrado >= 0 ? 'text-aura-mint' : 'text-aura-coral'}`}>
+                  {totalFiltrado >= 0 ? '+' : ''} {formatARS(totalFiltrado)}
                 </p>
               </div>
             </header>
             
-            <div id="wrapper-movimientos-grid">
+            <div id="wrapper-movimientos-grid" className="bg-aura-bg/20">
               {/* VISTA MÓVIL (GRUPOS COLAPSABLES) */}
-              <div className="flex flex-col gap-3 lg:hidden p-4">
+              <div className="flex flex-col gap-6 lg:hidden p-6 pb-12">
                 <GrupoMobile
                   titulo="Ingresos"
-                  colorClass="text-emerald-600 dark:text-emerald-400"
-                  bgClass="bg-emerald-50 dark:bg-emerald-950/20"
-                  borderColor="border-emerald-200 dark:border-emerald-900/50"
                   icon={PiggyBank}
                   movimientos={movimientosAgrupados.ingresos}
                   expandido={seccionesAbiertas.has('ingresos')}
@@ -281,9 +285,6 @@ export default function Dashboard() {
                 />
                 <GrupoMobile
                   titulo="Cuotas de Tarjeta"
-                  colorClass="text-amber-600 dark:text-amber-400"
-                  bgClass="bg-amber-50 dark:bg-amber-950/20"
-                  borderColor="border-amber-200 dark:border-amber-900/50"
                   icon={CreditCard}
                   movimientos={movimientosAgrupados.cuotas}
                   expandido={seccionesAbiertas.has('cuotas')}
@@ -292,17 +293,12 @@ export default function Dashboard() {
                   setEditingItem={setEditingItem}
                   creandoEnSeccion={creandoEnSeccion}
                   setCreandoEnSeccion={setCreandoEnSeccion}
-                  totalesCards={totalesPorTarjeta}
                   tarjetaFiltro={tarjetaFiltro}
-                  setTarjetaFiltro={setTarjetaFiltro}
                   mes={mes}
                   anio={anio}
                 />
                 <GrupoMobile
                   titulo="Gastos Fijos"
-                  colorClass="text-blue-600 dark:text-blue-400"
-                  bgClass="bg-blue-50 dark:bg-blue-950/20"
-                  borderColor="border-blue-200 dark:border-blue-900/50"
                   icon={Wallet}
                   movimientos={movimientosAgrupados.fijos}
                   expandido={seccionesAbiertas.has('fijos')}
@@ -316,9 +312,6 @@ export default function Dashboard() {
                 />
                 <GrupoMobile
                   titulo="Gastos Variados"
-                  colorClass="text-slate-600 dark:text-slate-400"
-                  bgClass="bg-slate-50 dark:bg-slate-950/20"
-                  borderColor="border-slate-200 dark:border-slate-900/50"
                   icon={Info}
                   movimientos={movimientosAgrupados.variables}
                   expandido={seccionesAbiertas.has('variables')}
@@ -333,23 +326,12 @@ export default function Dashboard() {
               </div>
 
               {/* VISTA DESKTOP (TABLA AGRUPADA) */}
-              <div className="hidden lg:block">
+              <div className="hidden lg:block overflow-x-auto px-6 pb-12">
                 <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-gray-50 dark:bg-neutral-950 text-[10px] uppercase font-bold text-gray-400 dark:text-neutral-500 tracking-widest border-b border-gray-100 dark:border-neutral-800">
-                      <th className="px-6 py-4">Descripción / Concepto</th>
-                      <th className="px-6 py-4">Medio de Pago</th>
-                      <th className="px-6 py-4 text-right">Monto</th>
-                      <th className="px-6 py-4 text-center w-20"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-neutral-800">
-                    
+                  <tbody className="divide-y divide-white/5">
                     {/* GRUPO: INGRESOS */}
                     <GrupoDesktop 
                       titulo="Ingresos" 
-                      colorClass="text-emerald-600 dark:text-emerald-400"
-                      bgClass="bg-emerald-50/50 dark:bg-emerald-950/10"
                       icon={PiggyBank}
                       movimientos={movimientosAgrupados.ingresos}
                       expandido={seccionesAbiertas.has('ingresos')}
@@ -365,8 +347,6 @@ export default function Dashboard() {
                     {/* GRUPO: CUOTAS */}
                     <GrupoDesktop 
                       titulo="Cuotas de Tarjeta" 
-                      colorClass="text-amber-600 dark:text-amber-400"
-                      bgClass="bg-amber-50/50 dark:bg-amber-950/10"
                       icon={CreditCard}
                       movimientos={movimientosAgrupados.cuotas}
                       expandido={seccionesAbiertas.has('cuotas')}
@@ -385,8 +365,6 @@ export default function Dashboard() {
                     {/* GRUPO: GASTOS FIJOS */}
                     <GrupoDesktop 
                       titulo="Gastos Fijos" 
-                      colorClass="text-blue-600 dark:text-blue-400"
-                      bgClass="bg-blue-50/50 dark:bg-blue-950/10"
                       icon={Wallet}
                       movimientos={movimientosAgrupados.fijos}
                       expandido={seccionesAbiertas.has('fijos')}
@@ -402,8 +380,6 @@ export default function Dashboard() {
                     {/* GRUPO: GASTOS VARIABLES */}
                     <GrupoDesktop 
                       titulo="Gastos Variados" 
-                      colorClass="text-slate-600 dark:text-slate-400"
-                      bgClass="bg-slate-50/50 dark:bg-slate-950/10"
                       icon={Info}
                       movimientos={movimientosAgrupados.variables}
                       expandido={seccionesAbiertas.has('variables')}
