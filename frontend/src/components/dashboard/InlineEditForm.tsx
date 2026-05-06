@@ -276,30 +276,38 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
         </div>
 
         {/* Acciones */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-neutral-900">
-          <button 
-            type="button"
-            onClick={() => { if(window.confirm('¿Eliminar este registro?')) removeMutation.mutate(); }}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-all"
-          >
-            <Trash2 size={16} /> ELIMINAR
-          </button>
-
-          <div className="flex items-center gap-2">
-            <button 
-              type="button" 
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-bold text-gray-500 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg transition-all"
-            >
-              CANCELAR
-            </button>
+        <div className="pt-4 border-t border-gray-100 dark:border-neutral-900">
+          <div className="grid grid-cols-2 gap-3 md:flex md:items-center md:justify-between">
+            {/* Columna 1: Guardar (Ocupa toda la altura en mobile) */}
             <button 
               type="submit"
               disabled={mutation.isPending}
-              className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 shadow-lg shadow-blue-900/20 active:scale-95 transition-all"
+              className="order-1 md:order-3 h-full md:h-auto flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-6 py-4 md:py-2 bg-blue-600 text-white rounded-2xl md:rounded-lg hover:bg-blue-700 shadow-lg shadow-blue-900/20 active:scale-95 transition-all disabled:opacity-50"
             >
-              <Save size={16} /> {mutation.isPending ? 'GUARDANDO...' : 'GUARDAR CAMBIOS'}
+              <Save size={20} className="md:w-4 md:h-4" /> 
+              <span className="text-[10px] md:text-xs font-black md:font-bold uppercase">
+                {mutation.isPending ? '...' : 'Guardar'}
+              </span>
             </button>
+
+            {/* Columna 2: Cancelar y Eliminar (Stack vertical en mobile) */}
+            <div className="order-2 flex flex-col gap-2 md:flex-row md:items-center">
+              <button 
+                type="button" 
+                onClick={onClose}
+                className="px-4 py-3 md:py-2 text-[10px] md:text-xs font-black md:font-bold text-gray-500 bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-xl md:border-none md:bg-transparent"
+              >
+                CANCELAR
+              </button>
+              <button 
+                type="button"
+                onClick={() => { if(window.confirm('¿Eliminar este registro?')) removeMutation.mutate(); }}
+                className="flex items-center justify-center px-4 py-3 md:py-2 text-[10px] md:text-xs font-black md:font-bold text-red-500 bg-red-50 dark:bg-red-950/20 rounded-xl md:bg-transparent"
+              >
+                <Trash2 size={18} className="md:w-4 md:h-4" />
+                <span className="hidden md:inline ml-2">ELIMINAR</span>
+              </button>
+            </div>
           </div>
         </div>
       </form>

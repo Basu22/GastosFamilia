@@ -239,21 +239,23 @@ export default function Dashboard() {
           )}
 
           {/* MÓDULO ARCA */}
-          <PanelArca mes={mes} anio={anio} />
+          <div className="mx-4 lg:mx-0">
+            <PanelArca mes={mes} anio={anio} />
+          </div>
 
           <section id="section-movimientos-detalle" className="bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-gray-100 dark:border-neutral-800 transition-all overflow-hidden mx-4 lg:mx-0">
-            <header id="header-movimientos-detalle" className="p-6 border-b border-gray-100 dark:border-neutral-800 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
-                  <Wallet className="text-blue-600 dark:text-blue-400" size={20}/>
+            <header id="header-movimientos-detalle" className="p-6 border-b border-gray-100 dark:border-neutral-800 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-2xl">
+                  <Wallet className="text-blue-600 dark:text-blue-400" size={24}/>
                 </div>
-                <h2 id="title-movimientos-detalle" className="font-bold text-gray-900 dark:text-neutral-100">
-                  Detalle de Movimientos
+                <h2 id="title-movimientos-detalle" className="font-bold text-gray-900 dark:text-neutral-100 text-lg leading-tight">
+                  Detalle de<br />Movimientos
                 </h2>
               </div>
-              <div className="text-right">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Saldo Mensual</span>
-                <p className={`text-lg font-black ${totalFiltrado >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              <div className="text-left sm:text-right sm:pb-1">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Saldo Mensual</span>
+                <p className={`text-xl font-black ${totalFiltrado >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                   {formatARS(totalFiltrado)}
                 </p>
               </div>
@@ -663,33 +665,37 @@ function GrupoMobile({ titulo, icon: Icon, colorClass, bgClass, borderColor, mov
     <div className={`rounded-2xl border ${borderColor} overflow-hidden`}>
 
       {/* Header — siempre visible */}
-      <div className={`flex items-center justify-between px-4 py-3 ${bgClass}`}>
-        {/* Izquierda: toggle + título + badge */}
-        <button onClick={onToggle} className="flex items-center gap-2 flex-1 min-w-0">
-          <Icon size={15} className={colorClass} />
-          <ChevronDown size={13} className={`text-gray-400 transition-transform duration-200 flex-shrink-0 ${expandido ? 'rotate-180' : ''}`} />
-          <span className={`text-[11px] font-black uppercase tracking-widest ${colorClass} truncate`}>{titulo}</span>
-          <span className="text-[9px] font-bold text-gray-400 bg-white/60 dark:bg-black/20 px-1.5 py-0.5 rounded-full flex-shrink-0">
-            {movimientos.length}
-          </span>
-        </button>
-
-        {/* Derecha: total + botón + */}
-        <div className="flex items-center gap-3 flex-shrink-0 ml-2">
-          <span className={`text-sm font-black ${colorClass}`}>
-            {titulo === 'Ingresos' ? '+' : '-'} {formatARS(totalGrupo)}
-          </span>
-          <button
-            onClick={() => setCreandoEnSeccion(creandoEnSeccion === tipoSeccion ? null : tipoSeccion)}
-            className={`p-1.5 rounded-full transition-all flex-shrink-0 ${
-              creandoEnSeccion === tipoSeccion
-                ? 'bg-red-500 text-white rotate-45'
-                : 'bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-none hover:scale-110'
-            }`}
-          >
-            <Plus size={12} />
+      <div className={`flex items-center justify-between px-4 py-4 ${bgClass}`}>
+        {/* Izquierda: Icono + Título + Badge */}
+        <div className="flex flex-col gap-1 min-w-0">
+          <button onClick={onToggle} className="flex items-center gap-2 text-left">
+            <Icon size={16} className={colorClass} />
+            <span className={`text-[12px] font-black uppercase tracking-wider ${colorClass} truncate`}>{titulo}</span>
+            <span className="text-[10px] font-bold text-gray-500 bg-white/80 dark:bg-black/40 px-2 py-0.5 rounded-full">
+              {movimientos.length}
+            </span>
+            <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 ${expandido ? 'rotate-180' : ''}`} />
           </button>
+          
+          {/* Importe en segunda línea, alineado a la derecha del texto */}
+          <div className="pl-6">
+            <span className={`text-lg font-black ${colorClass}`}>
+              {titulo === 'Ingresos' ? '+' : '-'} {formatARS(totalGrupo)}
+            </span>
+          </div>
         </div>
+
+        {/* Derecha: Botón + (centrado verticalmente respecto a las dos líneas) */}
+        <button
+          onClick={() => setCreandoEnSeccion(creandoEnSeccion === tipoSeccion ? null : tipoSeccion)}
+          className={`p-3 rounded-full transition-all shadow-lg ${
+            creandoEnSeccion === tipoSeccion
+              ? 'bg-red-500 text-white rotate-45'
+              : 'bg-blue-600 text-white shadow-blue-200 dark:shadow-none hover:scale-110'
+          }`}
+        >
+          <Plus size={16} />
+        </button>
       </div>
 
       {/* Formulario de Creación Inline */}
@@ -730,53 +736,66 @@ function GrupoMobile({ titulo, icon: Icon, colorClass, bgClass, borderColor, mov
               <p className="text-xs font-medium">Sin movimientos este mes</p>
             </div>
           )}
-          {movimientosAMostrar.map((mov: any) => (
-            <Fragment key={`${mov.tipo}-${mov.id}`}>
-              <article
-                onClick={() => setEditingItem(editingItem?.id === mov.id ? null : { id: mov.id, tipo: mov.tipo })}
-                className={`relative flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${
-                  editingItem?.id === mov.id
-                    ? 'bg-blue-50 dark:bg-blue-950/20'
-                    : 'bg-white dark:bg-neutral-900 hover:bg-gray-50 dark:hover:bg-neutral-800/50'
-                }`}
-              >
-                {/* Barra de color lateral */}
-                <div
-                  className="w-1 h-10 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: mov.tarjeta_color || (mov.tipo === 'ingreso' ? '#10B981' : (mov.es_fijo ? '#3B82F6' : '#64748B')) }}
-                />
-                {/* Descripción + medio pago */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-900 dark:text-neutral-100 leading-tight truncate flex items-center gap-2">
-                    {mov.descripcion}
-                    {mov.previsionado && (
-                      <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded uppercase tracking-widest font-bold">Prev.</span>
-                    )}
-                  </p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[9px] font-bold text-gray-400 bg-gray-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded uppercase tracking-wider">{mov.medio_pago}</span>
-                    {mov.tipo === 'tarjeta' && (
-                      <span className="text-[9px] text-blue-500 font-bold uppercase">Cuota {mov.cuota_actual}/{mov.cuotas_total}</span>
-                    )}
-                  </div>
-                </div>
-                {/* Monto + ícono editar */}
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <p className={`text-sm font-black whitespace-nowrap ${mov.tipo === 'ingreso' ? 'text-emerald-600' : 'text-gray-900 dark:text-neutral-100'}`}>
-                    {mov.tipo === 'ingreso' ? '+' : '-'} {formatARS(mov.monto)}
-                  </p>
-                  <Edit3 size={14} className={editingItem?.id === mov.id ? 'text-blue-500' : 'text-gray-300'} />
-                </div>
-              </article>
+          {movimientosAMostrar.map((mov: any) => {
+            // Limpiar " (x/y)" del final de la descripción si es tarjeta
+            let desc = mov.descripcion;
+            if (mov.tipo === 'tarjeta') {
+              desc = desc.replace(/\s*\(\d+\/\d+\)$/, '');
+            }
 
-              {/* Formulario de edición inline */}
-              {editingItem?.id === mov.id && (
-                <div className="bg-gray-50 dark:bg-neutral-950 p-4 border-t border-blue-100 dark:border-blue-900/30">
-                  <InlineEditForm id={mov.id} tipo={mov.tipo} mesActual={mes} anioActual={anio} onClose={() => setEditingItem(null)} />
-                </div>
-              )}
-            </Fragment>
-          ))}
+            return (
+              <Fragment key={`${mov.tipo}-${mov.id}`}>
+                <article
+                  onClick={() => setEditingItem(editingItem?.id === mov.id ? null : { id: mov.id, tipo: mov.tipo })}
+                  className={`relative flex items-stretch gap-3 px-4 py-4 cursor-pointer transition-colors ${
+                    editingItem?.id === mov.id
+                      ? 'bg-blue-50 dark:bg-blue-950/20'
+                      : 'bg-white dark:bg-neutral-900 hover:bg-gray-50 dark:hover:bg-neutral-800/50'
+                  }`}
+                >
+                  {/* Barra de color lateral */}
+                  <div
+                    className="w-1 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: mov.tarjeta_color || (mov.tipo === 'ingreso' ? '#10B981' : (mov.es_fijo ? '#3B82F6' : '#64748B')) }}
+                  />
+                  
+                  {/* Contenido principal en columna */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
+                    {/* Fila 1: Descripción */}
+                    <p className="text-sm font-bold text-gray-900 dark:text-neutral-100 leading-tight flex items-center gap-2">
+                      <span className="truncate">{desc}</span>
+                      {mov.previsionado && (
+                        <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded uppercase tracking-widest font-bold flex-shrink-0">Prev.</span>
+                      )}
+                    </p>
+                    
+                    {/* Fila 2: Medio de pago + Cuotas */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] font-black text-gray-500 dark:text-neutral-400 bg-gray-100 dark:bg-neutral-800 px-2 py-0.5 rounded uppercase tracking-wider">{mov.medio_pago}</span>
+                      {mov.tipo === 'tarjeta' && (
+                        <span className="text-[9px] text-blue-500 font-black uppercase tracking-tight">CUOTA {mov.cuota_actual}/{mov.cuotas_total}</span>
+                      )}
+                    </div>
+                    
+                    {/* Fila 3: Monto + Lápiz */}
+                    <div className="flex items-center gap-2">
+                      <p className={`text-sm font-black ${mov.tipo === 'ingreso' ? 'text-emerald-600' : 'text-gray-900 dark:text-neutral-100'}`}>
+                        {mov.tipo === 'ingreso' ? '+' : '-'} {formatARS(mov.monto)}
+                      </p>
+                      <Edit3 size={14} className={editingItem?.id === mov.id ? 'text-blue-500' : 'text-gray-300'} />
+                    </div>
+                  </div>
+                </article>
+
+                {/* Formulario de edición inline */}
+                {editingItem?.id === mov.id && (
+                  <div className="bg-gray-50 dark:bg-neutral-950 p-4 border-t border-blue-100 dark:border-blue-900/30">
+                    <InlineEditForm id={mov.id} tipo={mov.tipo} mesActual={mes} anioActual={anio} onClose={() => setEditingItem(null)} />
+                  </div>
+                )}
+              </Fragment>
+            );
+          })}
         </div>
       )}
     </div>

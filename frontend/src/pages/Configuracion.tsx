@@ -102,24 +102,27 @@ export default function Configuracion() {
         </div>
       </header>
 
-      <nav className="flex p-1 bg-gray-100 dark:bg-neutral-900 rounded-2xl mx-4 lg:mx-0">
+      <nav className="flex p-1.5 bg-gray-100/80 dark:bg-neutral-900/80 backdrop-blur-sm rounded-2xl mx-4 lg:mx-0 border border-gray-200 dark:border-neutral-800">
         <button 
           onClick={() => { setActiveTab('medios'); resetForm(); }}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'medios' ? 'bg-white dark:bg-black text-blue-600 shadow-sm' : 'text-gray-400'}`}
+          className={`flex-1 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 py-3 md:py-4 rounded-xl text-[10px] md:text-sm font-black uppercase tracking-tight md:tracking-widest transition-all duration-300 ${activeTab === 'medios' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-lg shadow-blue-900/10' : 'text-gray-400 hover:text-gray-600 dark:hover:text-neutral-300'}`}
         >
-          <CreditCard size={18} /> Medios de Pago
+          <CreditCard size={20} className={activeTab === 'medios' ? 'text-blue-600 scale-110' : 'text-gray-400'} />
+          <span className="leading-tight text-center">Medios<br className="md:hidden" /> de Pago</span>
         </button>
         <button 
           onClick={() => { setActiveTab('categorias'); resetForm(); }}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'categorias' ? 'bg-white dark:bg-black text-blue-600 shadow-sm' : 'text-gray-400'}`}
+          className={`flex-1 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 py-3 md:py-4 rounded-xl text-[10px] md:text-sm font-black uppercase tracking-tight md:tracking-widest transition-all duration-300 ${activeTab === 'categorias' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-lg shadow-blue-900/10' : 'text-gray-400 hover:text-gray-600 dark:hover:text-neutral-300'}`}
         >
-          <Tag size={18} /> Categorías
+          <Tag size={20} className={activeTab === 'categorias' ? 'text-blue-600 scale-110' : 'text-gray-400'} />
+          <span className="leading-tight text-center">Categorías</span>
         </button>
         <button 
           onClick={() => { setActiveTab('gmail'); resetForm(); }}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'gmail' ? 'bg-white dark:bg-black text-blue-600 shadow-sm' : 'text-gray-400'}`}
+          className={`flex-1 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 py-3 md:py-4 rounded-xl text-[10px] md:text-sm font-black uppercase tracking-tight md:tracking-widest transition-all duration-300 ${activeTab === 'gmail' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-lg shadow-blue-900/10' : 'text-gray-400 hover:text-gray-600 dark:hover:text-neutral-300'}`}
         >
-          <Mail size={18} /> Importador Gmail
+          <Mail size={20} className={activeTab === 'gmail' ? 'text-blue-600 scale-110' : 'text-gray-400'} />
+          <span className="leading-tight text-center">Importador<br className="md:hidden" /> Gmail</span>
         </button>
       </nav>
 
@@ -188,19 +191,24 @@ export default function Configuracion() {
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 mt-8">Listado Actual</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {(activeTab === 'medios' ? medios : categorias)?.map((item: any) => (
-                <article key={item.id} className="group relative bg-white dark:bg-neutral-950 p-4 rounded-2xl border border-gray-100 dark:border-neutral-800 hover:border-blue-200 transition-all shadow-sm flex items-center justify-between">
+                <article key={item.id} className="group relative bg-white dark:bg-neutral-900/30 p-5 rounded-2xl border border-gray-100 dark:border-neutral-800 hover:border-blue-500/30 hover:shadow-xl hover:shadow-blue-900/5 transition-all flex items-center justify-between overflow-hidden">
+                  {/* Barra de color lateral */}
+                  <div className="absolute top-0 left-0 w-1 h-full transition-all group-hover:w-1.5" style={{ backgroundColor: item.color }} />
+                  
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white" style={{ backgroundColor: item.color }}>
-                      {activeTab === 'medios' ? <CreditCard size={20} /> : <Tag size={20} />}
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-inner" style={{ backgroundColor: item.color }}>
+                      {activeTab === 'medios' ? <CreditCard size={24} /> : <Tag size={24} />}
                     </div>
                     <div>
-                      <h4 className="font-bold text-gray-900 dark:text-neutral-100">{item.nombre}</h4>
-                      <p className="text-[10px] text-gray-400 uppercase font-bold tracking-tight">{activeTab === 'medios' ? item.tipo : item.icono}</p>
+                      <h4 className="font-black text-gray-900 dark:text-neutral-100 tracking-tight">{item.nombre}</h4>
+                      <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest mt-0.5 opacity-70">
+                        {activeTab === 'medios' ? item.tipo : item.icono}
+                      </p>
                     </div>
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                    <button onClick={() => handleEdit(item)} className="p-2 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg"><Edit3 size={16} /></button>
-                    <button onClick={() => { if(window.confirm('¿Borrar?')) deleteMutation.mutate(item.id!); }} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                    <button onClick={() => handleEdit(item)} className="p-2.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-xl transition-colors"><Edit3 size={18} /></button>
+                    <button onClick={() => { if(window.confirm('¿Borrar?')) deleteMutation.mutate(item.id!); }} className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-colors"><Trash2 size={18} /></button>
                   </div>
                 </article>
               ))}
