@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, CreditCard, BarChart2, Calculator } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, CreditCard, BarChart2, Calculator, Settings } from 'lucide-react';
 
 export default function BottomNav({ className = "" }: { className?: string }) {
   const menuItems = [
@@ -8,11 +8,12 @@ export default function BottomNav({ className = "" }: { className?: string }) {
     { name: 'Movimientos', path: '/movimientos', icon: PlusCircle },
     { name: 'Tarjetas', path: '/tarjetas', icon: CreditCard },
     { name: 'Proyección', path: '/proyeccion', icon: BarChart2 },
+    { name: 'Config.', path: '/configuracion', icon: Settings },
   ];
 
   return (
     <nav id="bottom-nav-mobile" className={`${className} bg-white dark:bg-black border-t border-gray-200 dark:border-neutral-800 pb-safe pt-1 px-1 shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)] dark:shadow-none transition-colors`}>
-      <div className="flex justify-around items-stretch h-full">
+      <div className="flex justify-around items-stretch h-full w-full">
         {menuItems.map((item) => (
           <NavLink
             key={item.path}
