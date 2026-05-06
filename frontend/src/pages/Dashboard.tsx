@@ -1,9 +1,9 @@
-import { useState, useMemo, Fragment } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getDashboardInfo } from '../api/client';
-import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, LabelList } from 'recharts';
-import { TrendingUp, Wallet, CreditCard, PiggyBank, Edit3, ChevronLeft, ChevronRight, Calendar, ChevronDown, Info, Plus, X } from 'lucide-react';
-import { formatARS, formatARSCompact, MESES_CORTO } from '../utils/format';
+import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { TrendingUp, Wallet, CreditCard, PiggyBank, Edit3, ChevronLeft, ChevronRight, Calendar, ChevronDown, Info, Plus } from 'lucide-react';
+import { formatARS, MESES_CORTO } from '../utils/format';
 import MetricCard from '../components/ui/MetricCard';
 import InlineEditForm from '../components/dashboard/InlineEditForm';
 import InlineCreateForm from '../components/dashboard/InlineCreateForm';
@@ -513,7 +513,7 @@ export default function Dashboard() {
 }
 
 // ─── Vista Desktop: Fila de Grupo para tabla ─────────────────────────────────────────
-function GrupoDesktop({ titulo, icon: Icon, colorClass, bgClass, movimientos, expandido, onToggle, editingItem, setEditingItem, totalesCards, tarjetaFiltro, setTarjetaFiltro, creandoEnSeccion, setCreandoEnSeccion, mes, anio }: any) {
+function GrupoDesktop({ titulo, icon: Icon, movimientos, expandido, onToggle, editingItem, setEditingItem, totalesCards, tarjetaFiltro, setTarjetaFiltro, creandoEnSeccion, setCreandoEnSeccion, mes, anio }: any) {
   
   const movimientosAMostrar = useMemo(() => {
     if (titulo === 'Cuotas de Tarjeta' && tarjetaFiltro) {
@@ -659,7 +659,7 @@ function GrupoDesktop({ titulo, icon: Icon, colorClass, bgClass, movimientos, ex
   );
 }
 
-function GrupoMobile({ titulo, icon: Icon, colorClass, bgClass, borderColor, movimientos, expandido, onToggle, editingItem, setEditingItem, totalesCards, tarjetaFiltro, setTarjetaFiltro, creandoEnSeccion, setCreandoEnSeccion, mes, anio }: any) {
+function GrupoMobile({ titulo, icon: Icon, movimientos, expandido, onToggle, editingItem, setEditingItem, tarjetaFiltro, creandoEnSeccion, setCreandoEnSeccion, mes, anio }: any) {
 
   const movimientosAMostrar = useMemo(() => {
     if (titulo === 'Cuotas de Tarjeta' && tarjetaFiltro) {
