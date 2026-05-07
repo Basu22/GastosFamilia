@@ -28,12 +28,12 @@ const MetricCard: FC<MetricCardProps> = ({
     success: {
       card: 'glass-card aura-glow-mint border-[#A7F3D0]/20',
       label: 'text-[#A7F3D0]',
-      value: 'text-white'
+      value: 'text-[#A7F3D0]'
     },
     danger: {
       card: 'glass-card aura-glow-coral border-[#FCA5A5]/20',
       label: 'text-[#FCA5A5]',
-      value: 'text-white'
+      value: 'text-[#FCA5A5]'
     },
     warning: {
       card: 'glass-card aura-glow-gold border-[#FDE68A]/20',
@@ -59,8 +59,12 @@ const MetricCard: FC<MetricCardProps> = ({
       </div>
       
       <div className="flex flex-col gap-1">
-        <p className={`text-2xl lg:text-4xl font-bold tracking-tight ${currentStyle.value}`}>
-          {formatARS(value)}
+        <p className={`font-bold tracking-tighter ${currentStyle.value} ${
+          formatARS(value).length > 14 ? 'text-lg lg:text-2xl' : 
+          formatARS(value).length > 10 ? 'text-xl lg:text-3xl' : 
+          'text-2xl lg:text-4xl'
+        }`}>
+          {variant === 'success' ? '+' : variant === 'danger' ? '-' : ''} {formatARS(value)}
         </p>
         {subtitle && (
           <p className="text-xs lg:text-sm font-medium text-gray-400/80 mt-1">

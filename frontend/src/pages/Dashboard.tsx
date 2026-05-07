@@ -160,7 +160,7 @@ export default function Dashboard() {
         <MetricCard id="metric-ingresos" label="Ingresos" value={data.ingreso} variant="success" icon={PiggyBank} />
         <MetricCard id="metric-cuotas" label="Cuotas Tarjeta" value={data.total_cuotas} variant="warning" icon={CreditCard} />
         <MetricCard id="metric-gastos" label="Gastos Fijos/Var" value={data.total_gastos_mensuales} variant="danger" icon={Wallet} />
-        <MetricCard id="metric-ahorro" label="Balance Mes" value={data.ahorro_proyectado} variant={data.ahorro_proyectado >= 0 ? 'default' : 'danger'} icon={TrendingUp} subtitle="Disponible para ahorro/gastos" />
+        <MetricCard id="metric-ahorro" label="BALANCE DEL MES" value={data.ahorro_proyectado} variant={data.ahorro_proyectado >= 0 ? 'success' : 'danger'} icon={TrendingUp} subtitle="Disponible para ahorro/gastos" />
       </section>
 
       {/* GRID PRINCIPAL: Movimientos (L) | Gráficos (R - Desktop only) */}
@@ -651,30 +651,32 @@ function GrupoMobile({ titulo, icon: Icon, movimientos, expandido, onToggle, edi
 
   return (
     <div className={`glass-card overflow-hidden transition-all duration-500 ${expandido ? 'aura-glow-lavender border-aura-lavender/20' : 'border-aura-border/20'}`}>
-      <div className={`flex items-center justify-between px-6 py-6 transition-colors ${expandido ? 'bg-white/5' : ''}`}>
-        <div className="flex flex-col gap-1 min-w-0" onClick={onToggle}>
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-xl bg-white/5 border border-white/10`}>
-              <Icon size={18} className={auraColor} />
-            </div>
-            <div className="flex flex-col">
-              <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${auraColor}`}>{titulo}</span>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xl font-bold text-white tracking-tight">
-                  {titulo === 'Ingresos' ? '+' : '-'} {formatARS(totalGrupo)}
-                </span>
-                <ChevronDown size={16} className={`text-gray-500 transition-transform ${expandido ? 'rotate-180' : ''}`} />
-              </div>
-            </div>
+      <div className={`flex flex-col gap-4 px-6 py-6 transition-colors ${expandido ? 'bg-white/5' : ''}`}>
+        {/* FILA 1: Título, Flecha (Centro) y Botón (+) (Derecha) */}
+        <div className="flex items-center justify-between">
+          <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${auraColor} cursor-pointer`} onClick={onToggle}>
+            {titulo}
+          </span>
+          <div className="flex-1 flex justify-center cursor-pointer" onClick={onToggle}>
+            <ChevronDown size={14} className={`text-gray-500 transition-transform ${expandido ? 'rotate-180' : ''}`} />
           </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); setCreandoEnSeccion(creandoEnSeccion === tipoSeccion ? null : tipoSeccion); }}
+            className={`w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90 ${creandoEnSeccion === tipoSeccion ? 'bg-aura-coral text-aura-bg rotate-45' : 'bg-white/10 text-white border border-white/20 shadow-xl shadow-black/20'}`}
+          >
+            <Plus size={16} strokeWidth={3} />
+          </button>
         </div>
 
-        <button
-          onClick={() => setCreandoEnSeccion(creandoEnSeccion === tipoSeccion ? null : tipoSeccion)}
-          className={`p-3 rounded-2xl transition-all duration-300 ${creandoEnSeccion === tipoSeccion ? 'bg-aura-coral text-aura-bg rotate-45' : 'bg-aura-lavender text-aura-bg shadow-lg shadow-aura-lavender/20'}`}
-        >
-          <Plus size={20} strokeWidth={3} />
-        </button>
+        {/* FILA 2: Icono + Importe (Centrados o alineados a la izquierda) */}
+        <div className="flex items-center gap-4 mt-1 cursor-pointer" onClick={onToggle}>
+          <div className={`w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 shrink-0 shadow-inner shadow-black/20`}>
+            <Icon size={18} className={auraColor} />
+          </div>
+          <span className="text-xl font-bold text-white tracking-tighter whitespace-nowrap overflow-hidden text-ellipsis">
+            {titulo === 'Ingresos' ? '+' : '-'} {formatARS(totalGrupo)}
+          </span>
+        </div>
       </div>
 
       {creandoEnSeccion === tipoSeccion && (
@@ -688,31 +690,58 @@ function GrupoMobile({ titulo, icon: Icon, movimientos, expandido, onToggle, edi
           {movimientosAMostrar.map((mov: any) => (
             <div 
               key={`${mov.tipo}-${mov.id}`} 
-              className={`p-5 rounded-2xl border transition-all ${editingItem?.id === mov.id ? 'bg-aura-lavender/10 border-aura-lavender/40' : 'bg-white/5 border-white/5'}`}
+              className={`p-6 rounded-[24px] border transition-all ${editingItem?.id === mov.id ? 'bg-aura-lavender/10 border-aura-lavender/40 shadow-lg shadow-aura-lavender/5' : 'bg-white/5 border-white/5'}`}
             >
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-4">
-                  <div className="w-1 h-10 rounded-full" style={{ backgroundColor: mov.tarjeta_color || (mov.tipo === 'ingreso' ? '#A7F3D0' : (mov.es_fijo ? '#C7D2FE' : '#94a3b8')) }} />
-                  <div>
-                    <p className="text-base font-bold text-white leading-tight">{mov.descripcion}</p>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{mov.medio_pago}</span>
-                      {mov.tipo === 'tarjeta' && (
-                        <span className="text-[10px] text-aura-lavender font-bold uppercase tracking-widest">Cuota {mov.cuota_actual}/{mov.cuotas_total}</span>
-                      )}
-                    </div>
+              <div className="flex gap-4">
+                {/* Barra de color lateral */}
+                <div 
+                  className="w-1.5 h-auto rounded-full shrink-0 shadow-[0_0_15px_rgba(0,0,0,0.2)]" 
+                  style={{ backgroundColor: mov.tarjeta_color || (mov.tipo === 'ingreso' ? '#A7F3D0' : (mov.es_fijo ? '#C7D2FE' : '#94a3b8')) }} 
+                />
+
+                <div className="flex-1 flex flex-col gap-4">
+                  {/* Fila 1: Descripción */}
+                  <div className="flex items-start justify-between">
+                    <p className="text-base font-bold text-white leading-tight tracking-tight">
+                      {mov.descripcion.replace(/\s*\(\d+\s*[\/\-]\s*\d+\)$/, '')}
+                    </p>
+                    {mov.previsionado && (
+                      <span className="shrink-0 ml-2 text-[8px] bg-aura-gold/10 text-aura-gold border border-aura-gold/20 px-2 py-0.5 rounded-full uppercase font-bold tracking-widest">
+                        Prev
+                      </span>
+                    )}
                   </div>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  <span className={`text-base font-bold tracking-tight ${mov.tipo === 'ingreso' ? 'text-aura-mint' : 'text-white'}`}>
-                    {formatARS(mov.monto)}
-                  </span>
-                  <button 
-                    onClick={() => setEditingItem(editingItem?.id === mov.id ? null : { id: mov.id, tipo: mov.tipo })}
-                    className={`p-2 rounded-xl ${editingItem?.id === mov.id ? 'bg-aura-lavender text-aura-bg' : 'text-gray-500 bg-white/5'}`}
-                  >
-                    <Edit3 size={16} />
-                  </button>
+
+                  {/* Fila 2: Tarjeta y Cuotas (2 col) */}
+                  <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest leading-none">Medio de Pago</span>
+                      <span className="text-[10px] font-bold text-gray-300 uppercase tracking-wider mt-1">{mov.medio_pago}</span>
+                    </div>
+                    {mov.tipo === 'tarjeta' && (
+                      <div className="flex flex-col items-end">
+                        <span className="text-[9px] font-bold text-aura-lavender/60 uppercase tracking-widest leading-none">Estado</span>
+                        <span className="text-[10px] text-aura-lavender font-bold uppercase tracking-widest mt-1">Cuota {mov.cuota_actual}/{mov.cuotas_total}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Fila 3: Importe y Lápiz (2 col) */}
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest leading-none mb-1.5">Importe</span>
+                      <span className={`text-xl font-black tracking-tighter ${mov.tipo === 'ingreso' ? 'text-aura-mint' : 'text-white'}`}>
+                        {mov.tipo === 'ingreso' ? '+' : ''} {formatARS(mov.monto)}
+                      </span>
+                    </div>
+                    
+                    <button 
+                      onClick={() => setEditingItem(editingItem?.id === mov.id ? null : { id: mov.id, tipo: mov.tipo })}
+                      className={`p-2 rounded-xl transition-all active:scale-90 ${editingItem?.id === mov.id ? 'bg-aura-lavender text-aura-bg shadow-lg shadow-aura-lavender/30' : 'bg-white/5 text-gray-400 border border-white/5 hover:bg-white/10'}`}
+                    >
+                      <Edit3 size={16} />
+                    </button>
+                  </div>
                 </div>
               </div>
               {editingItem?.id === mov.id && (
