@@ -1,9 +1,10 @@
 import os
 import json
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
-# Configuración de Gemini
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+# El cliente se inicializará por cada petición para tomar la API KEY del .env
+
 
 TARJETAS_DISPONIBLES = [
     "VISA Baso", "VISA Juli", "MASTER Juli", "CENCOSUD Juli",
@@ -39,7 +40,7 @@ async def analizar_contenido(contenido_bytes: bytes, mime_type: str, texto_adici
     mime_type puede ser: application/pdf, image/jpeg, image/png, audio/ogg, text/plain
     """
     # Usamos gemini-1.5-flash para velocidad y eficiencia en esta tarea de extracción
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
     
     partes = []
     
@@ -48,13 +49,18 @@ async def analizar_contenido(contenido_bytes: bytes, mime_type: str, texto_adici
         partes.append(texto_adicional or contenido_bytes.decode("utf-8", errors="ignore"))
     else:
         # Archivo binario (PDF, imagen, audio)
-        partes.append({"mime_type": mime_type, "data": contenido_bytes})
+        partes.append(
+            types.Part.from_bytes(data=contenido_bytes, mime_type=mime_type)
+        )
         if texto_adicional:
             partes.append(texto_adicional)
     
     partes.append(PROMPT_EXTRACCION)
     
-    response = model.generate_content(partes)
+    response = client.models.generate_content(
+        model="gemini-1.5-flash",
+        contents=partes
+    )
     texto_respuesta = response.text.strip()
     
     # Limpiar posible markdown que Gemini a veces agrega a pesar del prompt
