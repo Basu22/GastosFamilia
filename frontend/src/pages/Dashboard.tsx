@@ -522,7 +522,7 @@ function GrupoDesktop({ titulo, icon: Icon, movimientos, expandido, onToggle, ed
   }, [movimientos, tarjetaFiltro, titulo]);
 
   const totalGrupo = movimientosAMostrar.reduce((acc: number, m: any) => acc + m.monto, 0);
-  const tipoSeccion = titulo === 'Ingresos' ? 'ingreso' : titulo === 'Cuotas de Tarjeta' ? 'tarjeta' : 'gasto';
+  const tipoSeccion = titulo === 'Ingresos' ? 'ingreso' : titulo === 'Cuotas de Tarjeta' ? 'tarjeta' : titulo === 'Gastos Fijos' ? 'gasto_fijo' : 'gasto_variado';
 
   const auraColor = titulo === 'Ingresos' ? 'text-aura-mint' : titulo === 'Cuotas de Tarjeta' ? 'text-aura-lavender' : 'text-aura-coral';
 
@@ -603,54 +603,47 @@ function GrupoDesktop({ titulo, icon: Icon, movimientos, expandido, onToggle, ed
           <td colSpan={4} className="px-6">
             <div className="space-y-3 mb-6">
               {movimientosAMostrar.map((mov: any) => (
-                <div 
-                  key={`${mov.tipo}-${mov.id}`}
-                  className={`group flex items-center justify-between p-5 rounded-2xl transition-all duration-300 ${editingItem?.id === mov.id ? 'bg-aura-lavender/10 border border-aura-lavender/30' : 'bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10'}`}
-                >
-                  <div className="flex items-center gap-5">
-                    <div className="w-1 h-10 rounded-full" style={{ backgroundColor: mov.tarjeta_color || (mov.tipo === 'ingreso' ? '#A7F3D0' : (mov.es_fijo ? '#C7D2FE' : '#94a3b8')) }} />
-                    <div>
-                      <p className="text-base font-semibold text-white">
-                        {mov.descripcion}
-                        {mov.previsionado && (
-                          <span className="ml-3 text-[9px] bg-aura-gold/20 text-aura-gold border border-aura-gold/30 px-2 py-0.5 rounded-full uppercase font-bold tracking-[0.1em]">Previsionado</span>
-                        )}
-                      </p>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{mov.medio_pago}</span>
-                        {mov.tipo === 'tarjeta' && (
-                          <span className="text-[10px] text-aura-lavender font-bold uppercase tracking-widest opacity-80">Cuota {mov.cuota_actual}/{mov.cuotas_total}</span>
-                        )}
+                <div key={`${mov.tipo}-${mov.id}`} className="space-y-2">
+                  <div className={`group flex items-center justify-between p-5 rounded-2xl transition-all duration-300 ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'bg-aura-lavender/10 border border-aura-lavender/30' : 'bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10'}`}>
+                    <div className="flex items-center gap-5">
+                      <div className="w-1 h-10 rounded-full" style={{ backgroundColor: mov.tarjeta_color || (mov.tipo === 'ingreso' ? '#A7F3D0' : (mov.es_fijo ? '#C7D2FE' : '#94a3b8')) }} />
+                      <div>
+                        <p className="text-base font-semibold text-white">
+                          {mov.descripcion}
+                          {mov.previsionado && (
+                            <span className="ml-3 text-[9px] bg-aura-gold/20 text-aura-gold border border-aura-gold/30 px-2 py-0.5 rounded-full uppercase font-bold tracking-[0.1em]">Previsionado</span>
+                          )}
+                        </p>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{mov.medio_pago}</span>
+                          {mov.tipo === 'tarjeta' && (
+                            <span className="text-[10px] text-aura-lavender font-bold uppercase tracking-widest opacity-80">Cuota {mov.cuota_actual}/{mov.cuotas_total}</span>
+                          )}
+                        </div>
                       </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-8">
+                      <p className={`text-lg font-bold tracking-tight ${mov.tipo === 'ingreso' ? 'text-aura-mint' : 'text-white'}`}>
+                        {formatARS(mov.monto)}
+                      </p>
+                      <button 
+                        onClick={() => setEditingItem((editingItem?.id === mov.id && editingItem?.tipo === mov.tipo) ? null : { id: mov.id, tipo: mov.tipo })}
+                        className={`p-3 rounded-xl transition-all ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'bg-aura-lavender text-aura-bg shadow-lg' : 'text-gray-500 hover:text-white hover:bg-white/10'}`}
+                      >
+                        <Edit3 size={18} />
+                      </button>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-8">
-                    <p className={`text-lg font-bold tracking-tight ${mov.tipo === 'ingreso' ? 'text-aura-mint' : 'text-white'}`}>
-                      {formatARS(mov.monto)}
-                    </p>
-                    <button 
-                      onClick={() => setEditingItem(editingItem?.id === mov.id ? null : { id: mov.id, tipo: mov.tipo })}
-                      className={`p-3 rounded-xl transition-all ${editingItem?.id === mov.id ? 'bg-aura-lavender text-aura-bg shadow-lg' : 'text-gray-500 hover:text-white hover:bg-white/10'}`}
-                    >
-                      <Edit3 size={18} />
-                    </button>
-                  </div>
+                  {editingItem?.id === mov.id && editingItem?.tipo === mov.tipo && (
+                    <div className="glass-card p-6 border-aura-lavender/30 animate-in slide-in-from-top-4 duration-300">
+                      <InlineEditForm id={mov.id} tipo={mov.tipo} mesActual={mes} anioActual={anio} onClose={() => setEditingItem(null)} />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
-          </td>
-        </tr>
-      )}
-
-      {editingItem && expandido && (
-        <tr>
-          <td colSpan={4} className="px-6 pb-8">
-            {movimientosAMostrar.some((m: any) => m.id === editingItem.id) && (
-              <div className="glass-card p-10 border-aura-lavender/30 animate-in zoom-in-95 duration-300">
-                <InlineEditForm id={editingItem.id} tipo={editingItem.tipo} mesActual={mes} anioActual={anio} onClose={() => setEditingItem(null)} />
-              </div>
-            )}
           </td>
         </tr>
       )}
@@ -668,7 +661,7 @@ function GrupoMobile({ titulo, icon: Icon, movimientos, expandido, onToggle, edi
   }, [movimientos, tarjetaFiltro, titulo]);
 
   const totalGrupo = movimientosAMostrar.reduce((acc: number, m: any) => acc + m.monto, 0);
-  const tipoSeccion = titulo === 'Ingresos' ? 'ingreso' : titulo === 'Cuotas de Tarjeta' ? 'tarjeta' : 'gasto';
+  const tipoSeccion = titulo === 'Ingresos' ? 'ingreso' : titulo === 'Cuotas de Tarjeta' ? 'tarjeta' : titulo === 'Gastos Fijos' ? 'gasto_fijo' : 'gasto_variado';
   
   const auraColor = titulo === 'Ingresos' ? 'text-aura-mint' : titulo === 'Cuotas de Tarjeta' ? 'text-aura-lavender' : 'text-aura-coral';
 
@@ -713,7 +706,7 @@ function GrupoMobile({ titulo, icon: Icon, movimientos, expandido, onToggle, edi
           {movimientosAMostrar.map((mov: any) => (
             <div 
               key={`${mov.tipo}-${mov.id}`} 
-              className={`p-6 rounded-[24px] border transition-all ${editingItem?.id === mov.id ? 'bg-aura-lavender/10 border-aura-lavender/40 shadow-lg shadow-aura-lavender/5' : 'bg-white/5 border-white/5'}`}
+              className={`p-6 rounded-[24px] border transition-all ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'bg-aura-lavender/10 border-aura-lavender/40 shadow-lg shadow-aura-lavender/5' : 'bg-white/5 border-white/5'}`}
             >
               <div className="flex gap-4">
                 {/* Barra de color lateral */}
@@ -759,15 +752,15 @@ function GrupoMobile({ titulo, icon: Icon, movimientos, expandido, onToggle, edi
                     </div>
                     
                     <button 
-                      onClick={() => setEditingItem(editingItem?.id === mov.id ? null : { id: mov.id, tipo: mov.tipo })}
-                      className={`p-2 rounded-xl transition-all active:scale-90 ${editingItem?.id === mov.id ? 'bg-aura-lavender text-aura-bg shadow-lg shadow-aura-lavender/30' : 'bg-white/5 text-gray-400 border border-white/5 hover:bg-white/10'}`}
+                      onClick={() => setEditingItem((editingItem?.id === mov.id && editingItem?.tipo === mov.tipo) ? null : { id: mov.id, tipo: mov.tipo })}
+                      className={`p-2 rounded-xl transition-all active:scale-90 ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'bg-aura-lavender text-aura-bg shadow-lg shadow-aura-lavender/30' : 'bg-white/5 text-gray-400 border border-white/5 hover:bg-white/10'}`}
                     >
                       <Edit3 size={16} />
                     </button>
                   </div>
                 </div>
               </div>
-              {editingItem?.id === mov.id && (
+              {editingItem?.id === mov.id && editingItem?.tipo === mov.tipo && (
                 <div className="mt-6 pt-6 border-t border-aura-border/20">
                   <InlineEditForm id={mov.id} tipo={mov.tipo} mesActual={mes} anioActual={anio} onClose={() => setEditingItem(null)} />
                 </div>

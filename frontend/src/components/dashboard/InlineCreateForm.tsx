@@ -22,7 +22,7 @@ const schema = z.object({
 });
 
 interface InlineCreateFormProps {
-  tipo: 'tarjeta' | 'gasto' | 'ingreso';
+  tipo: 'tarjeta' | 'gasto' | 'ingreso' | 'gasto_fijo' | 'gasto_variado';
   mes: number;
   anio: number;
   onClose: () => void;
@@ -40,7 +40,7 @@ export default function InlineCreateForm({ tipo, mes, anio, onClose }: InlineCre
       monto: 0,
       cuotas: 1,
       fecha_primera_cuota: `${anio}-${mes.toString().padStart(2, '0')}-01`,
-      es_fijo: tipo !== 'tarjeta',
+      es_fijo: tipo === 'gasto_fijo' || (tipo === 'gasto' ? true : false),
       mes: mes,
       anio: anio,
       tarjeta_id: ""
@@ -61,7 +61,7 @@ export default function InlineCreateForm({ tipo, mes, anio, onClose }: InlineCre
           ...payload,
           monto_total: data.monto
         });
-      } else if (tipo === 'gasto') {
+      } else if (tipo.startsWith('gasto')) {
         return createGastoMensual(payload);
       } else {
         return createIngreso(payload);
@@ -81,7 +81,7 @@ export default function InlineCreateForm({ tipo, mes, anio, onClose }: InlineCre
     <div className="p-6 bg-blue-50/30 dark:bg-blue-900/5 border-y border-blue-100 dark:border-blue-900/30 animate-in slide-in-from-top duration-300">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">
-          Nuevo {tipo === 'ingreso' ? 'Ingreso' : tipo === 'tarjeta' ? 'Gasto con Tarjeta' : 'Gasto Mensual'}
+          Nuevo {tipo === 'ingreso' ? 'Ingreso' : tipo === 'tarjeta' ? 'Gasto con Tarjeta' : tipo === 'gasto_fijo' ? 'Gasto Mensual' : 'Gasto Variado'}
         </h3>
         <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
       </div>
