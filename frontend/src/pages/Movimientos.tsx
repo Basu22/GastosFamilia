@@ -198,7 +198,7 @@ export default function Movimientos() {
         tarjeta_id: item.tarjeta_id?.toString() || ""
       });
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Removido window.scrollTo para no subir todo el listado
   };
 
   const handleCancel = () => {
@@ -225,47 +225,9 @@ export default function Movimientos() {
   const currentList = activeTab === 'egresos' ? egresos : (activeTab === 'tarjetas' ? movimientos : ingresos);
   const isLoading = activeTab === 'egresos' ? loadingEgresos : (activeTab === 'tarjetas' ? loadingMovimientos : loadingIngresos);
 
-  return (
-    <main id="page-movimientos" className="max-w-4xl mx-auto space-y-6 px-4 py-4 lg:px-8 lg:py-8 pb-24 lg:pb-12">
-      <header id="header-movimientos">
-        <p className="text-gray-500 dark:text-neutral-500 font-medium text-xs uppercase tracking-wider">Gestión Financiera</p>
-        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-neutral-100">Movimientos</h1>
-      </header>
-
-      {/* Tabs Principales */}
-      <nav className="flex bg-gray-100 dark:bg-neutral-900 p-1.5 rounded-2xl shadow-inner transition-all">
-        {[
-          { id: 'egresos', label: 'Egresos', icon: TrendingDown, color: 'text-red-500', bg: 'bg-red-50' },
-          { id: 'tarjetas', label: 'Tarjetas', icon: CreditCard, color: 'text-blue-500', bg: 'bg-blue-50' },
-          { id: 'ingresos', label: 'Ingresos', icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-        ].map((t) => (
-          <button
-            key={t.id}
-            onClick={() => { setActiveTab(t.id as TabType); handleCancel(); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs lg:text-sm font-bold transition-all ${
-              activeTab === t.id 
-                ? `bg-white dark:bg-neutral-800 shadow-md ${t.color}` 
-                : 'text-gray-500 dark:text-neutral-500 hover:text-gray-700'
-            }`}
-          >
-            <t.icon size={18} />
-            {t.label}
-          </button>
-        ))}
-      </nav>
-
-      {/* Formulario Dinámico */}
-      <section className={`rounded-2xl border p-4 lg:p-8 transition-all shadow-sm ${
-        activeTab === 'egresos' ? 'bg-red-50/20 border-red-100 dark:border-red-900/30' : 
-        activeTab === 'tarjetas' ? 'bg-blue-50/20 border-blue-100 dark:border-blue-900/30' : 
-        'bg-emerald-50/20 border-emerald-100 dark:border-emerald-900/30'
-      }`}>
-        <h2 className="text-lg font-bold mb-6 flex items-center gap-2 text-gray-900 dark:text-neutral-100">
-          {editingId ? <Edit3 size={20} /> : <Plus size={20} />}
-          {editingId ? 'Editar' : 'Nuevo'} {activeTab === 'egresos' ? 'Gasto Mensual' : activeTab === 'tarjetas' ? 'Compra en Cuotas' : 'Ingreso'}
-        </h2>
-
-        {activeTab === 'tarjetas' ? (
+  const renderForm = () => {
+    if (activeTab === 'tarjetas') {
+      return (
           <form 
             onSubmit={formCuotas.handleSubmit((d) => mutationCuotas.mutate(d), logErrors)} 
             className="space-y-6"
@@ -389,13 +351,12 @@ export default function Movimientos() {
               </div>
             )}
             <div className="flex gap-3 pt-4">
-              {editingId && (
-                <button type="button" onClick={() => { if(window.confirm('¿Borrar compra?')) deleteMutation.mutate(editingId); }} className="px-5 py-4 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all"><Trash2 size={20} /></button>
-              )}
-              <button type="submit" disabled={mutationCuotas.isPending} className="flex-1 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200 dark:shadow-none active:scale-95 transition-all">{mutationCuotas.isPending ? 'Guardando...' : 'Guardar Compra'}</button>
+              <button type="submit" disabled={mutationCuotas.isPending} className="flex-1 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200 dark:shadow-none active:scale-95 transition-all">{mutationCuotas.isPending ? 'Guardando...' : (editingId ? 'Actualizar Compra' : 'Guardar Compra')}</button>
             </div>
           </form>
-        ) : (
+      );
+    } else {
+      return (
           <form 
             onSubmit={formFijos.handleSubmit((d) => mutationFijos.mutate(d), logErrors)} 
             className="space-y-6"
@@ -440,26 +401,60 @@ export default function Movimientos() {
               </div>
             </div>
             <div className="flex gap-3 pt-4">
-              {editingId && (
-                <button 
-                  type="button" 
-                  onClick={(e) => { 
-                    console.log("🖱️ CLICK DETECTADO EN ELIMINAR (FORM)");
-                    e.preventDefault();
-                    deleteMutation.mutate(editingId);
-                  }} 
-                  className="px-5 py-4 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all z-10"
-                >
-                  <Trash2 size={20} />
-                </button>
-              )}
               <button type="submit" disabled={mutationFijos.isPending} className={`flex-1 py-4 font-bold rounded-xl text-white shadow-lg active:scale-95 transition-all ${activeTab === 'egresos' ? 'bg-red-600 hover:bg-red-700 shadow-red-200 dark:shadow-none' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200 dark:shadow-none'}`}>
                 {mutationFijos.isPending ? 'Guardando...' : (editingId ? 'Actualizar' : 'Guardar')}
               </button>
             </div>
           </form>
-        )}
-      </section>
+      );
+    }
+  };
+
+  return (
+    <main id="page-movimientos" className="max-w-4xl mx-auto space-y-6 px-4 py-4 lg:px-8 lg:py-8 pb-24 lg:pb-12">
+      <header id="header-movimientos">
+        <p className="text-gray-500 dark:text-neutral-500 font-medium text-xs uppercase tracking-wider">Gestión Financiera</p>
+        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-neutral-100">Movimientos</h1>
+      </header>
+
+      {/* Tabs Principales */}
+      <nav className="flex bg-gray-100 dark:bg-neutral-900 p-1.5 rounded-2xl shadow-inner transition-all">
+        {[
+          { id: 'egresos', label: 'Egresos', icon: TrendingDown, color: 'text-red-500', bg: 'bg-red-50' },
+          { id: 'tarjetas', label: 'Tarjetas', icon: CreditCard, color: 'text-blue-500', bg: 'bg-blue-50' },
+          { id: 'ingresos', label: 'Ingresos', icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+        ].map((t) => (
+          <button
+            key={t.id}
+            onClick={() => { setActiveTab(t.id as TabType); handleCancel(); }}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs lg:text-sm font-bold transition-all ${
+              activeTab === t.id 
+                ? `bg-white dark:bg-neutral-800 shadow-md ${t.color}` 
+                : 'text-gray-500 dark:text-neutral-500 hover:text-gray-700'
+            }`}
+          >
+            <t.icon size={18} />
+            {t.label}
+          </button>
+        ))}
+      </nav>
+
+      {/* Formulario Dinámico de Creación (Solo visible si NO estamos editando) */}
+      {!editingId && (
+        <section className={`rounded-2xl border p-4 lg:p-8 transition-all shadow-sm ${
+          activeTab === 'egresos' ? 'bg-red-50/20 border-red-100 dark:border-red-900/30' : 
+          activeTab === 'tarjetas' ? 'bg-blue-50/20 border-blue-100 dark:border-blue-900/30' : 
+          'bg-emerald-50/20 border-emerald-100 dark:border-emerald-900/30'
+        }`}>
+          <h2 className="text-lg font-bold mb-6 flex items-center gap-2 text-gray-900 dark:text-neutral-100">
+            <Plus size={20} />
+            Nuevo {activeTab === 'egresos' ? 'Gasto Mensual' : activeTab === 'tarjetas' ? 'Compra en Cuotas' : 'Ingreso'}
+          </h2>
+          {renderForm()}
+        </section>
+      )}
+
+      {/* Listado Histórico */}
 
       {/* Listado Histórico */}
       <section className="space-y-4">
@@ -475,7 +470,26 @@ export default function Movimientos() {
               <p className="text-sm font-medium">Sin registros guardados</p>
             </div>
           ) : (
-            currentList?.map((item: any) => (
+            currentList?.map((item: any) => {
+              if (editingId === item.id) {
+                return (
+                  <div key={`edit-${item.id}`} className={`col-span-full rounded-2xl border p-4 lg:p-8 transition-all shadow-sm ${
+                    activeTab === 'egresos' ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 
+                    activeTab === 'tarjetas' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' : 
+                    'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
+                  }`}>
+                    <div className="flex justify-between items-center mb-6">
+                      <h2 className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-neutral-100">
+                        <Edit3 size={20} />
+                        Editar {activeTab === 'egresos' ? 'Gasto Mensual' : activeTab === 'tarjetas' ? 'Compra en Cuotas' : 'Ingreso'}
+                      </h2>
+                      <button type="button" onClick={handleCancel} className="text-gray-500 hover:text-gray-700 text-sm font-bold bg-white dark:bg-neutral-800 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-neutral-700 shadow-sm active:scale-95 transition-all">✕ Cancelar</button>
+                    </div>
+                    {renderForm()}
+                  </div>
+                );
+              }
+              return (
               <article 
                 key={item.id} 
                 onClick={() => handleEdit(item)}
@@ -511,7 +525,8 @@ export default function Movimientos() {
                   </div>
                 </div>
               </article>
-            ))
+              );
+            })
           )}
         </div>
       </section>
