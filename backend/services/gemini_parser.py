@@ -39,7 +39,7 @@ async def analizar_contenido(contenido_bytes: bytes, mime_type: str, texto_adici
     mime_type puede ser: application/pdf, image/jpeg, image/png, audio/ogg, text/plain
     """
     # Usamos gemini-1.5-flash para velocidad y eficiencia en esta tarea de extracción
-    model = genai.GenerativeModel("gemini-flash-latest")
+    model = genai.GenerativeModel("gemini-1.5-flash")
     
     partes = []
     
