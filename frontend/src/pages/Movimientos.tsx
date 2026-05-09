@@ -12,7 +12,7 @@ import { getTarjetas } from '../api/tarjetas';
 import { createMovimiento, previewMovimiento, getMovimientos, updateMovimiento, deleteMovimiento } from '../api/movimientos';
 
 // UI
-import { formatARS } from '../utils/format';
+import { formatARS, MESES_CORTO } from '../utils/format';
 import { Plus, Edit3, Trash2, TrendingDown, TrendingUp, CreditCard, Info, History } from 'lucide-react';
 import { NumericFormat } from 'react-number-format';
 
@@ -511,9 +511,16 @@ export default function Movimientos() {
                     </button>
                   </header>
                   <div onClick={() => handleEdit(item)}>
-                    <p className="text-[10px] text-gray-400 font-medium uppercase">
-                      {activeTab === 'tarjetas' ? (item.tarjeta_nombre || 'Sin Tarjeta') : `${item.mes}/${item.anio}`}
-                    </p>
+                    <div className="flex flex-col gap-0.5">
+                      <p className="text-[10px] text-gray-400 font-medium uppercase">
+                        {activeTab === 'tarjetas' ? (item.tarjeta_nombre || 'Sin Tarjeta') : `${item.mes}/${item.anio}`}
+                      </p>
+                      {activeTab === 'tarjetas' && item.fecha_primera_cuota && item.fecha_ultima_cuota && (
+                        <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">
+                          {MESES_CORTO[parseInt(item.fecha_primera_cuota.split('-')[1], 10)]} {item.fecha_primera_cuota.split('-')[0]} - {MESES_CORTO[parseInt(item.fecha_ultima_cuota.split('-')[1], 10)]} {item.fecha_ultima_cuota.split('-')[0]}
+                        </p>
+                      )}
+                    </div>
                     <div className="mt-3 flex justify-between items-end">
                       <p className="text-lg font-bold text-gray-900 dark:text-neutral-100">
                         {formatARS(activeTab === 'tarjetas' ? item.monto_total : item.monto)}
