@@ -70,7 +70,8 @@ def get_cuotas_por_tarjeta(mes: int, anio: int, session: Session) -> List[Dict[s
         monto_gastos = 0.0
         for g in gastos:
             g_val = g.anio * 12 + g.mes
-            if (g.mes == mes and g.anio == anio) or (g.es_fijo and mes_actual_val >= g_val):
+            g_fin_val = (g.anio_fin * 12 + g.mes_fin) if g.anio_fin and g.mes_fin else 999999
+            if (g.mes == mes and g.anio == anio) or (g.es_fijo and g_val <= mes_actual_val <= g_fin_val):
                 monto_gastos += g.monto
         
         total_tarjeta = monto_cuotas + monto_gastos

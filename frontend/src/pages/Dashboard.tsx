@@ -241,6 +241,29 @@ export default function Dashboard() {
             </section>
           )}
 
+          {/* TOTALES POR TARJETA (Mobile & Desktop) */}
+          {data.cuotas_por_tarjeta?.length > 0 && (
+            <section id="section-totales-tarjetas" className="px-4 lg:px-0">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="p-2 bg-aura-lavender/20 rounded-xl border border-aura-lavender/30">
+                  <CreditCard className="text-aura-lavender" size={16} />
+                </div>
+                <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-white/90">A Pagar por Tarjeta</h3>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {data.cuotas_por_tarjeta.map((t: any) => (
+                  <div key={t.nombre} className="glass-card p-4 border border-white/5 flex flex-col justify-between hover:border-white/20 transition-all gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.5)]" style={{ backgroundColor: t.color || '#64748B' }} />
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">{t.nombre}</span>
+                    </div>
+                    <span className="text-lg font-black text-white tracking-tight">{formatARS(t.monto)}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* MÓDULO ARCA */}
           <div className="mx-4 lg:mx-0">
             <PanelArca mes={mes} anio={anio} />
