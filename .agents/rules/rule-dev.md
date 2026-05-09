@@ -239,3 +239,11 @@ docker compose up -d --build
 - [ ] Probado en viewport 375px (DevTools mobile)
 - [ ] Probado en desktop 1280px
 - [ ] Commit message sigue la convención
+
+---
+
+## 7. Candado sobre gemini_parser.py
+
+**PROHIBICIÓN ESTRICTA:** El archivo `backend/services/gemini_parser.py` está bajo un "candado de seguridad".
+- El agente **NO TIENE PERMITIDO** modificar la lógica de este archivo, ni cambiar el modelo de IA (`gemini-2.5-flash`), ni alterar la librería `google-genai`.
+- Si el agente considera que es absolutamente necesario cambiar algo en este archivo, **DEBE PEDIR PERMISO EXPLÍCITO AL USUARIO**, explicando detalladamente la justificación antes de realizar cualquier modificación.
