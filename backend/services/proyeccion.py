@@ -78,7 +78,8 @@ def get_proyeccion_12_meses(session: Session) -> List[Dict[str, Any]]:
         detalle_ingresos = []
         for i in ingresos:
             i_val = i.anio * 12 + i.mes
-            aplica = (i.mes == mes and i.anio == anio) or (i.es_fijo and mes_val >= i_val)
+            i_fin_val = (i.anio_fin * 12 + i.mes_fin) if i.anio_fin and i.mes_fin else 999999
+            aplica = (i.mes == mes and i.anio == anio) or (i.es_fijo and i_val <= mes_val <= i_fin_val)
             if aplica:
                 override_key = f"ingreso-{i.id}-{mes}-{anio}"
                 monto = overrides.get(override_key, i.monto)
@@ -96,7 +97,8 @@ def get_proyeccion_12_meses(session: Session) -> List[Dict[str, Any]]:
         detalle_gastos = []
         for g in gastos:
             g_val = g.anio * 12 + g.mes
-            aplica = (g.mes == mes and g.anio == anio) or (g.es_fijo and mes_val >= g_val)
+            g_fin_val = (g.anio_fin * 12 + g.mes_fin) if g.anio_fin and g.mes_fin else 999999
+            aplica = (g.mes == mes and g.anio == anio) or (g.es_fijo and g_val <= mes_val <= g_fin_val)
             if aplica:
                 override_key = f"gasto_mensual-{g.id}-{mes}-{anio}"
                 monto = overrides.get(override_key, g.monto)
