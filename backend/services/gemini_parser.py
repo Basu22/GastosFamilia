@@ -58,7 +58,7 @@ async def analizar_contenido(contenido_bytes: bytes, mime_type: str, texto_adici
     partes.append(PROMPT_EXTRACCION)
     
     response = client.models.generate_content(
-        model="gemini-1.5-flash",
+        model="gemini-2.5-flash",
         contents=partes
     )
     texto_respuesta = response.text.strip()
