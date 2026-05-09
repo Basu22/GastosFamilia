@@ -2,12 +2,16 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
+import { Sun, Moon } from 'lucide-react';
+import { useThemeStore } from '../../stores/themeStore';
 
 interface AppShellProps {
   children?: React.ReactNode;
 }
 
 export default function AppShell({ children }: AppShellProps) {
+  const { isDark, toggleTheme } = useThemeStore();
+
   return (
     <div 
       id="app-root" 
@@ -48,6 +52,14 @@ export default function AppShell({ children }: AppShellProps) {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <button 
+              id="btn-theme-toggle-mobile"
+              onClick={toggleTheme}
+              className="flex items-center justify-center bg-[#1E293B]/50 border border-[#334155]/50 w-12 h-12 rounded-2xl hover:bg-[#1E293B] transition-all active:scale-95 text-gray-400 hover:text-white" 
+              aria-label="Toggle Theme"
+            >
+              {isDark ? <Sun size={20} className="text-yellow-400" /> : <Moon size={20} className="text-blue-400" />}
+            </button>
             <button 
               id="btn-user-profile-mobile" 
               className="flex items-center justify-center bg-[#1E293B]/50 border border-[#334155]/50 w-12 h-12 rounded-2xl hover:bg-[#1E293B] transition-all active:scale-95" 

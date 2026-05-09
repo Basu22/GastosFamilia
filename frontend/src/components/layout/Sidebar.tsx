@@ -1,7 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, CreditCard, LogOut, BarChart2, Settings, Calculator } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, CreditCard, LogOut, BarChart2, Settings, Calculator, Sun, Moon } from 'lucide-react';
+import { useThemeStore } from '../../stores/themeStore';
 
 export default function Sidebar() {
+  const { isDark, toggleTheme } = useThemeStore();
+
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Movimientos', path: '/movimientos', icon: PlusCircle },
@@ -58,14 +61,22 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="p-6 border-t border-[#334155]/20 space-y-3">
+      <div className="p-6 border-t border-[#334155]/20 flex gap-2">
+        <button
+          id="btn-sidebar-theme"
+          onClick={toggleTheme}
+          className="flex items-center justify-center p-4 text-gray-400 hover:text-white hover:bg-[#1E293B] rounded-2xl transition-all"
+          aria-label="Toggle Theme"
+        >
+          {isDark ? <Sun className="w-5 h-5 text-yellow-400" strokeWidth={2} /> : <Moon className="w-5 h-5 text-blue-400" strokeWidth={2} />}
+        </button>
         <button
           id="btn-sidebar-logout"
           onClick={() => { /* TODO: logout handler */ }}
-          className="flex items-center gap-4 w-full px-5 py-4 text-[#FCA5A5]/80 hover:text-[#FCA5A5] hover:bg-[#FCA5A5]/10 rounded-2xl transition-all font-medium group"
+          className="flex-1 flex items-center justify-center gap-3 px-5 py-4 text-[#FCA5A5]/80 hover:text-[#FCA5A5] hover:bg-[#FCA5A5]/10 rounded-2xl transition-all font-medium group"
         >
           <LogOut className="w-5 h-5 transition-transform group-hover:-translate-x-1" strokeWidth={2} />
-          Cerrar Sesión
+          Salir
         </button>
       </div>
     </div>
