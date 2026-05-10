@@ -10,8 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 from database import create_db_and_tables, seed_initial_data
-from models import config # Importante para que SQLModel cree las tablas
-from routers import auth, movimientos, tarjetas, gastos_mensuales, dashboard, importar, ingresos, proyeccion, configuracion, simulador, importaciones, whatsapp
+from models import config, compra_deseada # Importante para que SQLModel cree las tablas
+from routers import auth, movimientos, tarjetas, gastos_mensuales, dashboard, importar, ingresos, proyeccion, configuracion, simulador, importaciones, whatsapp, prestamos, compras_deseadas
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlmodel import Session
@@ -76,6 +76,9 @@ app.include_router(configuracion.router, prefix="/configuracion", tags=["configu
 app.include_router(simulador.router, prefix="/simulador", tags=["simulador"])
 app.include_router(importaciones.router, prefix="/importaciones", tags=["importaciones"])
 app.include_router(whatsapp.router, prefix="/whatsapp", tags=["whatsapp"])
+app.include_router(prestamos.router, prefix="/prestamos", tags=["prestamos"])
+app.include_router(compras_deseadas.router, prefix="/compras-deseadas", tags=["compras-deseadas"])
+
 
 
 @app.get("/health")
