@@ -26,6 +26,7 @@ def create_db_and_tables():
     from models.ingreso import Ingreso
     from models.proyeccion_override import ProyeccionOverride
     from models.importacion import GmailImporterConfig, ImportacionLog
+    from models.prestamo import Prestamo
 
     # 1. Crear tablas si no existen
     SQLModel.metadata.create_all(engine)
@@ -52,6 +53,28 @@ def create_db_and_tables():
                 if col not in columnas_actuales:
                     print(f"🚀 Migración automática: Agregando {col} a tabla {tabla}...")
                     cursor.execute(f"ALTER TABLE {tabla} ADD COLUMN {col} INTEGER")
+            
+            # Nueva migración: categoria en ingreso
+            if tabla == "ingreso" and "categoria" not in columnas_actuales:
+                print("🚀 Migración automática: Agregando categoria a tabla ingreso...")
+                cursor.execute("ALTER TABLE ingreso ADD COLUMN categoria TEXT DEFAULT 'Sueldo'")
+        
+        # Migración para baja lógica en GastoMensual
+        cursor.execute("PRAGMA table_info(gastomensual)")
+        columnas_actuales = [row[1] for row in cursor.fetchall()]
+        if "activo" not in columnas_actuales:
+            print("🚀 Migración automática: Agregando activo a tabla gastomensual...")
+            cursor.execute("ALTER TABLE gastomensual ADD COLUMN activo INTEGER DEFAULT 1")
+        if "fecha_baja" not in columnas_actuales:
+            print("🚀 Migración automática: Agregando fecha_baja a tabla gastomensual...")
+            cursor.execute("ALTER TABLE gastomensual ADD COLUMN fecha_baja TEXT")
+
+        # Migración para Categoria (tipo)
+        cursor.execute("PRAGMA table_info(categoria)")
+        columnas_actuales = [row[1] for row in cursor.fetchall()]
+        if "tipo" not in columnas_actuales:
+            print("🚀 Migración automática: Agregando tipo a tabla categoria...")
+            cursor.execute("ALTER TABLE categoria ADD COLUMN tipo TEXT DEFAULT 'Gasto'")
 
         # Migración para logs de importación
         cursor.execute("PRAGMA table_info(importacionlog)")
@@ -197,3 +220,26 @@ def seed_initial_data():
                 session.add(c)
             session.commit()
             print("✅ Seed: 3 nuevas configs de Gmail (Edesur, Starlink, Fincas)")
+
+    # Seed de Categorías
+    with Session(engine) as session:
+        from models.config import Categoria
+        cats_existentes = session.exec(select(Categoria)).first()
+        if not cats_existentes:
+            print("🌱 Iniciando seed de Categorías...")
+            cats_seed = [
+                Categoria(nombre="Sueldo", tipo="Ingreso", icono="Briefcase", color="#10B981"),
+                Categoria(nombre="Venta", tipo="Ingreso", icono="Tag", color="#3B82F6"),
+                Categoria(nombre="Comida", tipo="Gasto", icono="Utensils", color="#EF4444"),
+                Categoria(nombre="Supermercado", tipo="Gasto", icono="ShoppingCart", color="#F59E0B"),
+                Categoria(nombre="Servicios", tipo="Gasto", icono="Zap", color="#6366F1"),
+                Categoria(nombre="Hogar", tipo="Gasto", icono="Home", color="#8B5CF6"),
+                Categoria(nombre="Salud", tipo="Gasto", icono="Activity", color="#EC4899"),
+                Categoria(nombre="Transporte", tipo="Gasto", icono="Truck", color="#64748B"),
+                Categoria(nombre="Ocio", tipo="Gasto", icono="Coffee", color="#06B6D4"),
+                Categoria(nombre="Educación", tipo="Gasto", icono="Book", color="#3B82F6"),
+            ]
+            for c in cats_seed:
+                session.add(c)
+            session.commit()
+            print("✅ Seed completado: 10 categorías iniciales")

@@ -11,6 +11,7 @@ class MedioPago(SQLModel, table=True):
 class Categoria(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     nombre: str
+    tipo: str = Field(default="Gasto") # Gasto, Ingreso, Ambos
     icono: str = "Tag" # Nombre del icono de Lucide
     color: str = "#64748B"
     activa: bool = True
