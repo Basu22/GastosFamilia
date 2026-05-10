@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, ShoppingCart, CreditCard, LogOut, BarChart2, Settings, Calculator, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, ShoppingCart, MessageCircle, CreditCard, LogOut, BarChart2, Settings, Calculator, Sun, Moon } from 'lucide-react';
 import { useThemeStore } from '../../stores/themeStore';
 
 export default function Sidebar() {
@@ -9,6 +9,7 @@ export default function Sidebar() {
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Movimientos', path: '/movimientos', icon: PlusCircle },
     { name: 'Lista Compras', path: '/lista-compras', icon: ShoppingCart },
+    { name: 'WhatsApp', path: '/whatsapp', icon: MessageCircle },
     { name: 'Tarjetas', path: '/tarjetas', icon: CreditCard },
     { name: 'Proyección', path: '/proyeccion', icon: BarChart2 },
     { name: 'Simulador', path: '/simulador', icon: Calculator },

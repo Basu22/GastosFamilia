@@ -9,6 +9,7 @@ import Proyeccion from './pages/Proyeccion';
 import Configuracion from './pages/Configuracion';
 import Simulador from './pages/Simulador';
 import ListaCompras from './pages/ListaCompras';
+import WhatsappLogs from './pages/WhatsappLogs';
 import { useThemeStore } from './stores/themeStore';
 
 function App() {
@@ -40,6 +41,7 @@ function App() {
           <Route path="/configuracion" element={<Configuracion />} />
           <Route path="/simulador" element={<Simulador />} />
           <Route path="/lista-compras" element={<ListaCompras />} />
+          <Route path="/whatsapp" element={<WhatsappLogs />} />
         </Route>
       </Routes>
     </BrowserRouter>
