@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 from database import create_db_and_tables, seed_initial_data
-from models import config, compra_deseada # Importante para que SQLModel cree las tablas
+from models import config, compra_deseada, whatsapp_log # Importante para que SQLModel cree las tablas
 from routers import auth, movimientos, tarjetas, gastos_mensuales, dashboard, importar, ingresos, proyeccion, configuracion, simulador, importaciones, whatsapp, prestamos, compras_deseadas
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
