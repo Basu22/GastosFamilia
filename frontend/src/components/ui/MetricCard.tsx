@@ -7,7 +7,7 @@ interface MetricCardProps {
   label: string;
   value: number;
   icon: LucideIcon;
-  variant?: 'default' | 'success' | 'danger' | 'warning';
+  variant?: 'default' | 'success' | 'danger' | 'warning' | 'info';
   subtitle?: string;
 }
 
@@ -39,6 +39,11 @@ const MetricCard: FC<MetricCardProps> = ({
       card: 'glass-card aura-glow-gold border-[#FDE68A]/20',
       label: 'text-[#FDE68A]',
       value: 'text-white'
+    },
+    info: {
+      card: 'glass-card aura-glow-lavender border-indigo-400/20',
+      label: 'text-indigo-300',
+      value: 'text-indigo-100'
     }
   };
 
@@ -77,7 +82,8 @@ const MetricCard: FC<MetricCardProps> = ({
       <div className={`absolute top-0 left-0 right-0 h-1 rounded-t-full opacity-50 ${
         variant === 'success' ? 'bg-[#A7F3D0]' : 
         variant === 'danger' ? 'bg-[#FCA5A5]' : 
-        variant === 'warning' ? 'bg-[#FDE68A]' : 'bg-[#C7D2FE]'
+        variant === 'warning' ? 'bg-[#FDE68A]' : 
+        variant === 'info' ? 'bg-indigo-400' : 'bg-[#C7D2FE]'
       }`} />
     </article>
   );

@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getDashboardInfo } from '../api/client';
+import { reactivarGastoMensual } from '../api/gastos_mensuales';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { TrendingUp, Wallet, CreditCard, PiggyBank, Edit3, ChevronLeft, ChevronRight, Calendar, ChevronDown, Info, Plus } from 'lucide-react';
+import { TrendingUp, Wallet, CreditCard, PiggyBank, Edit3, ChevronLeft, ChevronRight, Calendar, ChevronDown, Info, Plus, Landmark } from 'lucide-react';
 import { formatARS, MESES_CORTO } from '../utils/format';
 import MetricCard from '../components/ui/MetricCard';
 import InlineEditForm from '../components/dashboard/InlineEditForm';
@@ -45,13 +46,14 @@ export default function Dashboard() {
 
   // Agrupación de movimientos para PC
   const movimientosAgrupados = useMemo(() => {
-    if (!data?.movimientos_mes) return { ingresos: [], cuotas: [], fijos: [], variables: [] };
+    if (!data?.movimientos_mes) return { ingresos: [], cuotas: [], fijos: [], variables: [], prestamos: [] };
     
     return {
       ingresos: data.movimientos_mes.filter((m: any) => m.tipo === 'ingreso'),
-      cuotas: data.movimientos_mes.filter((m: any) => m.origen === 'Cuotas'),
+      cuotas: data.movimientos_mes.filter((m: any) => m.tipo === 'tarjeta'),
       fijos: data.movimientos_mes.filter((m: any) => m.origen === 'Gastos Fijos'),
       variables: data.movimientos_mes.filter((m: any) => m.origen === 'Gastos Variados'),
+      prestamos: data.movimientos_mes.filter((m: any) => m.tipo === 'prestamo'),
     };
   }, [data]);
 
@@ -159,7 +161,7 @@ export default function Dashboard() {
       <section id="section-metrics" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-4 lg:px-0">
         <MetricCard id="metric-ingresos" label="Ingresos" value={data.ingreso} variant="success" icon={PiggyBank} />
         <MetricCard id="metric-cuotas" label="Cuotas Tarjeta" value={data.total_cuotas} variant="warning" icon={CreditCard} />
-        <MetricCard id="metric-gastos" label="Gastos Fijos/Var" value={data.total_gastos_mensuales} variant="danger" icon={Wallet} />
+        <MetricCard id="metric-prestamos" label="Préstamos" value={data.total_prestamos} variant="info" icon={Landmark} />
         <MetricCard id="metric-ahorro" label="BALANCE DEL MES" value={data.ahorro_proyectado} variant={data.ahorro_proyectado >= 0 ? 'success' : 'danger'} icon={TrendingUp} subtitle="Disponible para ahorro/gastos" />
       </section>
 
@@ -321,6 +323,19 @@ export default function Dashboard() {
                   anio={anio}
                 />
                 <GrupoMobile
+                  titulo="Préstamos"
+                  icon={Landmark}
+                  movimientos={movimientosAgrupados.prestamos}
+                  expandido={seccionesAbiertas.has('prestamos')}
+                  onToggle={() => toggleSeccion('prestamos')}
+                  editingItem={editingItem}
+                  setEditingItem={setEditingItem}
+                  creandoEnSeccion={creandoEnSeccion}
+                  setCreandoEnSeccion={setCreandoEnSeccion}
+                  mes={mes}
+                  anio={anio}
+                />
+                <GrupoMobile
                   titulo="Gastos Fijos"
                   icon={Wallet}
                   movimientos={movimientosAgrupados.fijos}
@@ -379,6 +394,21 @@ export default function Dashboard() {
                       totalesCards={totalesPorTarjeta}
                       tarjetaFiltro={tarjetaFiltro}
                       setTarjetaFiltro={setTarjetaFiltro}
+                      creandoEnSeccion={creandoEnSeccion}
+                      setCreandoEnSeccion={setCreandoEnSeccion}
+                      mes={mes}
+                      anio={anio}
+                    />
+
+                    {/* GRUPO: PRESTAMOS */}
+                    <GrupoDesktop 
+                      titulo="Préstamos" 
+                      icon={Landmark}
+                      movimientos={movimientosAgrupados.prestamos}
+                      expandido={seccionesAbiertas.has('prestamos')}
+                      onToggle={() => toggleSeccion('prestamos')}
+                      editingItem={editingItem}
+                      setEditingItem={setEditingItem}
                       creandoEnSeccion={creandoEnSeccion}
                       setCreandoEnSeccion={setCreandoEnSeccion}
                       mes={mes}
@@ -522,9 +552,17 @@ function GrupoDesktop({ titulo, icon: Icon, movimientos, expandido, onToggle, ed
   }, [movimientos, tarjetaFiltro, titulo]);
 
   const totalGrupo = movimientosAMostrar.reduce((acc: number, m: any) => acc + m.monto, 0);
-  const tipoSeccion = titulo === 'Ingresos' ? 'ingreso' : titulo === 'Cuotas de Tarjeta' ? 'tarjeta' : titulo === 'Gastos Fijos' ? 'gasto_fijo' : 'gasto_variado';
+  const tipoSeccion = titulo === 'Ingresos' ? 'ingreso' : titulo === 'Cuotas de Tarjeta' ? 'tarjeta' : titulo === 'Préstamos' ? 'prestamo' : titulo === 'Gastos Fijos' ? 'gasto_fijo' : 'gasto_variado';
 
-  const auraColor = titulo === 'Ingresos' ? 'text-aura-mint' : titulo === 'Cuotas de Tarjeta' ? 'text-aura-lavender' : 'text-aura-coral';
+  const auraColor = titulo === 'Ingresos' ? 'text-aura-mint' : (titulo === 'Cuotas de Tarjeta' || titulo === 'Préstamos') ? 'text-aura-lavender' : 'text-aura-coral';
+  const queryClient = useQueryClient();
+  const reactivarMutation = useMutation({
+    mutationFn: async (id: number) => reactivarGastoMensual(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['gastos-mensuales'] });
+    }
+  });
 
   return (
     <>
@@ -604,7 +642,7 @@ function GrupoDesktop({ titulo, icon: Icon, movimientos, expandido, onToggle, ed
             <div className="space-y-3 mb-6">
               {movimientosAMostrar.map((mov: any) => (
                 <div key={`${mov.tipo}-${mov.id}`} className="space-y-2">
-                  <div className={`group flex items-center justify-between p-5 rounded-2xl transition-all duration-300 ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'bg-aura-lavender/10 border border-aura-lavender/30' : 'bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10'}`}>
+                  <div className={`group flex items-center justify-between p-5 rounded-2xl transition-all duration-300 ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'bg-aura-lavender/10 border border-aura-lavender/30' : 'bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10'} ${mov.activo === false ? 'opacity-40 line-through' : ''}`}>
                     <div className="flex items-center gap-5">
                       <div className="w-1 h-10 rounded-full" style={{ backgroundColor: mov.tarjeta_color || (mov.tipo === 'ingreso' ? '#A7F3D0' : (mov.es_fijo ? '#C7D2FE' : '#94a3b8')) }} />
                       <div>
@@ -619,20 +657,41 @@ function GrupoDesktop({ titulo, icon: Icon, movimientos, expandido, onToggle, ed
                           {mov.tipo === 'tarjeta' && (
                             <span className="text-[10px] text-aura-lavender font-bold uppercase tracking-widest opacity-80">Cuota {mov.cuota_actual}/{mov.cuotas_total}</span>
                           )}
+                          {mov.activo === false && mov.fecha_baja && (
+                            <span className="text-[9px] font-bold text-red-400 uppercase tracking-widest bg-red-400/10 px-2 py-0.5 rounded-full border border-red-400/20">
+                              Baja: {MESES_CORTO[parseInt(mov.fecha_baja.split('-')[1])]} {mov.fecha_baja.split('-')[0]} 🔴
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
                     
                     <div className="flex items-center gap-8">
-                      <p className={`text-lg font-bold tracking-tight ${mov.tipo === 'ingreso' ? 'text-aura-mint' : 'text-white'}`}>
-                        {formatARS(mov.monto)}
-                      </p>
-                      <button 
-                        onClick={() => setEditingItem((editingItem?.id === mov.id && editingItem?.tipo === mov.tipo) ? null : { id: mov.id, tipo: mov.tipo })}
-                        className={`p-3 rounded-xl transition-all ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'bg-aura-lavender text-aura-bg shadow-lg' : 'text-gray-500 hover:text-white hover:bg-white/10'}`}
-                      >
-                        <Edit3 size={18} />
-                      </button>
+                      {mov.activo === false ? (
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`¿Reactivar "${mov.descripcion}"?`)) {
+                              reactivarMutation.mutate(mov.id);
+                            }
+                          }}
+                          disabled={reactivarMutation.isPending}
+                          className="text-[9px] px-3 py-1.5 font-bold rounded-lg border border-aura-mint/30 text-aura-mint hover:bg-aura-mint/10 transition-all uppercase whitespace-nowrap z-10 hover:!opacity-100 hover:!no-underline"
+                        >
+                          {reactivarMutation.isPending ? '...' : 'Reactivar'}
+                        </button>
+                      ) : (
+                        <p className={`text-lg font-bold tracking-tight ${mov.tipo === 'ingreso' ? 'text-aura-mint' : 'text-white'}`}>
+                          {formatARS(mov.monto)}
+                        </p>
+                      )}
+                      {mov.activo !== false && (
+                        <button 
+                          onClick={() => setEditingItem((editingItem?.id === mov.id && editingItem?.tipo === mov.tipo) ? null : { id: mov.id, tipo: mov.tipo })}
+                          className={`p-3 rounded-xl transition-all ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'bg-aura-lavender text-aura-bg shadow-lg' : 'text-gray-500 hover:text-white hover:bg-white/10'}`}
+                        >
+                          <Edit3 size={18} />
+                        </button>
+                      )}
                     </div>
                   </div>
                   
@@ -664,6 +723,14 @@ function GrupoMobile({ titulo, icon: Icon, movimientos, expandido, onToggle, edi
   const tipoSeccion = titulo === 'Ingresos' ? 'ingreso' : titulo === 'Cuotas de Tarjeta' ? 'tarjeta' : titulo === 'Gastos Fijos' ? 'gasto_fijo' : 'gasto_variado';
   
   const auraColor = titulo === 'Ingresos' ? 'text-aura-mint' : titulo === 'Cuotas de Tarjeta' ? 'text-aura-lavender' : 'text-aura-coral';
+  const queryClient = useQueryClient();
+  const reactivarMutation = useMutation({
+    mutationFn: async (id: number) => reactivarGastoMensual(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['gastos-mensuales'] });
+    }
+  });
 
   return (
     <div className={`glass-card overflow-hidden transition-all duration-500 ${expandido ? 'aura-glow-lavender border-aura-lavender/20' : 'border-aura-border/20'}`}>
@@ -712,10 +779,10 @@ function GrupoMobile({ titulo, icon: Icon, movimientos, expandido, onToggle, edi
                 {/* Barra de color lateral */}
                 <div 
                   className="w-1.5 h-auto rounded-full shrink-0 shadow-[0_0_15px_rgba(0,0,0,0.2)]" 
-                  style={{ backgroundColor: mov.tarjeta_color || (mov.tipo === 'ingreso' ? '#A7F3D0' : (mov.es_fijo ? '#C7D2FE' : '#94a3b8')) }} 
+                  style={{ backgroundColor: mov.tarjeta_color || (mov.tipo === 'ingreso' ? '#A7F3D0' : (mov.es_fijo ? '#C7D2FE' : '#94a3b8')), opacity: mov.activo === false ? 0.3 : 1 }} 
                 />
 
-                <div className="flex-1 flex flex-col gap-4">
+                <div className={`flex-1 flex flex-col gap-4 ${mov.activo === false ? 'opacity-40 line-through' : ''}`}>
                   {/* Fila 1: Descripción */}
                   <div className="flex items-start justify-between">
                     <p className="text-base font-bold text-white leading-tight tracking-tight">
@@ -740,6 +807,12 @@ function GrupoMobile({ titulo, icon: Icon, movimientos, expandido, onToggle, edi
                         <span className="text-[10px] text-aura-lavender font-bold uppercase tracking-widest mt-1">Cuota {mov.cuota_actual}/{mov.cuotas_total}</span>
                       </div>
                     )}
+                    {mov.activo === false && mov.fecha_baja && (
+                      <div className="flex flex-col items-end">
+                        <span className="text-[9px] font-bold text-red-400/60 uppercase tracking-widest leading-none">Estado</span>
+                        <span className="text-[10px] text-red-400 font-bold uppercase tracking-widest mt-1">Baja: {MESES_CORTO[parseInt(mov.fecha_baja.split('-')[1])]} {mov.fecha_baja.split('-')[0]} 🔴</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Fila 3: Importe y Lápiz (2 col) */}
@@ -751,12 +824,26 @@ function GrupoMobile({ titulo, icon: Icon, movimientos, expandido, onToggle, edi
                       </span>
                     </div>
                     
-                    <button 
-                      onClick={() => setEditingItem((editingItem?.id === mov.id && editingItem?.tipo === mov.tipo) ? null : { id: mov.id, tipo: mov.tipo })}
-                      className={`p-2 rounded-xl transition-all active:scale-90 ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'bg-aura-lavender text-aura-bg shadow-lg shadow-aura-lavender/30' : 'bg-white/5 text-gray-400 border border-white/5 hover:bg-white/10'}`}
-                    >
-                      <Edit3 size={16} />
-                    </button>
+                    {mov.activo === false ? (
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`¿Reactivar "${mov.descripcion}"?`)) {
+                            reactivarMutation.mutate(mov.id);
+                          }
+                        }}
+                        disabled={reactivarMutation.isPending}
+                        className="text-[9px] px-3 py-1.5 font-bold rounded-lg border border-aura-mint/30 text-aura-mint hover:bg-aura-mint/10 transition-all uppercase whitespace-nowrap z-10 hover:!opacity-100 hover:!no-underline"
+                      >
+                        {reactivarMutation.isPending ? '...' : 'Reactivar'}
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={() => setEditingItem((editingItem?.id === mov.id && editingItem?.tipo === mov.tipo) ? null : { id: mov.id, tipo: mov.tipo })}
+                        className={`p-2 rounded-xl transition-all active:scale-90 ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'bg-aura-lavender text-aura-bg shadow-lg shadow-aura-lavender/30' : 'bg-white/5 text-gray-400 border border-white/5 hover:bg-white/10'}`}
+                      >
+                        <Edit3 size={16} />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

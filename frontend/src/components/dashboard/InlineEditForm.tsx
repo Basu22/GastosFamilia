@@ -5,8 +5,9 @@ import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getTarjetas } from '../../api/tarjetas';
 import { getMovimiento, updateMovimiento, deleteMovimiento } from '../../api/movimientos';
-import { updateGastoMensual, deleteGastoMensual, getGastosMensuales } from '../../api/gastos_mensuales';
+import { updateGastoMensual, deleteGastoMensual, getGastosMensuales, darBajaGastoMensual } from '../../api/gastos_mensuales';
 import { updateIngreso, deleteIngreso, getIngresos } from '../../api/ingresos';
+import { getPrestamos, updatePrestamo, deletePrestamo } from '../../api/prestamos';
 import { Save, Trash2 } from 'lucide-react';
 import { NumericFormat } from 'react-number-format';
 
@@ -14,6 +15,7 @@ import { NumericFormat } from 'react-number-format';
 const schema = z.object({
   descripcion: z.string().min(3, 'Mínimo 3 caracteres'),
   monto: z.number().positive('Debe ser mayor a 0'),
+  entidad: z.string().optional(),
   // Campos específicos de tarjeta
   tarjeta_id: z.string().optional(),
   cuotas: z.number().optional(),
@@ -26,7 +28,7 @@ const schema = z.object({
 
 interface InlineEditFormProps {
   id: number;
-  tipo: 'tarjeta' | 'gasto' | 'ingreso';
+  tipo: 'tarjeta' | 'gasto' | 'ingreso' | 'prestamo';
   mesActual: number;
   anioActual: number;
   onClose: () => void;
@@ -37,6 +39,7 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
   const [loading, setLoading] = useState(true);
   const [entryMode, setEntryMode] = useState<'total' | 'cuota'>('total');
   const [cuotasMode, setCuotasMode] = useState<'preset' | 'manual'>('preset');
+  const [isActiveGasto, setIsActiveGasto] = useState<boolean>(true);
 
   const { data: tarjetas } = useQuery({ queryKey: ['tarjetas'], queryFn: getTarjetas });
 
@@ -74,17 +77,23 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
             fecha_primera_cuota: m.fecha_primera_cuota
           });
         } else {
-          const list = tipo === 'gasto' ? await getGastosMensuales() : await getIngresos();
+          const list = tipo === 'gasto' ? await getGastosMensuales() : tipo === 'ingreso' ? await getIngresos() : await getPrestamos();
           const item = list.find((x: any) => x.id === id);
           if (item) {
             reset({
               descripcion: item.descripcion,
-              monto: item.monto,
+              monto: item.monto_total || item.monto,
+              entidad: item.entidad || "",
               mes: item.mes,
               anio: item.anio,
               es_fijo: item.es_fijo,
-              tarjeta_id: item.tarjeta_id?.toString() || ""
+              tarjeta_id: item.tarjeta_id?.toString() || "",
+              cuotas: item.cuotas,
+              fecha_primera_cuota: item.fecha_primera_cuota
             });
+            if (tipo === 'gasto') {
+              setIsActiveGasto(item.activo !== false);
+            }
           }
         }
       } finally {
@@ -109,6 +118,11 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
         });
       } else if (tipo === 'gasto') {
         return updateGastoMensual(id, payload);
+      } else if (tipo === 'prestamo') {
+        return updatePrestamo(id, {
+          ...payload,
+          monto_total: data.monto
+        });
       } else {
         return updateIngreso(id, payload);
       }
@@ -123,6 +137,7 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
     mutationFn: async () => {
       if (tipo === 'tarjeta') return deleteMovimiento(id);
       if (tipo === 'gasto') return deleteGastoMensual(id);
+      if (tipo === 'prestamo') return deletePrestamo(id);
       return deleteIngreso(id);
     },
     onSuccess: () => {
@@ -130,6 +145,20 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
       onClose();
     }
   });
+
+  const bajaMutation = useMutation({
+    mutationFn: async () => {
+      if (tipo === 'gasto') return darBajaGastoMensual(id, mesActual, anioActual);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['gastos-mensuales'] });
+      onClose();
+    }
+  });
+
+  const esFijo = watch('es_fijo');
+  const descripcionVal = watch('descripcion');
 
   if (loading) return <div className="p-8 text-center animate-pulse text-gray-400">Cargando datos...</div>;
 
@@ -148,8 +177,8 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
             {errors.descripcion && <p className="text-[10px] text-red-500">{errors.descripcion.message as string}</p>}
           </div>
 
-          {/* Monto (Dinamico para Tarjeta) */}
-          {tipo === 'tarjeta' ? (
+          {/* Monto (Dinamico para Tarjeta y Prestamo) */}
+          {(tipo === 'tarjeta' || tipo === 'prestamo') ? (
             <div className="col-span-full space-y-4 bg-white dark:bg-neutral-900 p-3 rounded-xl border border-gray-100 dark:border-neutral-800">
               <div className="flex items-center justify-between">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Modo de entrada</label>
@@ -196,20 +225,30 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
             </div>
           )}
 
-          {/* Campos específicos Tarjeta (Restantes) */}
-          {tipo === 'tarjeta' && (
+          {/* Campos específicos Tarjeta y Prestamo (Restantes) */}
+          {(tipo === 'tarjeta' || tipo === 'prestamo') && (
             <>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-gray-400 uppercase">Tarjeta</label>
-                <select 
-                  {...register('tarjeta_id')}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  <option value="">Efectivo / Transf.</option>
-                  {tarjetas?.map((t: any) => (
-                    <option key={t.id} value={t.id}>{t.nombre}</option>
-                  ))}
-                </select>
+                <label className="text-[10px] font-bold text-gray-400 uppercase">
+                  {tipo === 'tarjeta' ? 'Tarjeta' : 'Entidad / Banco'}
+                </label>
+                {tipo === 'tarjeta' ? (
+                  <select 
+                    {...register('tarjeta_id')}
+                    className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  >
+                    <option value="">Efectivo / Transf.</option>
+                    {tarjetas?.map((t: any) => (
+                      <option key={t.id} value={t.id}>{t.nombre}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input 
+                    {...register('entidad')}
+                    placeholder="Ej: Banco Galicia, ICBC, etc."
+                    className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                )}
               </div>
               <div className="col-span-full space-y-3">
                 <div className="flex items-center justify-between">
@@ -251,7 +290,7 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
           )}
 
           {/* Campos específicos Fijos */}
-          {tipo !== 'tarjeta' && (
+          {(tipo !== 'tarjeta' && tipo !== 'prestamo') && (
             <>
               {tipo === 'gasto' && (
                 <div className="space-y-1">
@@ -310,6 +349,35 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
             </div>
           </div>
         </div>
+
+        {/* Sección Dar de Baja para Gastos Fijos */}
+        {tipo === 'gasto' && esFijo && isActiveGasto && (
+          <div className="mt-6 pt-4 border-t border-red-500/10">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-xl bg-red-500/5 border border-red-500/10">
+              <div className="space-y-1">
+                <h4 className="text-xs font-bold text-red-500 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                  Dar de baja este gasto fijo
+                </h4>
+                <p className="text-[10px] text-gray-500 dark:text-neutral-400">
+                  El gasto dejará de proyectarse desde el próximo mes. El historial anterior queda preservado.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm(`¿Dar de baja "${descripcionVal}"? El gasto dejará de proyectarse desde el próximo mes. El historial queda preservado.`)) {
+                    bajaMutation.mutate();
+                  }
+                }}
+                disabled={bajaMutation.isPending}
+                className="w-full md:w-auto px-4 py-2 rounded-xl text-xs font-bold bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 transition-all active:scale-95 whitespace-nowrap disabled:opacity-50"
+              >
+                {bajaMutation.isPending ? 'PROCESANDO...' : 'DAR DE BAJA'}
+              </button>
+            </div>
+          </div>
+        )}
       </form>
     </div>
   );

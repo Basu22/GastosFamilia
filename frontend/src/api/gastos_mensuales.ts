@@ -22,3 +22,13 @@ export const deleteGastoMensual = async (id: number) => {
   const response = await apiClient.delete(`/gastos-mensuales/${id}`);
   return response.data;
 };
+
+export const darBajaGastoMensual = async (id: number, mes: number, anio: number) => {
+  const response = await apiClient.patch(`/gastos-mensuales/${id}/baja`, null, { params: { mes, anio } });
+  return response.data;
+};
+
+export const reactivarGastoMensual = async (id: number) => {
+  const response = await apiClient.patch(`/gastos-mensuales/${id}/reactivar`);
+  return response.data;
+};
