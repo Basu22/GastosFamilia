@@ -69,3 +69,30 @@ No utilizar negro puro (#000000). Usar una base de "Deep Slate" para reducir la 
 2.  **Top Stats:** 4 Cards horizontales con el mismo ancho. Cada uno con un borde superior de 4px del color de su categoría (Verde para ingresos, Coral para gastos).
 3.  **Main Content:** Fondo con un degradado radial casi imperceptible de `#1E293B` en el centro hacia el fondo oscuro en los bordes.
 4.  **Tablas/Listas:** No usar líneas divisorias blancas. Usar cambios sutiles de tono de fondo o espacios generosos. Los estados (ej. "Provisionado") deben ir en cápsulas (pills) con bordes muy redondeados y colores pastel.
+
+---
+
+## 7. Identidad Visual por Tipo de Dato (Actualizado — Mayo 2026)
+
+### 7.1. MetricCards del Dashboard
+
+| Card | Color | Variante | Qué representa |
+|------|-------|----------|---------------|
+| Ingresos | `#A7F3D0` Mint | `success` | Total entradas del mes |
+| Cuotas Tarjeta | `#FDE68A` Gold | `warning` | Total cuotas tarjetas activas |
+| Préstamos | `#818CF8` Indigo | `info` | Total cuotas préstamos activos |
+| Balance del Mes | Mint/Coral | `success`/`danger` | Saldo disponible |
+
+### 7.2. Color de Préstamos en Listados
+El color `#10B981` (esmeralda) identifica filas de préstamos en el listado del Dashboard. Está **hardcodeado en el backend** — no viene de la configuración de tarjetas.
+
+### 7.3. Colores de Tarjetas (Inmutables — vienen de la DB)
+```
+BASO VISA: #3B82F6 | JULI VISA: #8B5CF6 | JULI MASTER: #EF4444
+JULI CENCOSUD: #10B981 | MONI GALICIA: #F59E0B | BASO MASTER: #64748B
+JULI BBVA: #06B6D4 | BASO ICBC: #6366F1 | SELE SANTANDER: #EC4899
+```
+> ⚠️ El frontend NUNCA hardcodea estos colores — siempre usa el campo `color` de la API.
+
+---
+*Última actualización: Mayo 2026*
