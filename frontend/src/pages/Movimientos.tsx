@@ -9,8 +9,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getGastosMensuales, createGastoMensual, updateGastoMensual, deleteGastoMensual } from '../api/gastos_mensuales';
 import { getIngresos, createIngreso, updateIngreso, deleteIngreso } from '../api/ingresos';
 import { getTarjetas } from '../api/tarjetas';
-import { createMovimiento, previewMovimiento, getMovimientos, updateMovimiento, deleteMovimiento } from '../api/movimientos';
 import { getPrestamos, createPrestamo, updatePrestamo, deletePrestamo } from '../api/prestamos';
+import { getMovimientos, createMovimiento, updateMovimiento, deleteMovimiento, previewMovimiento } from '../api/movimientos';
+import { getCategorias } from '../api/configuracion';
 
 // UI
 import { formatARS, MESES_CORTO } from '../utils/format';
@@ -20,6 +21,7 @@ import { NumericFormat } from 'react-number-format';
 // Esquemas de Validación
 const schemaFijos = z.object({
   descripcion: z.string().min(3, 'Mínimo 3 caracteres'),
+  categoria: z.string().optional().nullable(),
   monto: z.number({ invalid_type_error: 'Debe ser numérico' }).min(0.01, 'Debe ser mayor a 0'),
   mes: z.number().min(1).max(12),
   anio: z.number().min(2020).max(2050),
@@ -29,13 +31,20 @@ const schemaFijos = z.object({
 
 const schemaCuotas = z.object({
   tarjeta_id: z.string().optional().nullable(),
-  entidad: z.string().optional().nullable(),
   descripcion: z.string().min(3, 'Mínimo 3 caracteres'),
+  categoria: z.string().optional().nullable(),
   monto_total: z.number({ invalid_type_error: 'Debe ser un número válido' }).min(0.01, 'El monto debe ser mayor a 0'),
   cuotas: z.number().int().min(1),
   fecha_primera_cuota: z.string().min(1, 'Seleccioná una fecha'),
   notas: z.string().optional().nullable()
 });
+
+interface DetalleCuota {
+  numero_cuota: number;
+  mes: number;
+  anio: number;
+  monto: number;
+}
 
 type FijosType = z.infer<typeof schemaFijos>;
 type CuotasType = z.infer<typeof schemaCuotas>;
@@ -50,6 +59,13 @@ export default function Movimientos() {
   const [previewData, setPreviewData] = useState<any>(null);
   const [entryMode, setEntryMode] = useState<'total' | 'cuota'>('total');
   const [cuotasMode, setCuotasMode] = useState<'preset' | 'manual'>('preset');
+  const [detalleCuotas, setDetalleCuotas] = useState<DetalleCuota[]>([]);
+  const [prestamoFechaInicio, setPrestamoFechaInicio] = useState(new Date().toISOString().split('T')[0]);
+  const [prestamoCuotas, setPrestamoCuotas] = useState(1);
+  const [prestamoEntidad, setPrestamoEntidad] = useState('');
+  const [prestamoDescripcion, setPrestamoDescripcion] = useState('');
+  const [prestamoCategoria, setPrestamoCategoria] = useState('');
+  const [prestamoNotas, setPrestamoNotas] = useState('');
 
   // Queries
   const { data: tarjetas } = useQuery({ queryKey: ['tarjetas'], queryFn: getTarjetas });
@@ -57,12 +73,14 @@ export default function Movimientos() {
   const { data: ingresos, isLoading: loadingIngresos } = useQuery({ queryKey: ['ingresos'], queryFn: () => getIngresos() });
   const { data: movimientos, isLoading: loadingMovimientos } = useQuery({ queryKey: ['movimientos'], queryFn: () => getMovimientos() });
   const { data: prestamos, isLoading: loadingPrestamos } = useQuery({ queryKey: ['prestamos'], queryFn: () => getPrestamos() });
+  const { data: categorias } = useQuery({ queryKey: ['categorias'], queryFn: getCategorias });
 
   // Forms
   const formFijos = useForm<FijosType>({
     resolver: zodResolver(schemaFijos),
     defaultValues: { 
       descripcion: '',
+      categoria: '',
       monto: 0,
       mes: new Date().getMonth() + 1, 
       anio: new Date().getFullYear(), 
@@ -75,14 +93,35 @@ export default function Movimientos() {
     resolver: zodResolver(schemaCuotas),
     defaultValues: { 
       tarjeta_id: '',
-      entidad: '',
       descripcion: '',
+      categoria: '',
       monto_total: 0,
       cuotas: 1, 
       fecha_primera_cuota: new Date().toISOString().split('T')[0],
       notas: ''
     }
   });
+
+  // Helper: generar detalle de cuotas cuando cambia cantidad o fecha
+  const generarDetalleCuotas = (cantCuotasVal: number, fechaInicioStr: string) => {
+    const [y, m] = fechaInicioStr.split('-').map(Number);
+    const nuevas: DetalleCuota[] = [];
+    for (let i = 0; i < cantCuotasVal; i++) {
+      let mesCuota = m + i;
+      let anioCuota = y;
+      while (mesCuota > 12) { mesCuota -= 12; anioCuota++; }
+      nuevas.push({ numero_cuota: i + 1, mes: mesCuota, anio: anioCuota, monto: 0 });
+    }
+    setDetalleCuotas(nuevas);
+  };
+
+  const handleDetalleMonto = (index: number, valor: number) => {
+    setDetalleCuotas(prev => {
+      const copia = [...prev];
+      copia[index] = { ...copia[index], monto: valor };
+      return copia;
+    });
+  };
 
   // Lógica de cálculo dual de montos
   const montoTotal = formCuotas.watch('monto_total') as number;
@@ -108,10 +147,12 @@ export default function Movimientos() {
 
     const descParam = searchParams.get('desc');
     const montoParam = searchParams.get('monto');
+    const catParam = searchParams.get('cat');
 
-    if (tabParam === 'egresos' && (descParam || montoParam)) {
+    if (tabParam === 'egresos' && (descParam || montoParam || catParam)) {
       if (descParam) formFijos.setValue('descripcion', descParam);
       if (montoParam) formFijos.setValue('monto', parseFloat(montoParam));
+      if (catParam) formFijos.setValue('categoria', catParam);
     }
   }, [searchParams, formFijos]);
 
@@ -148,16 +189,36 @@ export default function Movimientos() {
   const mutationCuotas = useMutation({
     mutationFn: (data: any) => {
       const payload = { ...data, tarjeta_id: data.tarjeta_id ? parseInt(data.tarjeta_id) : null };
-      if (activeTab === 'prestamos') {
-        if (editingId) return updatePrestamo(editingId, payload);
-        return createPrestamo(payload);
-      }
       if (editingId) return updateMovimiento(editingId, payload);
       return createMovimiento(payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: [activeTab === 'prestamos' ? 'prestamos' : 'movimientos'] });
+      queryClient.invalidateQueries({ queryKey: ['movimientos'] });
+      handleCancel();
+    },
+    onError: (error: any) => {
+      alert("❌ Error al guardar: " + (error.response?.data?.detail || error.message));
+    }
+  });
+
+  const mutationPrestamo = useMutation({
+    mutationFn: () => {
+      const payload = {
+        entidad: prestamoEntidad,
+        descripcion: prestamoDescripcion,
+        categoria: prestamoCategoria || null,
+        cuotas: prestamoCuotas,
+        fecha_primera_cuota: prestamoFechaInicio,
+        notas: prestamoNotas || null,
+        detalle_cuotas: detalleCuotas
+      };
+      if (editingId) return updatePrestamo(editingId, payload);
+      return createPrestamo(payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['prestamos'] });
       handleCancel();
     },
     onError: (error: any) => {
@@ -198,11 +259,28 @@ export default function Movimientos() {
 
   const handleEdit = (item: any) => {
     setEditingId(item.id);
-    if (activeTab === 'tarjetas' || activeTab === 'prestamos') {
+    if (activeTab === 'prestamos') {
+      setPrestamoEntidad(item.entidad || '');
+      setPrestamoDescripcion(item.descripcion || '');
+      setPrestamoCategoria(item.categoria || '');
+      setPrestamoNotas(item.notas || '');
+      setPrestamoFechaInicio(item.fecha_primera_cuota || '');
+      setPrestamoCuotas(item.cuotas || 1);
+      if (item.detalle_cuotas && item.detalle_cuotas.length > 0) {
+        setDetalleCuotas(item.detalle_cuotas.map((c: any) => ({
+          numero_cuota: c.numero_cuota,
+          mes: c.mes,
+          anio: c.anio,
+          monto: c.monto
+        })));
+      } else {
+        generarDetalleCuotas(item.cuotas || 1, item.fecha_primera_cuota || new Date().toISOString().split('T')[0]);
+      }
+    } else if (activeTab === 'tarjetas') {
       formCuotas.reset({
         tarjeta_id: item.tarjeta_id?.toString() || "",
-        entidad: item.entidad || "",
         descripcion: item.descripcion,
+        categoria: item.categoria || "",
         monto_total: item.monto_total,
         cuotas: item.cuotas,
         fecha_primera_cuota: item.fecha_primera_cuota,
@@ -211,6 +289,7 @@ export default function Movimientos() {
     } else {
       formFijos.reset({
         descripcion: item.descripcion,
+        categoria: item.categoria || "",
         monto: item.monto,
         mes: item.mes,
         anio: item.anio,
@@ -218,7 +297,6 @@ export default function Movimientos() {
         tarjeta_id: item.tarjeta_id?.toString() || ""
       });
     }
-    // Removido window.scrollTo para no subir todo el listado
   };
 
   const handleCancel = () => {
@@ -233,13 +311,20 @@ export default function Movimientos() {
     });
     formCuotas.reset({ 
       tarjeta_id: '',
-      entidad: '',
       descripcion: '',
+      categoria: '',
       monto_total: 0,
       cuotas: 1, 
       fecha_primera_cuota: new Date().toISOString().split('T')[0],
       notas: ''
     });
+    setPrestamoEntidad('');
+    setPrestamoDescripcion('');
+    setPrestamoCategoria('');
+    setPrestamoNotas('');
+    setPrestamoFechaInicio(new Date().toISOString().split('T')[0]);
+    setPrestamoCuotas(1);
+    setDetalleCuotas([]);
     setSearchParams({});
   };
 
@@ -247,7 +332,93 @@ export default function Movimientos() {
   const isLoading = activeTab === 'egresos' ? loadingEgresos : (activeTab === 'tarjetas' ? loadingMovimientos : (activeTab === 'ingresos' ? loadingIngresos : loadingPrestamos));
 
   const renderForm = () => {
-    if (activeTab === 'tarjetas' || activeTab === 'prestamos') {
+    if (activeTab === 'prestamos') {
+      const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+      const totalCargado = detalleCuotas.reduce((s, c) => s + c.monto, 0);
+      const handleSubmitPrestamo = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!prestamoEntidad.trim()) { alert('Ingresá la entidad/banco'); return; }
+        if (!prestamoDescripcion.trim() || prestamoDescripcion.length < 3) { alert('La descripción debe tener al menos 3 caracteres'); return; }
+        if (detalleCuotas.length === 0) { alert('Generá las cuotas primero'); return; }
+        if (detalleCuotas.some(c => c.monto <= 0)) { alert('Todas las cuotas deben tener un importe mayor a 0'); return; }
+        mutationPrestamo.mutate();
+      };
+      return (
+        <form onSubmit={handleSubmitPrestamo} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Entidad / Banco</label>
+              <input value={prestamoEntidad} onChange={e => setPrestamoEntidad(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ej: Banco Galicia, ICBC..." />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Descripción</label>
+              <input value={prestamoDescripcion} onChange={e => setPrestamoDescripcion(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ej: Préstamo Personal" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Categoría</label>
+              <select value={prestamoCategoria} onChange={e => setPrestamoCategoria(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="">Sin categoría</option>
+                {categorias?.filter((c:any) => c.tipo === 'Gasto' || c.tipo === 'Ambos').map((c: any) => (
+                  <option key={c.id} value={c.nombre}>{c.nombre}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Fecha Primera Cuota</label>
+              <input type="date" value={prestamoFechaInicio} onChange={e => setPrestamoFechaInicio(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+          </div>
+
+          {/* Cantidad de Cuotas + Generador */}
+          <div className="space-y-4">
+            <div className="flex items-end gap-4">
+              <div className="flex-1 space-y-2">
+                <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Cantidad de Cuotas</label>
+                <input type="number" min={1} max={120} value={prestamoCuotas} onChange={e => setPrestamoCuotas(parseInt(e.target.value) || 1)} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-xl font-bold outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <button type="button" onClick={() => generarDetalleCuotas(prestamoCuotas, prestamoFechaInicio)} className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 active:scale-95 transition-all shadow-lg shadow-indigo-200 dark:shadow-none">
+                Generar Cuotas
+              </button>
+            </div>
+          </div>
+
+          {/* Grid de cuotas individuales */}
+          {detalleCuotas.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest">Detalle de Cuotas ({detalleCuotas.length})</h4>
+                <div className="text-right">
+                  <p className="text-xs text-gray-400">Total cargado</p>
+                  <p className="text-lg font-black text-indigo-600">{formatARS(totalCargado)}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-[400px] overflow-y-auto">
+                {detalleCuotas.map((cuota, idx) => (
+                  <div key={idx} className="bg-white dark:bg-neutral-900 rounded-lg border border-gray-100 dark:border-neutral-800 p-2">
+                    <p className="text-[9px] font-bold text-indigo-500 mb-1">#{cuota.numero_cuota} — {MESES[cuota.mes]} {cuota.anio}</p>
+                    <NumericFormat
+                      value={cuota.monto || ''}
+                      onValueChange={(v) => handleDetalleMonto(idx, v.floatValue || 0)}
+                      thousandSeparator="." decimalSeparator="," prefix="$ "
+                      placeholder="$ 0"
+                      className="w-full px-2 py-2 rounded-md border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-950 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-4">
+            <button type="submit" disabled={mutationPrestamo.isPending} className="flex-1 py-4 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200 dark:shadow-none">
+              {mutationPrestamo.isPending ? 'Guardando...' : (editingId ? 'Actualizar Préstamo' : 'Guardar Préstamo')}
+            </button>
+          </div>
+        </form>
+      );
+    }
+
+    if (activeTab === 'tarjetas') {
       return (
           <form 
             onSubmit={formCuotas.handleSubmit((d) => mutationCuotas.mutate(d), logErrors)} 
@@ -255,22 +426,26 @@ export default function Movimientos() {
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">
-                  {activeTab === 'tarjetas' ? 'Medio de Pago' : 'Entidad / Banco'}
-                </label>
-                {activeTab === 'tarjetas' ? (
-                  <select {...formCuotas.register('tarjeta_id')} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="">Efectivo / Transferencia</option>
-                    {tarjetas?.map((t: any) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-                  </select>
-                ) : (
-                  <input {...formCuotas.register('entidad')} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: Banco Galicia, ICBC..." />
-                )}
+                <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Medio de Pago</label>
+                <select {...formCuotas.register('tarjeta_id')} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">Efectivo / Transferencia</option>
+                  {tarjetas?.map((t: any) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                </select>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Descripción</label>
                 <input {...formCuotas.register('descripcion')} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: Supermercado" />
                 {formCuotas.formState.errors.descripcion && <p className="text-red-500 text-xs font-medium">{formCuotas.formState.errors.descripcion.message}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Categoría</label>
+                <select {...formCuotas.register('categoria')} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">Sin categoría</option>
+                  {categorias?.filter((c:any) => c.tipo === 'Gasto' || c.tipo === 'Ambos').map((c: any) => (
+                    <option key={c.id} value={c.nombre}>{c.nombre}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Selector de Modo de Entrada */}
@@ -378,7 +553,7 @@ export default function Movimientos() {
               </div>
             )}
             <div className="flex gap-3 pt-4">
-              <button type="submit" disabled={mutationCuotas.isPending} className={`flex-1 py-4 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all ${activeTab === 'prestamos' ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200 dark:shadow-none' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200 dark:shadow-none'}`}>{mutationCuotas.isPending ? 'Guardando...' : (editingId ? (activeTab === 'prestamos' ? 'Actualizar Préstamo' : 'Actualizar Compra') : (activeTab === 'prestamos' ? 'Guardar Préstamo' : 'Guardar Compra'))}</button>
+              <button type="submit" disabled={mutationCuotas.isPending} className="flex-1 py-4 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all bg-blue-600 hover:bg-blue-700 shadow-blue-200 dark:shadow-none">{mutationCuotas.isPending ? 'Guardando...' : (editingId ? 'Actualizar Compra' : 'Guardar Compra')}</button>
             </div>
           </form>
       );
@@ -393,6 +568,18 @@ export default function Movimientos() {
                 <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Descripción</label>
                 <input {...formFijos.register('descripcion')} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder={activeTab === 'egresos' ? 'Luz, Alquiler...' : 'Sueldo, Bono...'} />
                 {formFijos.formState.errors.descripcion && <p className="text-red-500 text-xs font-medium">{formFijos.formState.errors.descripcion.message}</p>}
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Categoría</label>
+                <select {...formFijos.register('categoria')} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">Sin categoría</option>
+                  {categorias?.filter((c:any) => {
+                    if (activeTab === 'ingresos') return c.tipo === 'Ingreso' || c.tipo === 'Ambos';
+                    return c.tipo === 'Gasto' || c.tipo === 'Ambos';
+                  }).map((c: any) => (
+                    <option key={c.id} value={c.nombre}>{c.nombre}</option>
+                  ))}
+                </select>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Monto</label>

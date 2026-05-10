@@ -1,105 +1,189 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
-from typing import List, Optional
-from datetime import date
+from typing import List
 from dateutil.relativedelta import relativedelta
 
 from database import get_session
 from models.prestamo import Prestamo
-from schemas.prestamo import PrestamoCreate, PrestamoUpdate, PrestamoResponse
+from models.cuota_prestamo import CuotaPrestamo
+from schemas.prestamo import PrestamoCreate, PrestamoUpdate, PrestamoResponse, CuotaPrestamoResponse
 
 router = APIRouter()
 
-def calcular_cuotas_y_fechas(prestamo: Prestamo, data):
-    if data.cuotas and data.cuotas > 0:
-        prestamo.monto_cuota = prestamo.monto_total / data.cuotas
-        meses_a_sumar = prestamo.cuotas - 1
-        prestamo.fecha_ultima_cuota = prestamo.fecha_primera_cuota + relativedelta(months=meses_a_sumar)
-    else:
-        prestamo.monto_cuota = prestamo.monto_total
-        prestamo.fecha_ultima_cuota = prestamo.fecha_primera_cuota
+
+def _build_response(prestamo: Prestamo, cuotas: List[CuotaPrestamo]) -> PrestamoResponse:
+    """Construye la respuesta unificada de un préstamo con sus cuotas."""
+    monto_total = sum(c.monto for c in cuotas)
+    cuotas_response = [
+        CuotaPrestamoResponse(
+            id=c.id,
+            prestamo_id=c.prestamo_id,
+            numero_cuota=c.numero_cuota,
+            mes=c.mes,
+            anio=c.anio,
+            monto=c.monto
+        )
+        for c in sorted(cuotas, key=lambda x: (x.anio, x.mes))
+    ]
+    return PrestamoResponse(
+        id=prestamo.id,
+        entidad=prestamo.entidad,
+        descripcion=prestamo.descripcion,
+        categoria=prestamo.categoria,
+        cuotas=prestamo.cuotas,
+        monto_total=monto_total,
+        fecha_primera_cuota=prestamo.fecha_primera_cuota,
+        fecha_ultima_cuota=prestamo.fecha_ultima_cuota,
+        notas=prestamo.notas,
+        detalle_cuotas=cuotas_response
+    )
+
 
 @router.get("/", response_model=List[PrestamoResponse])
 def get_prestamos(session: Session = Depends(get_session)):
-    query = select(Prestamo)
-    return session.exec(query).all()
+    prestamos = session.exec(select(Prestamo)).all()
+    result = []
+    for p in prestamos:
+        cuotas = session.exec(
+            select(CuotaPrestamo).where(CuotaPrestamo.prestamo_id == p.id)
+        ).all()
+        result.append(_build_response(p, cuotas))
+    return result
+
+
+@router.get("/{prestamo_id}", response_model=PrestamoResponse)
+def get_prestamo(prestamo_id: int, session: Session = Depends(get_session)):
+    prestamo = session.get(Prestamo, prestamo_id)
+    if not prestamo:
+        raise HTTPException(status_code=404, detail="Préstamo no encontrado")
+    cuotas = session.exec(
+        select(CuotaPrestamo).where(CuotaPrestamo.prestamo_id == prestamo_id)
+    ).all()
+    return _build_response(prestamo, cuotas)
+
 
 @router.post("/", response_model=PrestamoResponse)
 def create_prestamo(data: PrestamoCreate, session: Session = Depends(get_session)):
-    prestamo = Prestamo(**data.model_dump())
-    calcular_cuotas_y_fechas(prestamo, data)
+    # Calcular fecha_ultima_cuota desde las cuotas enviadas
+    if data.detalle_cuotas:
+        ultima = max(data.detalle_cuotas, key=lambda c: c.anio * 12 + c.mes)
+        from datetime import date as date_type
+        fecha_ultima = date_type(ultima.anio, ultima.mes, 1)
+    else:
+        fecha_ultima = data.fecha_primera_cuota + relativedelta(months=data.cuotas - 1)
+
+    prestamo = Prestamo(
+        entidad=data.entidad,
+        descripcion=data.descripcion,
+        categoria=data.categoria,
+        cuotas=data.cuotas,
+        fecha_primera_cuota=data.fecha_primera_cuota,
+        fecha_ultima_cuota=fecha_ultima,
+        notas=data.notas,
+        creado_por="baso"
+    )
     session.add(prestamo)
     session.commit()
     session.refresh(prestamo)
-    return prestamo
+
+    # Crear las cuotas individuales
+    cuotas_db = []
+    for cuota_input in data.detalle_cuotas:
+        cuota = CuotaPrestamo(
+            prestamo_id=prestamo.id,
+            numero_cuota=cuota_input.numero_cuota,
+            mes=cuota_input.mes,
+            anio=cuota_input.anio,
+            monto=cuota_input.monto
+        )
+        session.add(cuota)
+        cuotas_db.append(cuota)
+
+    session.commit()
+    for c in cuotas_db:
+        session.refresh(c)
+
+    return _build_response(prestamo, cuotas_db)
+
 
 @router.put("/{prestamo_id}", response_model=PrestamoResponse)
 def update_prestamo(prestamo_id: int, data: PrestamoUpdate, session: Session = Depends(get_session)):
     prestamo = session.get(Prestamo, prestamo_id)
     if not prestamo:
         raise HTTPException(status_code=404, detail="Préstamo no encontrado")
-    
-    # Lógica de clonación si se editó desde un mes futuro
-    if data.mes_edicion and data.anio_edicion:
-        fecha_edicion = date(data.anio_edicion, data.mes_edicion, 1)
-        # Comparar con fecha de inicio original (usando año y mes)
-        inicio_original = date(prestamo.fecha_primera_cuota.year, prestamo.fecha_primera_cuota.month, 1)
-        
-        meses_pagados = (fecha_edicion.year - inicio_original.year) * 12 + (fecha_edicion.month - inicio_original.month)
-        
-        # Si la edición ocurre estrictamente después del inicio del préstamo, y antes del fin
-        if 0 < meses_pagados < prestamo.cuotas:
-            # 1. "Cerrar" el préstamo viejo
-            prestamo.cuotas = meses_pagados
-            prestamo.monto_total = prestamo.monto_cuota * meses_pagados
-            calcular_cuotas_y_fechas(prestamo, prestamo) # recalcula fecha_ultima_cuota
-            session.add(prestamo)
-            
-            # 2. Crear un nuevo préstamo por el resto de las cuotas con el nuevo importe
-            nuevo_cuotas = data.cuotas - meses_pagados if data.cuotas else prestamo.cuotas - meses_pagados
-            
-            # Si el frontend manda el monto_total basado en el total original de cuotas (ej: cuota nueva * 12)
-            # entonces monto_cuota = data.monto_total / data.cuotas
-            # y el nuevo monto_total real será (monto_cuota * nuevo_cuotas)
-            nuevo_monto_cuota = (data.monto_total / data.cuotas) if (data.cuotas and data.monto_total is not None) else prestamo.monto_cuota
-            monto_total_ajustado = nuevo_monto_cuota * nuevo_cuotas
 
-            nuevo_prestamo = Prestamo(
-                entidad=data.entidad if data.entidad else prestamo.entidad,
-                descripcion=data.descripcion if data.descripcion else prestamo.descripcion,
-                fecha_primera_cuota=fecha_edicion,
-                cuotas=nuevo_cuotas,
-                monto_total=monto_total_ajustado,
-                monto_cuota=nuevo_monto_cuota,
-                notas=data.notas if data.notas else prestamo.notas,
-                creado_por=prestamo.creado_por
+    # Actualizar campos del header
+    if data.entidad is not None:
+        prestamo.entidad = data.entidad
+    if data.descripcion is not None:
+        prestamo.descripcion = data.descripcion
+    if data.categoria is not None:
+        prestamo.categoria = data.categoria
+    if data.notas is not None:
+        prestamo.notas = data.notas
+    if data.fecha_primera_cuota is not None:
+        prestamo.fecha_primera_cuota = data.fecha_primera_cuota
+
+    # Si vienen cuotas nuevas, reemplazar todas
+    if data.detalle_cuotas is not None:
+        # Borrar cuotas viejas
+        old_cuotas = session.exec(
+            select(CuotaPrestamo).where(CuotaPrestamo.prestamo_id == prestamo_id)
+        ).all()
+        for oc in old_cuotas:
+            session.delete(oc)
+
+        # Actualizar cantidad y fecha última
+        prestamo.cuotas = len(data.detalle_cuotas)
+        if data.detalle_cuotas:
+            ultima = max(data.detalle_cuotas, key=lambda c: c.anio * 12 + c.mes)
+            from datetime import date as date_type
+            prestamo.fecha_ultima_cuota = date_type(ultima.anio, ultima.mes, 1)
+
+        # Crear nuevas cuotas
+        cuotas_db = []
+        for cuota_input in data.detalle_cuotas:
+            cuota = CuotaPrestamo(
+                prestamo_id=prestamo_id,
+                numero_cuota=cuota_input.numero_cuota,
+                mes=cuota_input.mes,
+                anio=cuota_input.anio,
+                monto=cuota_input.monto
             )
-            calcular_cuotas_y_fechas(nuevo_prestamo, nuevo_prestamo) # Recalcula ultima cuota
-            session.add(nuevo_prestamo)
-            session.commit()
-            session.refresh(nuevo_prestamo)
-            return nuevo_prestamo
+            session.add(cuota)
+            cuotas_db.append(cuota)
 
-    # Edición normal (mismo mes, mes en el pasado, o sin mes de edición)
-    update_data = data.model_dump(exclude_unset=True)
-    update_data.pop('mes_edicion', None)
-    update_data.pop('anio_edicion', None)
-    
-    for key, value in update_data.items():
-        setattr(prestamo, key, value)
-        
-    calcular_cuotas_y_fechas(prestamo, prestamo) # Recalcular por si cambió monto o cuotas
-    
+        session.add(prestamo)
+        session.commit()
+        for c in cuotas_db:
+            session.refresh(c)
+        session.refresh(prestamo)
+        return _build_response(prestamo, cuotas_db)
+
+    # Si no vienen cuotas, solo actualizamos el header
     session.add(prestamo)
     session.commit()
     session.refresh(prestamo)
-    return prestamo
+
+    cuotas = session.exec(
+        select(CuotaPrestamo).where(CuotaPrestamo.prestamo_id == prestamo_id)
+    ).all()
+    return _build_response(prestamo, cuotas)
+
 
 @router.delete("/{prestamo_id}")
 def delete_prestamo(prestamo_id: int, session: Session = Depends(get_session)):
     prestamo = session.get(Prestamo, prestamo_id)
     if not prestamo:
         raise HTTPException(status_code=404, detail="Préstamo no encontrado")
+
+    # Borrar cuotas hijas primero
+    cuotas = session.exec(
+        select(CuotaPrestamo).where(CuotaPrestamo.prestamo_id == prestamo_id)
+    ).all()
+    for c in cuotas:
+        session.delete(c)
+
     session.delete(prestamo)
     session.commit()
     return {"ok": True}

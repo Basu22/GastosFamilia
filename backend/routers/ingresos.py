@@ -63,6 +63,7 @@ def update_ingreso(ingreso_id: int, data: IngresoUpdate, session: Session = Depe
             # 2. Crear nuevo
             nuevo = Ingreso(
                 descripcion=data.descripcion if data.descripcion else ingreso.descripcion,
+                categoria=data.categoria if data.categoria else ingreso.categoria,
                 monto=data.monto if data.monto is not None else ingreso.monto,
                 mes=data.mes_edicion,
                 anio=data.anio_edicion,

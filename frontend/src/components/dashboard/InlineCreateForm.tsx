@@ -8,11 +8,13 @@ import { createMovimiento } from '../../api/movimientos';
 import { createGastoMensual } from '../../api/gastos_mensuales';
 import { createIngreso } from '../../api/ingresos';
 import { createPrestamo } from '../../api/prestamos';
+import { getCategorias } from '../../api/configuracion';
 import { Save, X } from 'lucide-react';
 import { NumericFormat } from 'react-number-format';
 
 const schema = z.object({
   descripcion: z.string().min(3, 'Mínimo 3 caracteres'),
+  categoria: z.string().optional().nullable(),
   monto: z.number().positive('Debe ser mayor a 0'),
   entidad: z.string().optional(),
   tarjeta_id: z.string().optional(),
@@ -34,11 +36,13 @@ export default function InlineCreateForm({ tipo, mes, anio, onClose }: InlineCre
   const queryClient = useQueryClient();
   const [entryMode, setEntryMode] = useState<'total' | 'cuota'>('total');
   const { data: tarjetas } = useQuery({ queryKey: ['tarjetas'], queryFn: getTarjetas });
+  const { data: categorias } = useQuery({ queryKey: ['categorias'], queryFn: getCategorias });
 
   const { register, handleSubmit, control, setValue, watch, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
       descripcion: '',
+      categoria: '',
       monto: 0,
       entidad: '',
       cuotas: 1,
@@ -106,6 +110,22 @@ export default function InlineCreateForm({ tipo, mes, anio, onClose }: InlineCre
               className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
             />
             {errors.descripcion && <p className="text-[10px] text-red-500">{errors.descripcion.message as string}</p>}
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-gray-400 uppercase">Categoría</label>
+            <select
+              {...register('categoria')}
+              className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
+            >
+              <option value="">Sin categoría</option>
+              {categorias?.filter((c:any) => {
+                if (tipo === 'ingreso') return c.tipo === 'Ingreso' || c.tipo === 'Ambos';
+                return c.tipo === 'Gasto' || c.tipo.startsWith('Gasto') || c.tipo === 'Ambos';
+              }).map((c: any) => (
+                <option key={c.id} value={c.nombre}>{c.nombre}</option>
+              ))}
+            </select>
           </div>
 
           {(tipo === 'tarjeta' || tipo === 'prestamo') ? (

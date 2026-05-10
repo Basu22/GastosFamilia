@@ -17,9 +17,14 @@ interface MedioPago {
 interface Categoria {
   id?: number;
   nombre: string;
+  tipo: string;
   icono: string;
   color: string;
 }
+
+const ICONOS_DISPONIBLES = [
+  'Tag', 'Utensils', 'ShoppingCart', 'Zap', 'Home', 'Activity', 'Truck', 'Coffee', 'Book', 'Briefcase', 'Heart', 'Music', 'Camera', 'Gamepad', 'Gift', 'Plane'
+];
 
 export default function Configuracion() {
   const queryClient = useQueryClient();
@@ -28,6 +33,7 @@ export default function Configuracion() {
 
   const [nombre, setNombre] = useState('');
   const [tipo, setTipo] = useState('Efectivo');
+  const [tipoCat, setTipoCat] = useState('Gasto');
   const [color, setColor] = useState('#3B82F6');
   const [icono, setIcono] = useState('Tag');
 
@@ -73,6 +79,7 @@ export default function Configuracion() {
     setEditingId(null);
     setNombre('');
     setTipo('Efectivo');
+    setTipoCat('Gasto');
     setColor('#3B82F6');
     setIcono('Tag');
   };
@@ -82,13 +89,16 @@ export default function Configuracion() {
     setNombre(item.nombre);
     setColor(item.color);
     if (activeTab === 'medios') setTipo(item.tipo);
-    else setIcono(item.icono);
+    else {
+      setIcono(item.icono);
+      setTipoCat(item.tipo);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (activeTab === 'medios') mutationMedio.mutate({ nombre, tipo, color });
-    else mutationCat.mutate({ nombre, icono, color });
+    else mutationCat.mutate({ nombre, icono, color, tipo: tipoCat });
   };
 
   return (
@@ -146,7 +156,7 @@ export default function Configuracion() {
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">{activeTab === 'medios' ? 'Tipo' : 'Icono'}</label>
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">{activeTab === 'medios' ? 'Tipo de Medio' : 'Tipo de Categoría'}</label>
                   {activeTab === 'medios' ? (
                     <select 
                       value={tipo} onChange={e => setTipo(e.target.value)}
@@ -157,12 +167,35 @@ export default function Configuracion() {
                       <option value="Debito">Tarjeta de Débito</option>
                     </select>
                   ) : (
-                    <input 
-                      value={icono} onChange={e => setIcono(e.target.value)} required
+                    <select 
+                      value={tipoCat} onChange={e => setTipoCat(e.target.value)}
                       className="w-full px-4 py-4 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 outline-none"
-                    />
+                    >
+                      <option value="Gasto">Solo Gastos</option>
+                      <option value="Ingreso">Solo Ingresos</option>
+                      <option value="Ambos">Ambos</option>
+                    </select>
                   )}
                 </div>
+
+                {activeTab === 'categorias' && (
+                  <div className="col-span-full space-y-3">
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Seleccionar Icono</label>
+                    <div className="grid grid-cols-8 gap-2 p-4 bg-gray-50 dark:bg-neutral-900 rounded-2xl border border-gray-200 dark:border-neutral-800">
+                      {ICONOS_DISPONIBLES.map(iconName => (
+                        <button
+                          key={iconName}
+                          type="button"
+                          onClick={() => setIcono(iconName)}
+                          className={`flex items-center justify-center p-3 rounded-xl transition-all ${icono === iconName ? 'bg-blue-600 text-white' : 'bg-white dark:bg-neutral-800 text-gray-400 hover:text-blue-500'}`}
+                        >
+                          {/* Aquí necesitaría un componente que renderice el icono por nombre, pero por ahora lo simplificamos */}
+                          <span className="text-[10px] font-bold">{iconName}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Color Distintivo</label>
@@ -200,7 +233,14 @@ export default function Configuracion() {
                       {activeTab === 'medios' ? <CreditCard size={24} /> : <Tag size={24} />}
                     </div>
                     <div>
-                      <h4 className="font-black text-gray-900 dark:text-neutral-100 tracking-tight">{item.nombre}</h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-black text-gray-900 dark:text-neutral-100 tracking-tight">{item.nombre}</h4>
+                        {activeTab === 'categorias' && (
+                          <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tighter ${item.tipo === 'Ingreso' ? 'bg-emerald-100 text-emerald-700' : item.tipo === 'Ambos' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>
+                            {item.tipo}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest mt-0.5 opacity-70">
                         {activeTab === 'medios' ? item.tipo : item.icono}
                       </p>

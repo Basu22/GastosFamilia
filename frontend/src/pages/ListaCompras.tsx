@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import { ShoppingCart, Plus, CheckCircle, Trash2, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
+import { ShoppingCart, Plus, CheckCircle, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { getComprasDeseadas, createCompraDeseada, marcarComprada, deleteCompraDeseada } from '../api/compras_deseadas';
+import { getCategorias } from '../api/configuracion';
 import { formatARS } from '../utils/format';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -13,7 +14,7 @@ function cn(...inputs: ClassValue[]) {
 }
 
 interface CompraForm {
-  descripcion: str;
+  descripcion: string;
   precio_estimado?: number;
   prioridad: 'alta' | 'media' | 'baja';
   categoria: string;
@@ -30,8 +31,13 @@ export default function ListaCompras() {
     queryFn: () => getComprasDeseadas()
   });
 
+  const { data: categorias = [] } = useQuery({
+    queryKey: ['categorias'],
+    queryFn: getCategorias
+  });
+
   const { register, handleSubmit, reset, setValue, watch } = useForm<CompraForm>({
-    defaultValues: { prioridad: 'media', categoria: 'otro' }
+    defaultValues: { prioridad: 'media', categoria: 'Supermercado' }
   });
 
   const currentPrioridad = watch('prioridad');
@@ -64,7 +70,9 @@ export default function ListaCompras() {
   const handleRegisterAsExpense = () => {
     if (!confirmModal) return;
     markBoughtMutation.mutate(confirmModal.id);
-    navigate(`/movimientos?tab=egresos&desc=${encodeURIComponent(confirmModal.desc)}&monto=${confirmModal.monto || 0}`);
+    const compra = compras.find((c: any) => c.id === confirmModal.id);
+    const catParam = compra?.categoria ? `&cat=${encodeURIComponent(compra.categoria)}` : '';
+    navigate(`/movimientos?tab=egresos&desc=${encodeURIComponent(confirmModal.desc)}&monto=${confirmModal.monto || 0}${catParam}`);
   };
 
   const pendientes = compras.filter((c: any) => c.estado === 'pendiente')
@@ -142,11 +150,10 @@ export default function ListaCompras() {
               {...register('categoria')}
               className="w-full bg-[#0F172A] border border-[#334155]/50 rounded-2xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-white appearance-none"
             >
-              <option value="otro">Otro</option>
-              <option value="tecnologia">Tecnología</option>
-              <option value="ropa">Ropa</option>
-              <option value="hogar">Hogar</option>
-              <option value="supermercado">Supermercado</option>
+              {categorias?.filter((c:any) => c.tipo === 'Gasto' || c.tipo === 'Ambos').map((c: any) => (
+                <option key={c.id} value={c.nombre}>{c.nombre}</option>
+              ))}
+              <option value="Otro">Otro</option>
             </select>
           </div>
         </form>

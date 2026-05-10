@@ -1,12 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { MessageCircle, Trash2, CheckCircle, XCircle, Clock, FileText, Camera, Mic, Info } from 'lucide-react';
+import { MessageCircle, Trash2, CheckCircle, XCircle, Clock, FileText, Camera, Mic } from 'lucide-react';
 import { getWhatsappLogs, deleteWhatsappLog } from '../api/whatsapp_logs';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
 
 export default function WhatsappLogs() {
   const queryClient = useQueryClient();

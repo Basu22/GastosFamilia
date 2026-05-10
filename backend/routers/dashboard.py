@@ -11,6 +11,9 @@ from models.ingreso import Ingreso
 from services.cuotas import get_cuotas_mes, get_cuotas_por_tarjeta, cuota_activa_en_mes
 from models.movimiento import Movimiento
 from schemas.dashboard import DashboardSummary, DebugCuotasResponse
+from models.prestamo import Prestamo
+from models.cuota_prestamo import CuotaPrestamo
+from models.config import Categoria
 
 from services.disponibilidad import get_meses_disponibles
 
@@ -75,8 +78,32 @@ def get_dashboard_summary(
         if (g.mes == mes and g.anio == anio) or (g.es_fijo and g_val <= mes_actual_val <= g_fin_val):
             total_gastos += g.monto
             
+    # 4. Préstamos del mes (desde cuotas individuales)
+    cuotas_prestamo_mes = session.exec(
+        select(CuotaPrestamo).where(CuotaPrestamo.mes == mes, CuotaPrestamo.anio == anio)
+    ).all()
+    prestamos_db = session.exec(select(Prestamo)).all()
+    prestamos_dict = {p.id: p for p in prestamos_db}
+    
+    total_prestamos = 0.0
+    prestamos_por_entidad = {}
+    
+    for cp in cuotas_prestamo_mes:
+        p = prestamos_dict.get(cp.prestamo_id)
+        if p:
+            total_prestamos += cp.monto
+            if p.entidad in prestamos_por_entidad:
+                prestamos_por_entidad[p.entidad] += cp.monto
+            else:
+                prestamos_por_entidad[p.entidad] = cp.monto
+
+    lista_prestamos_entidad = [
+        {"entidad": k, "monto": v} for k, v in prestamos_por_entidad.items()
+    ]
+    lista_prestamos_entidad.sort(key=lambda x: x["monto"], reverse=True)
+
     # Calculos principales
-    total_mes = total_cuotas + total_gastos
+    total_mes = total_cuotas + total_gastos + total_prestamos
     ahorro_proyectado = total_ingreso - total_mes
 
     # 4. Cuotas por tarjeta
@@ -115,11 +142,20 @@ def get_dashboard_summary(
             if (g.mes == curr_mes and g.anio == curr_anio) or (g.es_fijo and g_val <= mes_step_val <= g_fin_val):
                 step_gastos += g.monto
                 
+        # Préstamos proyectados (desde cuotas individuales)
+        step_prestamos = 0.0
+        step_cuotas_prestamo = session.exec(
+            select(CuotaPrestamo).where(CuotaPrestamo.mes == curr_mes, CuotaPrestamo.anio == curr_anio)
+        ).all()
+        for scp in step_cuotas_prestamo:
+            step_prestamos += scp.monto
+                
         proximos_6_meses.append({
             "mes": curr_mes,
             "anio": curr_anio,
             "total_cuotas": step_cuotas,
-            "total_mes": step_cuotas + step_gastos,
+            "total_prestamos": step_prestamos,
+            "total_mes": step_cuotas + step_gastos + step_prestamos,
             "ingreso": step_ingreso
         })
 
@@ -151,7 +187,25 @@ def get_dashboard_summary(
     # Sort by less remaining first
     vencimientos.sort(key=lambda x: x["cuotas_restantes"])
 
-    # 7. Listado Unificado de Movimientos del Mes
+    # 7. Agrupación por Categorías
+    categorias_db = {c.nombre: c for c in session.exec(select(Categoria)).all()}
+    
+    gastos_por_cat = {}
+    ingresos_por_cat = {}
+    
+    def add_to_cat(mapa, cat_name, monto):
+        name = cat_name if cat_name else "Sin Categoría"
+        if name not in mapa:
+            cat_obj = categorias_db.get(name)
+            mapa[name] = {
+                "nombre": name,
+                "monto": 0,
+                "color": cat_obj.color if cat_obj else "#64748B",
+                "icono": cat_obj.icono if cat_obj else "Tag"
+            }
+        mapa[name]["monto"] += monto
+
+    # 8. Listado Unificado de Movimientos del Mes
     movimientos_mes = []
     
     # Agregar Ingresos
@@ -167,8 +221,10 @@ def get_dashboard_summary(
                 "descripcion": i.descripcion,
                 "monto": i.monto,
                 "es_fijo": i.es_fijo,
+                "categoria": i.categoria,
                 "fecha_referencia": f"{i.anio}-{i.mes:02d}-01"
             })
+            add_to_cat(ingresos_por_cat, i.categoria, i.monto)
             
     # Agregar Gastos Mensuales
     for g in gastos_db:
@@ -177,6 +233,7 @@ def get_dashboard_summary(
         if (g.mes == mes and g.anio == anio) or (g.es_fijo and g_val <= mes_actual_val <= g_fin_val):
             t = tarjetas_dict.get(g.tarjeta_id) if g.tarjeta_id else None
             is_previsionado = g.es_fijo and not (g.mes == mes and g.anio == anio)
+            is_baja_effect = (g.activo is False) and (mes == g.mes_fin and anio == g.anio_fin)
             movimientos_mes.append({
                 "id": g.id,
                 "tipo": "gasto",
@@ -186,10 +243,15 @@ def get_dashboard_summary(
                 "monto": g.monto,
                 "es_fijo": g.es_fijo,
                 "previsionado": is_previsionado,
+                "activo": not is_baja_effect,
+                "fecha_baja": f"{g.anio_fin}-{g.mes_fin:02d}-01" if is_baja_effect else None,
                 "tarjeta_nombre": t.nombre if t else None,
                 "tarjeta_color": t.color if t else None,
+                "categoria": g.categoria,
                 "fecha_referencia": f"{g.anio}-{g.mes:02d}-01"
             })
+            if not is_baja_effect:
+                add_to_cat(gastos_por_cat, g.categoria, g.monto)
             
     # Agregar Movimientos de Tarjeta (Cuotas activas)
     for m in movs_all:
@@ -214,22 +276,56 @@ def get_dashboard_summary(
                 "es_fijo": False,
                 "tarjeta_nombre": t.nombre if t else None,
                 "tarjeta_color": t.color if t else None,
+                "categoria": m.categoria,
                 "fecha_referencia": f"{anio}-{mes:02d}-01"
             })
+            add_to_cat(gastos_por_cat, m.categoria, m.monto_cuota)
 
-    # Ordenar por tipo e importe
-    movimientos_mes.sort(key=lambda x: (x["tipo"], -x["monto"]))
+    # Agregar Préstamos (usando cuotas individuales del mes)
+    for cp in cuotas_prestamo_mes:
+        p = prestamos_dict.get(cp.prestamo_id)
+        if p:
+            # Calcular monto total sumando todas las cuotas del préstamo
+            todas_cuotas = session.exec(
+                select(CuotaPrestamo).where(CuotaPrestamo.prestamo_id == p.id)
+            ).all()
+            monto_total_prestamo = sum(c.monto for c in todas_cuotas)
+            
+            movimientos_mes.append({
+                "id": p.id,
+                "tipo": "prestamo",
+                "origen": "Préstamos",
+                "medio_pago": p.entidad,
+                "descripcion": f"{p.descripcion} ({cp.numero_cuota}/{p.cuotas})",
+                "monto": cp.monto,
+                "monto_total": monto_total_prestamo,
+                "cuota_actual": cp.numero_cuota,
+                "cuotas_total": p.cuotas,
+                "es_fijo": False,
+                "tarjeta_nombre": None,
+                "tarjeta_color": "#10B981",
+                "categoria": p.categoria or "Préstamos",
+                "fecha_referencia": f"{anio}-{mes:02d}-01"
+            })
+            add_to_cat(gastos_por_cat, p.categoria or "Préstamos", cp.monto)
+
+    # Ordenar por tipo, estado activo e importe
+    movimientos_mes.sort(key=lambda x: (x["tipo"], not x.get("activo", True), -x["monto"]))
 
     return DashboardSummary(
         mes=mes,
         anio=anio,
         ingreso=total_ingreso,
         total_cuotas=total_cuotas,
+        total_prestamos=total_prestamos,
         total_gastos_mensuales=total_gastos,
         total_mes=total_mes,
-        ahorro_proyectado=ahorro_proyectado,
+        ahorro_proyectado=total_ingreso - total_mes,
         cuotas_por_tarjeta=cuotas_por_tarjeta,
+        prestamos_por_entidad=lista_prestamos_entidad,
         proximos_6_meses=proximos_6_meses,
         proximos_vencimientos=vencimientos,
+        gastos_por_categoria=list(gastos_por_cat.values()),
+        ingresos_por_categoria=list(ingresos_por_cat.values()),
         movimientos_mes=movimientos_mes
     )

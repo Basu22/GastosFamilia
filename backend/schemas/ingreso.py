@@ -7,6 +7,7 @@ class IngresoCreate(BaseModel):
     mes: int = Field(ge=1, le=12)
     anio: int = Field(gt=2000)
     es_fijo: bool = False
+    categoria: Optional[str] = "Sueldo"
     notas: Optional[str] = None
 
 class IngresoUpdate(BaseModel):
@@ -15,6 +16,7 @@ class IngresoUpdate(BaseModel):
     mes: Optional[int] = Field(None, ge=1, le=12)
     anio: Optional[int] = Field(None, gt=2000)
     es_fijo: Optional[bool] = None
+    categoria: Optional[str] = None
     notas: Optional[str] = None
     mes_edicion: Optional[int] = None
     anio_edicion: Optional[int] = None
@@ -26,4 +28,5 @@ class IngresoResponse(BaseModel):
     mes: int
     anio: int
     es_fijo: bool
+    categoria: Optional[str]
     notas: Optional[str]

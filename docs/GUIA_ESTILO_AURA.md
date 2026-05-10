@@ -55,6 +55,12 @@ No utilizar negro puro (#000000). Usar una base de "Deep Slate" para reducir la 
 * **Barras:** Esquinas superiores totalmente redondeadas (`border-radius: 10px 10px 0 0`).
 * **Degradados:** Las áreas debajo de las líneas de tendencia deben tener un degradado que se desvanece hacia el fondo (`opacity: 0.3` a `0`).
 
+### Grids de Entrada (Cuotas Variables)
+* **Estructura:** Grid responsivo de 2 columnas (móvil) a 4 columnas (desktop).
+* **Inputs:** Usar labels internos o superiores muy pequeños (`text-[10px]`) para no saturar.
+* **Scroll:** Contenedores con altura fija (`max-h-[400px]`) y scroll vertical interno. Evitar el scroll horizontal a toda costa.
+* **Feedback:** Mostrar siempre un "Total Acumulado" destacado mientras se editan las celdas del grid.
+
 ---
 
 ## 5. Micro-interacciones

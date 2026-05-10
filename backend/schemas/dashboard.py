@@ -11,6 +11,7 @@ class ProyeccionMes(BaseModel):
     mes: int
     anio: int
     total_cuotas: float
+    total_prestamos: float = 0.0
     total_mes: float
     ingreso: float
 
@@ -35,6 +36,9 @@ class MovimientoDetalle(BaseModel):
     tarjeta_color: Optional[str] = None
     es_fijo: bool = False
     previsionado: Optional[bool] = False
+    activo: Optional[bool] = True
+    fecha_baja: Optional[str] = None
+    categoria: Optional[str] = None
     fecha_referencia: str # Para ordenar
 
 class DashboardSummary(BaseModel):
@@ -42,12 +46,16 @@ class DashboardSummary(BaseModel):
     anio: int
     ingreso: float
     total_cuotas: float
+    total_prestamos: float = 0.0
     total_gastos_mensuales: float
     total_mes: float
     ahorro_proyectado: float
     cuotas_por_tarjeta: List[CuotaTarjeta]
+    prestamos_por_entidad: List[dict] = []
     proximos_6_meses: List[ProyeccionMes]
     proximos_vencimientos: List[ProxVencimiento]
+    gastos_por_categoria: List[dict] = []
+    ingresos_por_categoria: List[dict] = []
     movimientos_mes: List[MovimientoDetalle]
 
 class MovimientoDebug(BaseModel):

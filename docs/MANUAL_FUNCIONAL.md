@@ -56,14 +56,15 @@ Interfaz unificada para carga y edición de todos los tipos de movimientos, divi
 |---------|-------|---------------|
 | **Egresos** | 🔴 Rojo | Gastos puntuales o fijos (con o sin tarjeta) |
 | **Tarjetas** | 🔵 Azul | Compras en cuotas (con preview del impacto mensual) |
-| **Préstamos** | 🔵 Indigo | Préstamos bancarios (cuota calculada automáticamente) ← NUEVO |
+| **Préstamos** | 🔵 Indigo | Préstamos bancarios (carga de cuotas manuales variables) ← NUEVO |
 | **Ingresos** | 💚 Verde | Sueldos y entradas de dinero |
 
 **Cómo cargar un Préstamo:**
-1. Ir a la pestaña "Préstamos"
-2. Completar: Entidad/Banco, Descripción, Monto Total, Cuotas, Fecha primera cuota
-3. El sistema calcula automáticamente el valor de la cuota mensual
-4. El préstamo aparecerá solo en el Dashboard desde el mes indicado hasta completar las cuotas
+1. Ir a la pestaña "Préstamos".
+2. Completar: Entidad/Banco, Descripción, Categoría y Fecha de Inicio.
+3. Ingresar la **Cantidad de Cuotas** y hacer clic en **"Generar Cuotas"**.
+4. Se desplegará un listado con cada mes del préstamo. **Ingresá el importe real** que pagarás en cada uno.
+5. El sistema guardará el detalle y lo mostrará en el Dashboard mes a mes.
 
 ---
 
@@ -110,12 +111,12 @@ Gestión de:
 - Se puede **reactivar** si el servicio se restablece
 - Los gastos dados de baja aparecen tachados en su último mes activo
 
-### 3.3. Préstamos Bancarios (Nuevo — Mayo 2026)
-- El usuario carga: entidad, descripción, monto total, cuotas y fecha de primera cuota
-- El sistema calcula automáticamente: `cuota mensual` y `fecha última cuota`
-- Los cálculos financieros complejos (tasa, amortización) son responsabilidad del banco
-- El sistema solo trackea la cuota fija mensual
-- El préstamo desaparece del Dashboard automáticamente al mes siguiente del último pago
+### 3.3. Préstamos Bancarios (Variable — Mayo 2026)
+- El usuario carga: entidad, descripción, categoría, cuotas y fecha de inicio.
+- El usuario **define manualmente el importe** de cada cuota individual.
+- Esto permite trackear préstamos con cuotas variables (UVA, tasas variables, etc.) con precisión total.
+- El sistema suma las cuotas cargadas para mostrar el impacto real en el presupuesto mensual.
+- El préstamo desaparece del Dashboard automáticamente al mes siguiente del último pago.
 
 ### 3.4. Proyección
 - Todos los elementos (gastos, cuotas, préstamos) se proyectan con la misma lógica de "mes absoluto"

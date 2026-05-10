@@ -27,6 +27,7 @@ def create_db_and_tables():
     from models.proyeccion_override import ProyeccionOverride
     from models.importacion import GmailImporterConfig, ImportacionLog
     from models.prestamo import Prestamo
+    from models.cuota_prestamo import CuotaPrestamo
 
     # 1. Crear tablas si no existen
     SQLModel.metadata.create_all(engine)
@@ -94,6 +95,49 @@ def create_db_and_tables():
         if "incluir_en_arca" not in columnas:
             cursor.execute("ALTER TABLE gmailimporterconfig ADD COLUMN incluir_en_arca INTEGER DEFAULT 1")
         
+        # Migración para Prestamo (categoria)
+        cursor.execute("PRAGMA table_info(prestamo)")
+        columnas_prestamo = [row[1] for row in cursor.fetchall()]
+        if "categoria" not in columnas_prestamo:
+            print("🚀 Migración automática: Agregando categoria a tabla prestamo...")
+            cursor.execute("ALTER TABLE prestamo ADD COLUMN categoria TEXT")
+
+        # Migración de datos: convertir préstamos existentes a cuotas individuales
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='cuota_prestamo'")
+        if cursor.fetchone() is None:
+            print("🚀 Migración automática: Creando tabla cuota_prestamo...")
+            cursor.execute("""
+                CREATE TABLE cuota_prestamo (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    prestamo_id INTEGER NOT NULL REFERENCES prestamo(id),
+                    numero_cuota INTEGER NOT NULL,
+                    mes INTEGER NOT NULL,
+                    anio INTEGER NOT NULL,
+                    monto REAL NOT NULL
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS ix_cuota_prestamo_prestamo_id ON cuota_prestamo(prestamo_id)")
+            
+            # Migrar datos existentes: crear cuotas individuales con el monto_cuota fijo
+            if "monto_cuota" in columnas_prestamo:
+                cursor.execute("SELECT id, cuotas, monto_cuota, fecha_primera_cuota FROM prestamo")
+                prestamos_existentes = cursor.fetchall()
+                from dateutil.relativedelta import relativedelta
+                from datetime import date as date_type
+                for p_id, p_cuotas, p_monto_cuota, p_fecha_inicio in prestamos_existentes:
+                    if p_monto_cuota and p_cuotas:
+                        try:
+                            fecha = date_type.fromisoformat(p_fecha_inicio)
+                            for i in range(p_cuotas):
+                                f = fecha + relativedelta(months=i)
+                                cursor.execute(
+                                    "INSERT INTO cuota_prestamo (prestamo_id, numero_cuota, mes, anio, monto) VALUES (?, ?, ?, ?, ?)",
+                                    (p_id, i + 1, f.month, f.year, p_monto_cuota)
+                                )
+                            print(f"   ✅ Préstamo #{p_id}: {p_cuotas} cuotas migradas")
+                        except Exception as ex:
+                            print(f"   ⚠️ Error migrando préstamo #{p_id}: {ex}")
+
         conn.commit()
         conn.close()
     except Exception as e:

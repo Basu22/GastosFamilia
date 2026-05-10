@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
 from typing import List, Optional
+from datetime import date
 
 from database import get_session
 from models.gasto_mensual import GastoMensual
@@ -68,6 +69,7 @@ def update_gasto_mensual(gasto_id: int, data: GastoMensualUpdate, session: Sessi
             
             nuevo_gasto = GastoMensual(
                 descripcion=data.descripcion if data.descripcion else gasto.descripcion,
+                categoria=data.categoria if data.categoria else gasto.categoria,
                 monto=data.monto if data.monto is not None else gasto.monto,
                 mes=data.mes_edicion,
                 anio=data.anio_edicion,
@@ -101,3 +103,56 @@ def delete_gasto_mensual(gasto_id: int, session: Session = Depends(get_session))
     session.delete(gasto)
     session.commit()
     return {"ok": True}
+
+@router.patch("/{gasto_id}/baja", response_model=GastoMensualResponse)
+def dar_baja_gasto(
+    gasto_id: int, 
+    mes: int = Query(..., description="Mes desde el cual se aplicará la baja"),
+    anio: int = Query(..., description="Año desde el cual se aplicará la baja"),
+    session: Session = Depends(get_session)
+):
+    gasto = session.get(GastoMensual, gasto_id)
+    if not gasto:
+        raise HTTPException(status_code=404, detail="Gasto no encontrado")
+    if gasto.activo == False:
+        raise HTTPException(status_code=400, detail="El gasto ya está dado de baja")
+
+    hoy = date.today()
+
+    # Si intentan dar de baja en un mes anterior al inicio del gasto, cerramos en el mes de inicio
+    inicio_val = gasto.anio * 12 + gasto.mes
+    baja_val = anio * 12 + mes
+    
+    if baja_val <= inicio_val:
+        gasto.mes_fin = gasto.mes
+        gasto.anio_fin = gasto.anio
+    else:
+        gasto.mes_fin = mes
+        gasto.anio_fin = anio
+
+    gasto.activo = False
+    gasto.fecha_baja = hoy
+
+    session.add(gasto)
+    session.commit()
+    session.refresh(gasto)
+    return gasto
+
+
+@router.patch("/{gasto_id}/reactivar", response_model=GastoMensualResponse)
+def reactivar_gasto(gasto_id: int, session: Session = Depends(get_session)):
+    gasto = session.get(GastoMensual, gasto_id)
+    if not gasto:
+        raise HTTPException(status_code=404, detail="Gasto no encontrado")
+    if gasto.activo != False:
+        raise HTTPException(status_code=400, detail="El gasto ya está activo")
+
+    gasto.mes_fin = None
+    gasto.anio_fin = None
+    gasto.activo = True
+    gasto.fecha_baja = None
+
+    session.add(gasto)
+    session.commit()
+    session.refresh(gasto)
+    return gasto

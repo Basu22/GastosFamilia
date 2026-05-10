@@ -8,12 +8,14 @@ import { getMovimiento, updateMovimiento, deleteMovimiento } from '../../api/mov
 import { updateGastoMensual, deleteGastoMensual, getGastosMensuales, darBajaGastoMensual } from '../../api/gastos_mensuales';
 import { updateIngreso, deleteIngreso, getIngresos } from '../../api/ingresos';
 import { getPrestamos, updatePrestamo, deletePrestamo } from '../../api/prestamos';
+import { getCategorias } from '../../api/configuracion';
 import { Save, Trash2 } from 'lucide-react';
 import { NumericFormat } from 'react-number-format';
 
 // Esquema unificado (soporta ambos tipos de datos)
 const schema = z.object({
   descripcion: z.string().min(3, 'Mínimo 3 caracteres'),
+  categoria: z.string().optional().nullable(),
   monto: z.number().positive('Debe ser mayor a 0'),
   entidad: z.string().optional(),
   // Campos específicos de tarjeta
@@ -42,6 +44,7 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
   const [isActiveGasto, setIsActiveGasto] = useState<boolean>(true);
 
   const { data: tarjetas } = useQuery({ queryKey: ['tarjetas'], queryFn: getTarjetas });
+  const { data: categorias } = useQuery({ queryKey: ['categorias'], queryFn: getCategorias });
 
   const { register, handleSubmit, control, setValue, reset, watch, formState: { errors } } = useForm({
     resolver: zodResolver(schema)
@@ -71,6 +74,7 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
           const m = await getMovimiento(id);
           reset({
             descripcion: m.descripcion,
+            categoria: m.categoria || "",
             monto: m.monto_total,
             tarjeta_id: m.tarjeta_id?.toString() || "",
             cuotas: m.cuotas,
@@ -82,6 +86,7 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
           if (item) {
             reset({
               descripcion: item.descripcion,
+              categoria: item.categoria || "",
               monto: item.monto_total || item.monto,
               entidad: item.entidad || "",
               mes: item.mes,
@@ -167,7 +172,6 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
       <form id="form-inline-edit" onSubmit={handleSubmit((data) => mutation.mutate(data))} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           
-          {/* Descripción */}
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-gray-400 uppercase">Descripción</label>
             <input 
@@ -175,6 +179,22 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
               className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
             />
             {errors.descripcion && <p className="text-[10px] text-red-500">{errors.descripcion.message as string}</p>}
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-gray-400 uppercase">Categoría</label>
+            <select
+              {...register('categoria')}
+              className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
+            >
+              <option value="">Sin categoría</option>
+              {categorias?.filter((c:any) => {
+                if (tipo === 'ingreso') return c.tipo === 'Ingreso' || c.tipo === 'Ambos';
+                return c.tipo === 'Gasto' || c.tipo === 'Ambos';
+              }).map((c: any) => (
+                <option key={c.id} value={c.nombre}>{c.nombre}</option>
+              ))}
+            </select>
           </div>
 
           {/* Monto (Dinamico para Tarjeta y Prestamo) */}

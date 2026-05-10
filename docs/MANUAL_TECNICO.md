@@ -78,17 +78,25 @@ class Ingreso(SQLModel, table=True):
     tarjeta_id: Optional[int]
 ```
 
-#### `Prestamo` ← NUEVO (Mayo 2026)
-Préstamos bancarios. El sistema calcula la cuota automáticamente.
+#### `Prestamo` (Nuevo — Mayo 2026)
+Cabecera de préstamos bancarios. El monto total es dinámico (suma de sus cuotas).
 ```python
 class Prestamo(SQLModel, table=True):
     id, entidad, descripcion
-    monto_total: float              # Monto total del préstamo
-    monto_cuota: float              # Calculado: monto_total / cuotas
-    cuotas: int
-    fecha_primera_cuota: date
-    fecha_ultima_cuota: date        # Calculado: primera + (cuotas-1) meses
+    cuotas: int                     # Cantidad de cuotas
+    fecha_primera_cuota: date       # Mes de inicio
+    categoria: Optional[str]        # Para categorización de gastos
     notas: Optional[str]
+```
+
+#### `CuotaPrestamo` (Nuevo — Mayo 2026)
+Detalle individual de cada mes de un préstamo.
+```python
+class CuotaPrestamo(SQLModel, table=True):
+    id, prestamo_id
+    numero_cuota: int               # Ej: 1, 2, 3...
+    mes, anio: int                  # Período de impacto
+    monto: float                    # Importe específico del mes
 ```
 
 #### `Tarjeta`
@@ -154,14 +162,15 @@ Implementada en Mayo 2026. Permite "cerrar" un gasto fijo sin borrar el historia
 ## 5. Módulo de Préstamos (Nuevo — Mayo 2026)
 
 ### Cómo funciona:
-1. El usuario carga un préstamo con monto total y cuotas
-2. El backend calcula `monto_cuota` y `fecha_ultima_cuota` automáticamente
-3. El Dashboard muestra la cuota correspondiente cada mes sin intervención del usuario
+1. El usuario carga un préstamo definiendo la cantidad de cuotas.
+2. El sistema genera un formulario con N casilleros (uno por mes).
+3. El usuario completa manualmente el importe real de cada mes.
+4. El Dashboard y las Proyecciones consultan la tabla `CuotaPrestamo` para obtener el valor exacto de cada período.
 
 ### Integración en el Dashboard:
-- Nueva **MetricCard** "Préstamos" (variante `info`, color indigo)
-- Nueva sección "Préstamos" en el listado de movimientos
-- Incluido en la proyección de 6 y 12 meses
+- Nueva **MetricCard** "Préstamos" (variante `info`, color indigo).
+- Nueva sección "Préstamos" en el listado de movimientos.
+- El monto total mostrado en el Dashboard es la sumatoria de las cuotas del mes consultado.
 
 ### Endpoints:
 ```
@@ -202,7 +211,8 @@ backend/
 │   ├── movimiento.py
 │   ├── gasto_mensual.py
 │   ├── ingreso.py
-│   ├── prestamo.py   ← NUEVO
+│   ├── prestamo.py       # Cabecera de préstamos
+│   ├── cuota_prestamo.py # Detalle de cuotas variables
 │   ├── tarjeta.py
 │   └── ...
 ├── routers/          # Endpoints FastAPI (un dominio por archivo)

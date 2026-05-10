@@ -61,6 +61,7 @@ Para facilitar pruebas automatizadas y depuración, todos los elementos interact
   - Variables técnicas: Inglés (ej: `session`, `request`).
 - **Tipado**: Todas las funciones deben tener tipado de parámetros y retorno explícito.
 - **Errores**: No retornar 200 con mensaje de error. Usar `HTTPException` con códigos de estado correctos (404, 400, etc.) y mensajes en español.
+- **Flexibilidad vs Automatismo**: Evitar cálculos fijos en el backend cuando la realidad del dato puede variar (ej: cuotas de préstamos). Preferir estructuras de datos que permitan edición granular (Relación 1:N) para mayor fidelidad a la realidad financiera del usuario.
 
 ---
 

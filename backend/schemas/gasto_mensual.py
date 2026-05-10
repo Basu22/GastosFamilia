@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional
+from datetime import date
 
 class GastoMensualCreate(BaseModel):
     descripcion: str
@@ -33,3 +34,5 @@ class GastoMensualResponse(BaseModel):
     es_fijo: bool
     tarjeta_id: Optional[int] = None
     notas: Optional[str]
+    activo: Optional[bool] = True
+    fecha_baja: Optional[date] = None

@@ -20,6 +20,7 @@ from models.gasto_mensual import GastoMensual
 from models.movimiento import Movimiento
 from models.tarjeta import Tarjeta
 from models.proyeccion_override import ProyeccionOverride
+from models.prestamo import Prestamo
 from services.cuotas import get_cuotas_mes, cuota_activa_en_mes
 
 
@@ -65,6 +66,7 @@ def get_proyeccion_12_meses(session: Session) -> List[Dict[str, Any]]:
     # Pre-cargar movimientos y tarjetas para el detalle de cuotas
     movimientos = session.exec(select(Movimiento)).all()
     tarjetas_dict = {t.id: t for t in session.exec(select(Tarjeta)).all()}
+    prestamos = session.exec(select(Prestamo)).all()
 
     resultado = []
     mes = mes_actual
@@ -146,7 +148,25 @@ def get_proyeccion_12_meses(session: Session) -> List[Dict[str, Any]]:
                     cuotas_por_tarjeta[tarjeta_key]["subtotal"] + m.monto_cuota, 2
                 )
 
-        total_egresos = total_gastos + total_cuotas
+        # --- Cuotas de Préstamos ---
+        total_prestamos = 0.0
+        detalle_prestamos = []
+        for p in prestamos:
+            p_inicio_val = p.fecha_primera_cuota.year * 12 + p.fecha_primera_cuota.month
+            p_fin_val = p.fecha_ultima_cuota.year * 12 + p.fecha_ultima_cuota.month
+            if p_inicio_val <= mes_val <= p_fin_val:
+                total_prestamos += p.monto_cuota
+                mes_cuota_actual = (anio * 12 + mes) - p_inicio_val + 1
+                detalle_prestamos.append({
+                    "id": p.id,
+                    "entidad": p.entidad,
+                    "descripcion": p.descripcion,
+                    "monto_cuota": p.monto_cuota,
+                    "cuota_actual": int(mes_cuota_actual),
+                    "cuotas_total": p.cuotas,
+                })
+
+        total_egresos = total_gastos + total_cuotas + total_prestamos
         ahorro = total_ingresos - total_egresos
 
         resultado.append({
@@ -156,11 +176,13 @@ def get_proyeccion_12_meses(session: Session) -> List[Dict[str, Any]]:
             "total_ingresos": round(total_ingresos, 2),
             "total_gastos_mensuales": round(total_gastos, 2),
             "total_cuotas": round(total_cuotas, 2),
+            "total_prestamos": round(total_prestamos, 2),
             "total_egresos": round(total_egresos, 2),
             "ahorro_proyectado": round(ahorro, 2),
             "detalle_ingresos": detalle_ingresos,
             "detalle_gastos": detalle_gastos,
             "detalle_cuotas_por_tarjeta": list(cuotas_por_tarjeta.values()),
+            "detalle_prestamos": detalle_prestamos,
         })
 
         mes, anio = _siguiente_mes(mes, anio)
