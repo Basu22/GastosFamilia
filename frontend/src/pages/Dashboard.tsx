@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getDashboardInfo } from '../api/client';
 import { reactivarGastoMensual } from '../api/gastos_mensuales';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { TrendingUp, Wallet, CreditCard, PiggyBank, Edit3, ChevronLeft, ChevronRight, Calendar, ChevronDown, Info, Plus, Landmark } from 'lucide-react';
+import { TrendingUp, Wallet, CreditCard, PiggyBank, Edit3, ChevronLeft, ChevronRight, Calendar, ChevronDown, Info, Plus, Landmark, Tag } from 'lucide-react';
 import { formatARS, MESES_CORTO } from '../utils/format';
 import MetricCard from '../components/ui/MetricCard';
 import InlineEditForm from '../components/dashboard/InlineEditForm';
@@ -473,7 +473,7 @@ export default function Dashboard() {
               <div className="p-2 bg-aura-lavender/20 rounded-xl text-aura-lavender"><CreditCard size={20}/></div>
               Gastos x Tarjeta
             </h3>
-            <div className="h-[300px] w-full">
+            <div className="h-[250px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.cuotas_por_tarjeta} layout="vertical" margin={{ left: -20 }}>
                   <XAxis type="number" hide />
@@ -501,6 +501,47 @@ export default function Dashboard() {
                   />
                   <Bar dataKey="monto" radius={[0, 12, 12, 0]} barSize={20}>
                     {data.cuotas_por_tarjeta.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+
+          <section className="glass-card aura-glow-pink p-8 border-pink-500/10">
+            <h3 className="font-bold text-white mb-8 flex items-center gap-3 text-lg">
+              <div className="p-2 bg-pink-500/20 rounded-xl text-pink-400"><Tag size={20}/></div>
+              Gastos x Categoría
+            </h3>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data.gastos_por_categoria} layout="vertical" margin={{ left: -20 }}>
+                  <XAxis type="number" hide />
+                  <YAxis 
+                    dataKey="nombre" 
+                    type="category" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    width={100} 
+                    tick={{ fontSize: 11, fontWeight: 600, fill: '#94a3b8' }} 
+                  />
+                  <Tooltip 
+                    cursor={{ fill: 'rgba(255, 255, 255, 0.03)' }} 
+                    content={({ active, payload }) => {
+                      if (active && payload?.length) {
+                        return (
+                          <div className="glass-card p-4 border-aura-border/50 text-xs shadow-2xl">
+                            <p className="font-bold text-white">{payload[0].payload.nombre}</p>
+                            <p className="text-pink-400 font-bold mt-1 text-base">{formatARS(payload[0].value as number)}</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }} 
+                  />
+                  <Bar dataKey="monto" radius={[0, 12, 12, 0]} barSize={20}>
+                    {data.gastos_por_categoria.map((entry: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Bar>
