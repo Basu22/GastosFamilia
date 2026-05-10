@@ -1,4 +1,7 @@
 import os
+import json
+import hmac
+import hashlib
 from datetime import date
 from fastapi import APIRouter, Request, BackgroundTasks, HTTPException
 from sqlmodel import Session, select
@@ -11,12 +14,30 @@ from models.gasto_mensual import GastoMensual
 from services import gemini_parser, whatsapp_media, whatsapp_sender, whatsapp_sessions
 
 VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "gastos_familia_webhook_2026")
+APP_SECRET = os.getenv("WHATSAPP_APP_SECRET", "")  # Panel de Meta -> Configuración -> Básica
+
 
 # Números autorizados a usar el bot (sin el "+")
 # Formato en .env: 5491112345678,5491187654321
 NUMEROS_AUTORIZADOS = os.getenv("WHATSAPP_NUMEROS_AUTORIZADOS", "").split(",")
 
 router = APIRouter(tags=["whatsapp"])
+
+def verificar_firma_meta(payload: bytes, signature_header: str) -> bool:
+    """Valida que el request viene genuinamente de Meta."""
+    if not APP_SECRET or not signature_header:
+        return True  # Si no está configurado, dejar pasar (dev mode)
+    
+    # Meta envía la firma como sha256=HEX_DIGEST
+    actual_signature = signature_header.replace("sha256=", "")
+    expected_signature = hmac.new(
+        APP_SECRET.encode(),
+        payload,
+        hashlib.sha256
+    ).hexdigest()
+    
+    return hmac.compare_digest(expected_signature, actual_signature)
+
 
 # ─── Verificación del Webhook (Meta lo llama para validar el endpoint) ───
 @router.get("/webhook")
@@ -46,7 +67,14 @@ async def recibir_mensaje(request: Request, background_tasks: BackgroundTasks):
     Endpoint que recibe todas las notificaciones de WhatsApp.
     Debe responder 200 OK rápido. El procesamiento real ocurre en segundo plano.
     """
-    data = await request.json()
+    body_bytes = await request.body()
+    signature = request.headers.get("X-Hub-Signature-256", "")
+    
+    if not verificar_firma_meta(body_bytes, signature):
+        print("❌ Error: Firma de Meta inválida")
+        raise HTTPException(status_code=403, detail="Firma inválida")
+    
+    data = json.loads(body_bytes)
     
     # Estructura de Meta: entry -> changes -> value -> messages
     try:
