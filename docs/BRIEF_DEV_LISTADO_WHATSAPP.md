@@ -74,7 +74,7 @@ frontend/src/
 
 ### 2.1. Qué es
 
-Una pestaña nueva llamada **"Lista de Compras"** dentro de la página `Movimientos.tsx`. Sirve para registrar cosas que la familia quiere/necesita comprar en el futuro. No tienen fecha ni impacto en el presupuesto hasta que se marcan como "compradas".
+Una **página nueva e independiente** llamada **"Lista de Compras"** que vive en el menú principal de navegación, al mismo nivel que Dashboard, Movimientos, Tarjetas, Proyección, Simulador y Configuración. **NO va como pestaña dentro de Movimientos.** Sirve para registrar cosas que la familia quiere/necesita comprar en el futuro. No tienen fecha ni impacto en el presupuesto hasta que se marcan como "compradas".
 
 ### 2.2. Modelo de datos — Backend
 
@@ -183,28 +183,56 @@ export const deleteCompraDeseada = (id: number) =>
   apiClient.delete(`/compras-deseadas/${id}`).then(r => r.data);
 ```
 
-### 2.6. Frontend — Pestaña en Movimientos
+### 2.6. Frontend — Página independiente en el menú principal
 
-Modificar **`frontend/src/pages/Movimientos.tsx`**:
+> ⚠️ **IMPORTANTE**: Lista de Compras es una **página propia**, NO una pestaña dentro de `Movimientos.tsx`. No tocar ese archivo.
 
-1. Agregar `'compras'` al tipo `TabType`:
-   ```typescript
-   type TabType = 'egresos' | 'tarjetas' | 'ingresos' | 'prestamos' | 'compras';
-   ```
+**Archivos a crear/modificar:**
 
-2. Agregar la pestaña al array de tabs (junto a las existentes con el ícono `ShoppingCart` de Lucide).
+#### a) Crear la página: `frontend/src/pages/ListaCompras.tsx`
 
-3. Crear el componente **`frontend/src/components/compras/ListaCompras.tsx`** (para mantener Movimientos.tsx bajo 200 líneas):
+Estructura de la página (componente principal, máx 200 líneas — extraer subcomponentes si hace falta):
 
-   **UX del componente:**
-   - Formulario de carga rápida en la parte superior: campo `descripción` (obligatorio) + `precio estimado` (opcional) + selector de `prioridad` (chips: 🔴 Alta / 🟡 Media / 🟢 Baja) + `categoría` (dropdown).
-   - Lista de items con estado visual:
-     - **Pendientes**: Cards con borde izquierdo del color de prioridad (rojo=alta, amarillo=media, verde=baja). Botón "✓ Comprado" que al hacer click muestra un modal/confirm "¿Lo compraste? ¿Querés registrarlo como gasto?" con dos acciones:
-       - "Solo marcar" → llama `PATCH /comprar` y queda en lista de comprados.
-       - "Registrar como gasto" → abre el form de Gastos Variables pre-relleno con la descripción y precio estimado.
-     - **Comprados**: Sección separada abajo, colapsable, con items tachados y fecha de compra.
-   - Botón de eliminar en cada ítem.
-   - Empty state: "📝 Tu lista de deseos está vacía. ¡Agregá el primero!"
+- Header con título "Lista de Compras" + ícono `ShoppingCart`.
+- Formulario de carga rápida en la parte superior: campo `descripción` (obligatorio) + `precio estimado` (opcional) + selector de `prioridad` (chips: 🔴 Alta / 🟡 Media / 🟢 Baja) + `categoría` (dropdown).
+- Lista de items pendientes con estado visual:
+  - Cards con borde izquierdo del color de prioridad (rojo=alta, amarillo=media, verde=baja).
+  - Botón "✓ Comprado" que al hacer click muestra un modal de confirmación: *"¿Lo compraste? ¿Querés registrarlo como gasto?"* con dos acciones:
+    - **"Solo marcar"** → llama `PATCH /compras-deseadas/{id}/comprar` y queda en la lista de comprados.
+    - **"Registrar como gasto"** → navega a `/movimientos` y pre-rellena el form de Gastos Variables con descripción y precio estimado (pasarlos via `useNavigate` + state o query params).
+  - Botón de eliminar en cada ítem (con confirmación inline).
+- Sección colapsable de **"Comprados"** al final, con items tachados y fecha de compra.
+- Empty state cuando lista vacía: `"📝 Tu lista de deseos está vacía. ¡Agregá el primero!"`
+
+#### b) Agregar la ruta: `frontend/src/App.tsx` (o donde esté el router)
+
+Buscar donde están definidas las rutas y agregar:
+```tsx
+<Route path="/lista-compras" element={<ListaCompras />} />
+```
+
+#### c) Agregar el ítem al menú Sidebar: `frontend/src/components/layout/Sidebar.tsx`
+
+El array `menuItems` actualmente tiene:
+```typescript
+{ name: 'Dashboard',     path: '/dashboard',     icon: LayoutDashboard },
+{ name: 'Movimientos',   path: '/movimientos',   icon: PlusCircle },
+{ name: 'Tarjetas',      path: '/tarjetas',      icon: CreditCard },
+{ name: 'Proyección',    path: '/proyeccion',    icon: BarChart2 },
+{ name: 'Simulador',     path: '/simulador',     icon: Calculator },
+{ name: 'Configuración', path: '/configuracion', icon: Settings },
+```
+
+Agregar **después de Movimientos** (posición 3):
+```typescript
+{ name: 'Lista Compras', path: '/lista-compras', icon: ShoppingCart },
+```
+
+Importar `ShoppingCart` desde lucide-react en la misma línea de imports de íconos.
+
+#### d) Agregar el ítem al BottomNav mobile: `frontend/src/components/layout/BottomNav.tsx`
+
+Leer ese archivo primero para entender su estructura y agregar el ítem `Lista Compras` con el ícono `ShoppingCart`, siguiendo el mismo patrón de los otros ítems.
 
 ### 2.7. Diseño — Reglas a seguir
 
@@ -335,18 +363,20 @@ Crear una nueva **página** (no pestaña): **`frontend/src/pages/WhatsappLogs.ts
 ## 4. ORDEN DE IMPLEMENTACIÓN RECOMENDADO
 
 ```
-1. [Backend] Crear modelo CompraDeseada + schema + router + registrar en main.py
-2. [Frontend] Crear api/compras_deseadas.ts
-3. [Frontend] Crear components/compras/ListaCompras.tsx
-4. [Frontend] Agregar pestaña 'compras' en Movimientos.tsx
-5. [Backend] Agregar HMAC en whatsapp.py (verificar_firma_meta)
-6. [Backend] Crear modelo WhatsappLog + registrar en main.py
-7. [Backend] Loguear mensajes dentro de procesar_mensaje en whatsapp.py
-8. [Backend] Crear router whatsapp_logs.py + registrar en main.py
-9. [Frontend] Crear api/whatsapp_logs.ts
-10. [Frontend] Crear pages/WhatsappLogs.tsx
-11. [Frontend] Agregar ruta y nav item para WhatsappLogs
-12. [Git] Un commit por paso, usando Conventional Commits en español
+1.  [Backend] Crear modelo CompraDeseada + schema + router + registrar en main.py
+2.  [Frontend] Crear api/compras_deseadas.ts
+3.  [Frontend] Crear pages/ListaCompras.tsx
+4.  [Frontend] Agregar ruta /lista-compras en App.tsx
+5.  [Frontend] Agregar ítem 'Lista Compras' en Sidebar.tsx (ShoppingCart icon)
+6.  [Frontend] Agregar ítem 'Lista Compras' en BottomNav.tsx
+7.  [Backend] Agregar HMAC en whatsapp.py (verificar_firma_meta)
+8.  [Backend] Crear modelo WhatsappLog + registrar en main.py
+9.  [Backend] Loguear mensajes dentro de procesar_mensaje en whatsapp.py
+10. [Backend] Crear router whatsapp_logs.py + registrar en main.py
+11. [Frontend] Crear api/whatsapp_logs.ts
+12. [Frontend] Crear pages/WhatsappLogs.tsx
+13. [Frontend] Agregar ruta /whatsapp y nav items para WhatsappLogs
+14. [Git] Un commit por paso, usando Conventional Commits en español
 ```
 
 ---
