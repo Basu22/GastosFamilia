@@ -105,7 +105,15 @@ export default function Movimientos() {
   useEffect(() => {
     const tabParam = searchParams.get('tab') as TabType;
     if (tabParam) setActiveTab(tabParam);
-  }, [searchParams]);
+
+    const descParam = searchParams.get('desc');
+    const montoParam = searchParams.get('monto');
+
+    if (tabParam === 'egresos' && (descParam || montoParam)) {
+      if (descParam) formFijos.setValue('descripcion', descParam);
+      if (montoParam) formFijos.setValue('monto', parseFloat(montoParam));
+    }
+  }, [searchParams, formFijos]);
 
   useEffect(() => {
     const loadPreview = async () => {

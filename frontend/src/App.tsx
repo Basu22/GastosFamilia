@@ -8,6 +8,7 @@ import Movimientos from './pages/Movimientos';
 import Proyeccion from './pages/Proyeccion';
 import Configuracion from './pages/Configuracion';
 import Simulador from './pages/Simulador';
+import ListaCompras from './pages/ListaCompras';
 import { useThemeStore } from './stores/themeStore';
 
 function App() {
@@ -38,6 +39,7 @@ function App() {
           <Route path="/proyeccion" element={<Proyeccion />} />
           <Route path="/configuracion" element={<Configuracion />} />
           <Route path="/simulador" element={<Simulador />} />
+          <Route path="/lista-compras" element={<ListaCompras />} />
         </Route>
       </Routes>
     </BrowserRouter>
