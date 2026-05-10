@@ -11,6 +11,7 @@ from database import engine, get_session
 from models.tarjeta import Tarjeta
 from models.movimiento import Movimiento
 from models.gasto_mensual import GastoMensual
+from models.whatsapp_log import WhatsappLog
 from services import gemini_parser, whatsapp_media, whatsapp_sender, whatsapp_sessions
 
 VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "gastos_familia_webhook_2026")
@@ -114,12 +115,26 @@ async def procesar_mensaje(telefono: str, message: dict):
         # Confirmación positiva
         if pendiente and texto in ["OK", "SI", "SÍ", "CONFIRMAR", "GUARDAR"]:
             await guardar_en_db(telefono, pendiente["tipo"], pendiente["datos"])
+            # Actualizar log si existe (se busca por teléfono y estado pendiente)
+            with Session(engine) as session:
+                log = session.exec(select(WhatsappLog).where(WhatsappLog.telefono == telefono, WhatsappLog.estado == "pendiente").order_by(WhatsappLog.creado_en.desc())).first()
+                if log:
+                    log.estado = "confirmado"
+                    session.add(log)
+                    session.commit()
             return
         
         # Cancelación
         if pendiente and texto in ["NO", "CANCELAR", "CANCEL", "CHAU"]:
             whatsapp_sessions.limpiar_pendiente(telefono)
             await whatsapp_sender.enviar_mensaje(telefono, "❌ Operación cancelada. Sesión limpia.")
+            # Actualizar log a cancelado
+            with Session(engine) as session:
+                log = session.exec(select(WhatsappLog).where(WhatsappLog.telefono == telefono, WhatsappLog.estado == "pendiente").order_by(WhatsappLog.creado_en.desc())).first()
+                if log:
+                    log.estado = "cancelado"
+                    session.add(log)
+                    session.commit()
             return
         
         # Si hay un pendiente pero mandó un texto diferente, lo tomamos como corrección
@@ -134,6 +149,16 @@ async def procesar_mensaje(telefono: str, message: dict):
                 whatsapp_sessions.guardar_pendiente(telefono, nuevos_datos.get("tipo", "gasto_mensual"), nuevos_datos)
                 confirmacion = gemini_parser.formatear_confirmacion(nuevos_datos)
                 await whatsapp_sender.enviar_mensaje(telefono, confirmacion)
+                
+                # Actualizar log con los nuevos datos extraídos
+                with Session(engine) as session:
+                    log = session.exec(select(WhatsappLog).where(WhatsappLog.telefono == telefono, WhatsappLog.estado == "pendiente").order_by(WhatsappLog.creado_en.desc())).first()
+                    if log:
+                        log.mensaje_recibido = f"Corrección: {texto}"
+                        log.datos_extraidos = json.dumps(nuevos_datos)
+                        log.respuesta_enviada = confirmacion
+                        session.add(log)
+                        session.commit()
             except Exception as e:
                 await whatsapp_sender.enviar_mensaje(telefono, f"❌ No pude procesar la corrección: {e}")
             return
@@ -166,6 +191,21 @@ async def analizar_y_preguntar(telefono: str, contenido: bytes, mime_type: str, 
         # Formatear mensaje amigable
         confirmacion = gemini_parser.formatear_confirmacion(datos)
         await whatsapp_sender.enviar_mensaje(telefono, confirmacion)
+        
+        # Guardar Log inicial
+        with Session(engine) as session:
+            tipo_msg = "texto" if mime_type == "text/plain" else mime_type.split("/")[0]
+            nuevo_log = WhatsappLog(
+                telefono=telefono,
+                tipo_mensaje=tipo_msg,
+                mensaje_recibido=texto if texto else f"Archivo {mime_type}",
+                respuesta_enviada=confirmacion,
+                estado="pendiente",
+                datos_extraidos=json.dumps(datos)
+            )
+            session.add(nuevo_log)
+            session.commit()
+
     except Exception as e:
         print(f"❌ Error en analizar_y_preguntar: {e}")
         await whatsapp_sender.enviar_mensaje(
