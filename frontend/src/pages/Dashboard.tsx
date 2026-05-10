@@ -158,12 +158,27 @@ export default function Dashboard() {
       </header>
 
       {/* Métricas Principales */}
-      <section id="section-metrics" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-4 lg:px-0">
-        <MetricCard id="metric-ingresos" label="Ingresos" value={data.ingreso} variant="success" icon={PiggyBank} />
-        <MetricCard id="metric-cuotas" label="Cuotas Tarjeta" value={data.total_cuotas} variant="warning" icon={CreditCard} />
-        <MetricCard id="metric-prestamos" label="Préstamos" value={data.total_prestamos} variant="info" icon={Landmark} />
-        <MetricCard id="metric-ahorro" label="BALANCE DEL MES" value={data.ahorro_proyectado} variant={data.ahorro_proyectado >= 0 ? 'success' : 'danger'} icon={TrendingUp} subtitle="Disponible para ahorro/gastos" />
-      </section>
+      {(() => {
+        // Calculate max length to keep all fonts at the same size
+        const maxLen = Math.max(
+          formatARS(data.ingreso).length + 2,
+          formatARS(data.total_cuotas).length,
+          formatARS(data.total_gastos_mensuales).length,
+          formatARS(data.total_prestamos).length,
+          formatARS(data.ahorro_proyectado).length + 2
+        );
+        const uniformTextSize = maxLen > 15 ? 'text-lg lg:text-xl xl:text-2xl' : maxLen > 12 ? 'text-xl lg:text-2xl xl:text-[1.7rem]' : 'text-2xl lg:text-3xl xl:text-4xl';
+
+        return (
+          <section id="section-metrics" className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 px-4 lg:px-0">
+            <MetricCard id="metric-ingresos" label="Ingresos" value={data.ingreso} variant="success" icon={PiggyBank} textSizeClass={uniformTextSize} />
+            <MetricCard id="metric-cuotas" label="Cuotas Fijas" value={data.total_cuotas} variant="warning" icon={CreditCard} textSizeClass={uniformTextSize} />
+            <MetricCard id="metric-gastos" label="Gastos Fijos/Variables" value={data.total_gastos_mensuales} variant="danger" icon={Wallet} textSizeClass={uniformTextSize} />
+            <MetricCard id="metric-prestamos" label="Préstamos" value={data.total_prestamos} variant="info" icon={Landmark} textSizeClass={uniformTextSize} />
+            <MetricCard id="metric-ahorro" label="BALANCE DEL MES" value={data.ahorro_proyectado} variant={data.ahorro_proyectado >= 0 ? 'success' : 'danger'} icon={TrendingUp} textSizeClass={uniformTextSize} />
+          </section>
+        );
+      })()}
 
       {/* GRID PRINCIPAL: Movimientos (L) | Gráficos (R - Desktop only) */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-10">

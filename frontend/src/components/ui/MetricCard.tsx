@@ -9,6 +9,7 @@ interface MetricCardProps {
   icon: LucideIcon;
   variant?: 'default' | 'success' | 'danger' | 'warning' | 'info';
   subtitle?: string;
+  textSizeClass?: string;
 }
 
 const MetricCard: FC<MetricCardProps> = ({ 
@@ -17,7 +18,8 @@ const MetricCard: FC<MetricCardProps> = ({
   value, 
   icon: Icon, 
   variant = 'default', 
-  subtitle 
+  subtitle,
+  textSizeClass = 'text-2xl lg:text-[1.6rem] xl:text-3xl'
 }) => {
   const styles = {
     default: {
@@ -52,7 +54,7 @@ const MetricCard: FC<MetricCardProps> = ({
   return (
     <article 
       id={id || `metric-card-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`} 
-      className={`p-6 lg:p-8 flex flex-col gap-3 transition-all duration-500 hover:scale-[1.02] group relative ${currentStyle.card}`}
+      className={`p-4 lg:p-4 flex flex-col gap-3 transition-all duration-500 hover:scale-[1.02] group relative ${currentStyle.card}`}
     >
       <div className="flex items-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
         <div className={`p-2 rounded-xl bg-white/5 border border-white/10 ${currentStyle.label}`}>
@@ -64,12 +66,8 @@ const MetricCard: FC<MetricCardProps> = ({
       </div>
       
       <div className="flex flex-col gap-1">
-        <p className={`font-bold tracking-tighter ${currentStyle.value} ${
-          formatARS(value).length > 14 ? 'text-lg lg:text-2xl' : 
-          formatARS(value).length > 10 ? 'text-xl lg:text-3xl' : 
-          'text-2xl lg:text-4xl'
-        }`}>
-          {variant === 'success' ? '+' : variant === 'danger' ? '-' : ''} {formatARS(value)}
+        <p className={`font-bold tracking-tighter ${currentStyle.value} ${textSizeClass} leading-none whitespace-nowrap`}>
+          {variant === 'success' ? '+ ' : variant === 'danger' ? '- ' : ''}{formatARS(value)}
         </p>
         {subtitle && (
           <p className="text-xs lg:text-sm font-medium text-gray-400/80 mt-1">
