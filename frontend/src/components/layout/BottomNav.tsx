@@ -1,11 +1,11 @@
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, CreditCard, BarChart2, Calculator, Settings } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, CreditCard, BarChart2, Calculator, Settings, ShoppingCart } from 'lucide-react';
 
 export default function BottomNav({ className = "" }: { className?: string }) {
   const menuItems = [
     { name: 'Inicio', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Simulador', path: '/simulador', icon: Calculator },
     { name: 'Más', path: '/movimientos', icon: PlusCircle },
+    { name: 'Compras', path: '/lista-compras', icon: ShoppingCart },
     { name: 'Tarjetas', path: '/tarjetas', icon: CreditCard },
     { name: 'Proyecc.', path: '/proyeccion', icon: BarChart2 },
     { name: 'Config.', path: '/configuracion', icon: Settings },
