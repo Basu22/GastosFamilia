@@ -11,6 +11,7 @@ from database import engine, get_session
 from models.tarjeta import Tarjeta
 from models.movimiento import Movimiento
 from models.gasto_mensual import GastoMensual
+from models.compra_deseada import CompraDeseada
 from models.whatsapp_log import WhatsappLog
 from services import gemini_parser, whatsapp_media, whatsapp_sender, whatsapp_sessions
 
@@ -277,6 +278,24 @@ async def guardar_en_db(telefono: str, tipo: str, datos: dict):
                 
                 tipo_txt = "Gasto Fijo ✅" if nuevo.es_fijo else "Gasto Variable"
                 msg = f"✅ *¡Guardado!*\n📌 {nuevo.descripcion}\n💰 ${nuevo.monto:,.0f}\n🔖 {tipo_txt}".replace(",", ".")
+
+            elif tipo == "compra_deseada":
+                # Lógica para Lista de Compras
+                nueva_compra = CompraDeseada(
+                    descripcion=datos.get("descripcion", "Compra WhatsApp"),
+                    precio_estimado=float(datos.get("monto")) if datos.get("monto") else None,
+                    prioridad=datos.get("prioridad", "media"),
+                    categoria=datos.get("categoria"),
+                    notas=f"Agregado vía WhatsApp por {telefono}",
+                    estado="pendiente"
+                )
+                session.add(nueva_compra)
+                session.commit()
+                
+                emoji_prio = {"alta": "🔴", "media": "🟡", "baja": "🟢"}.get(nueva_compra.prioridad, "⚪")
+                msg = f"✅ *¡A la lista!*\n📌 {nueva_compra.descripcion}\n{emoji_prio} Prioridad: {nueva_compra.prioridad.capitalize()}"
+                if nueva_compra.precio_estimado:
+                    msg += f"\n💰 Est.: ${nueva_compra.precio_estimado:,.0f}".replace(",", ".")
 
             # Limpiar sesión y confirmar al usuario
             whatsapp_sessions.limpiar_pendiente(telefono)
