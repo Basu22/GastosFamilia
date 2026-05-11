@@ -113,8 +113,8 @@ def formatear_confirmacion(datos: dict) -> str:
         if tarjeta:
             lineas.append(f"💳 *Tarjeta:* {tarjeta}")
         
-        cuotas = datos.get("cuotas", 1)
-        if cuotas > 1:
+        cuotas = datos.get("cuotas") or 1
+        if int(cuotas) > 1:
             lineas.append(f"📅 *Cuotas:* {cuotas}")
         
         if datos.get("es_fijo"):
