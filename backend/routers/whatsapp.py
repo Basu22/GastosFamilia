@@ -92,10 +92,12 @@ async def recibir_mensaje(request: Request, background_tasks: BackgroundTasks):
         telefono = message["from"]  # Número del remitente
         
         # Seguridad: Solo procesar si el número está autorizado
+        print(f"📩 Mensaje recibido de: {telefono}")
         if NUMEROS_AUTORIZADOS and NUMEROS_AUTORIZADOS[0] != "" and telefono not in NUMEROS_AUTORIZADOS:
-            print(f"🚫 Intento de acceso desde número no autorizado: {telefono}")
+            print(f"🚫 Acceso DENEGADO. El número {telefono} no está en NUMEROS_AUTORIZADOS.")
             return {"status": "ok"}
         
+        print(f"✅ Acceso concedido para {telefono}. Iniciando procesamiento...")
         # Procesar en background para liberar el request de Meta
         background_tasks.add_task(procesar_mensaje, telefono, message)
         
@@ -165,6 +167,7 @@ async def procesar_mensaje(telefono: str, message: dict):
             return
 
         # No hay pendiente, es un mensaje nuevo → Iniciar flujo de extracción
+        print(f"🤖 Procesando nuevo mensaje de texto: '{texto}'")
         await analizar_y_preguntar(telefono, b"", "text/plain", texto)
 
     # 2. Manejo de Archivos (Imagen, PDF, Audio)
