@@ -262,23 +262,6 @@ async def guardar_en_db(telefono: str, tipo: str, datos: dict):
                 if cuotas > 1:
                     msg += f"\n📅 {cuotas} cuotas de ${monto_cuota:,.0f}".replace(",", ".")
 
-            else:
-                # Lógica para Gasto Mensual (Fijo o Variable)
-                hoy = date.today()
-                nuevo = GastoMensual(
-                    descripcion=datos.get("descripcion", "Gasto WhatsApp"),
-                    monto=float(datos.get("monto", 0)),
-                    mes=hoy.month,
-                    anio=hoy.year,
-                    es_fijo=datos.get("es_fijo", False),
-                    notas=f"Cargado vía WhatsApp por {telefono}"
-                )
-                session.add(nuevo)
-                session.commit()
-                
-                tipo_txt = "Gasto Fijo ✅" if nuevo.es_fijo else "Gasto Variable"
-                msg = f"✅ *¡Guardado!*\n📌 {nuevo.descripcion}\n💰 ${nuevo.monto:,.0f}\n🔖 {tipo_txt}".replace(",", ".")
-
             elif tipo == "compra_deseada":
                 # Lógica para Lista de Compras
                 nueva_compra = CompraDeseada(
@@ -296,6 +279,23 @@ async def guardar_en_db(telefono: str, tipo: str, datos: dict):
                 msg = f"✅ *¡A la lista!*\n📌 {nueva_compra.descripcion}\n{emoji_prio} Prioridad: {nueva_compra.prioridad.capitalize()}"
                 if nueva_compra.precio_estimado:
                     msg += f"\n💰 Est.: ${nueva_compra.precio_estimado:,.0f}".replace(",", ".")
+
+            else:
+                # Lógica para Gasto Mensual (Fijo o Variable)
+                hoy = date.today()
+                nuevo = GastoMensual(
+                    descripcion=datos.get("descripcion", "Gasto WhatsApp"),
+                    monto=float(datos.get("monto", 0)),
+                    mes=hoy.month,
+                    anio=hoy.year,
+                    es_fijo=datos.get("es_fijo", False),
+                    notas=f"Cargado vía WhatsApp por {telefono}"
+                )
+                session.add(nuevo)
+                session.commit()
+                
+                tipo_txt = "Gasto Fijo ✅" if nuevo.es_fijo else "Gasto Variable"
+                msg = f"✅ *¡Guardado!*\n📌 {nuevo.descripcion}\n💰 ${nuevo.monto:,.0f}\n🔖 {tipo_txt}".replace(",", ".")
 
             # Limpiar sesión y confirmar al usuario
             whatsapp_sessions.limpiar_pendiente(telefono)
