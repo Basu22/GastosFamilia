@@ -108,7 +108,9 @@ async def recibir_mensaje(request: Request, background_tasks: BackgroundTasks):
 
 async def procesar_mensaje(telefono: str, message: dict):
     """Lógica principal de orquestación del bot."""
-    msg_type = message.get("type")
+    try:
+        msg_type = message.get("type")
+        print(f"🔧 Iniciando procesar_mensaje para type={msg_type}")
     
     # 1. Manejo de Confirmaciones (Texto)
     if msg_type == "text":
@@ -182,6 +184,11 @@ async def procesar_mensaje(telefono: str, message: dict):
             await analizar_y_preguntar(telefono, contenido, mime_type)
         except Exception as e:
             await whatsapp_sender.enviar_mensaje(telefono, f"❌ Error al procesar el archivo: {e}")
+
+    except Exception as e:
+        print(f"❌💥 CRITICAL ERROR en procesar_mensaje: {e}")
+        import traceback
+        traceback.print_exc()
 
 async def analizar_y_preguntar(telefono: str, contenido: bytes, mime_type: str, texto: str = ""):
     """Analiza con Gemini y envía la respuesta de confirmación al usuario."""
