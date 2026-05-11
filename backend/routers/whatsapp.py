@@ -111,79 +111,79 @@ async def procesar_mensaje(telefono: str, message: dict):
     try:
         msg_type = message.get("type")
         print(f"🔧 Iniciando procesar_mensaje para type={msg_type}")
-    
-    # 1. Manejo de Confirmaciones (Texto)
-    if msg_type == "text":
-        texto = message["text"]["body"].strip().upper()
-        pendiente = whatsapp_sessions.obtener_pendiente(telefono)
         
-        # Confirmación positiva
-        if pendiente and texto in ["OK", "SI", "SÍ", "CONFIRMAR", "GUARDAR"]:
-            await guardar_en_db(telefono, pendiente["tipo"], pendiente["datos"])
-            # Actualizar log si existe (se busca por teléfono y estado pendiente)
-            with Session(engine) as session:
-                log = session.exec(select(WhatsappLog).where(WhatsappLog.telefono == telefono, WhatsappLog.estado == "pendiente").order_by(WhatsappLog.creado_en.desc())).first()
-                if log:
-                    log.estado = "confirmado"
-                    session.add(log)
-                    session.commit()
-            return
-        
-        # Cancelación
-        if pendiente and texto in ["NO", "CANCELAR", "CANCEL", "CHAU"]:
-            whatsapp_sessions.limpiar_pendiente(telefono)
-            await whatsapp_sender.enviar_mensaje(telefono, "❌ Operación cancelada. Sesión limpia.")
-            # Actualizar log a cancelado
-            with Session(engine) as session:
-                log = session.exec(select(WhatsappLog).where(WhatsappLog.telefono == telefono, WhatsappLog.estado == "pendiente").order_by(WhatsappLog.creado_en.desc())).first()
-                if log:
-                    log.estado = "cancelado"
-                    session.add(log)
-                    session.commit()
-            return
-        
-        # Si hay un pendiente pero mandó un texto diferente, lo tomamos como corrección
-        if pendiente:
-            await whatsapp_sender.enviar_mensaje(telefono, "⏳ Procesando corrección...")
-            try:
-                # Re-analizar usando los datos anteriores como contexto
-                datos_viejos = pendiente["datos"]
-                contexto = f"Datos anteriores: {datos_viejos}. Corrección del usuario: {texto}"
-                nuevos_datos = await gemini_parser.analizar_contenido(b"", "text/plain", contexto)
-                
-                whatsapp_sessions.guardar_pendiente(telefono, nuevos_datos.get("tipo", "gasto_mensual"), nuevos_datos)
-                confirmacion = gemini_parser.formatear_confirmacion(nuevos_datos)
-                await whatsapp_sender.enviar_mensaje(telefono, confirmacion)
-                
-                # Actualizar log con los nuevos datos extraídos
+        # 1. Manejo de Confirmaciones (Texto)
+        if msg_type == "text":
+            texto = message["text"]["body"].strip().upper()
+            pendiente = whatsapp_sessions.obtener_pendiente(telefono)
+            
+            # Confirmación positiva
+            if pendiente and texto in ["OK", "SI", "SÍ", "CONFIRMAR", "GUARDAR"]:
+                await guardar_en_db(telefono, pendiente["tipo"], pendiente["datos"])
+                # Actualizar log si existe (se busca por teléfono y estado pendiente)
                 with Session(engine) as session:
                     log = session.exec(select(WhatsappLog).where(WhatsappLog.telefono == telefono, WhatsappLog.estado == "pendiente").order_by(WhatsappLog.creado_en.desc())).first()
                     if log:
-                        log.mensaje_recibido = f"Corrección: {texto}"
-                        log.datos_extraidos = json.dumps(nuevos_datos)
-                        log.respuesta_enviada = confirmacion
+                        log.estado = "confirmado"
                         session.add(log)
                         session.commit()
+                return
+            
+            # Cancelación
+            if pendiente and texto in ["NO", "CANCELAR", "CANCEL", "CHAU"]:
+                whatsapp_sessions.limpiar_pendiente(telefono)
+                await whatsapp_sender.enviar_mensaje(telefono, "❌ Operación cancelada. Sesión limpia.")
+                # Actualizar log a cancelado
+                with Session(engine) as session:
+                    log = session.exec(select(WhatsappLog).where(WhatsappLog.telefono == telefono, WhatsappLog.estado == "pendiente").order_by(WhatsappLog.creado_en.desc())).first()
+                    if log:
+                        log.estado = "cancelado"
+                        session.add(log)
+                        session.commit()
+                return
+            
+            # Si hay un pendiente pero mandó un texto diferente, lo tomamos como corrección
+            if pendiente:
+                await whatsapp_sender.enviar_mensaje(telefono, "⏳ Procesando corrección...")
+                try:
+                    # Re-analizar usando los datos anteriores como contexto
+                    datos_viejos = pendiente["datos"]
+                    contexto = f"Datos anteriores: {datos_viejos}. Corrección del usuario: {texto}"
+                    nuevos_datos = await gemini_parser.analizar_contenido(b"", "text/plain", contexto)
+                    
+                    whatsapp_sessions.guardar_pendiente(telefono, nuevos_datos.get("tipo", "gasto_mensual"), nuevos_datos)
+                    confirmacion = gemini_parser.formatear_confirmacion(nuevos_datos)
+                    await whatsapp_sender.enviar_mensaje(telefono, confirmacion)
+                    
+                    # Actualizar log con los nuevos datos extraídos
+                    with Session(engine) as session:
+                        log = session.exec(select(WhatsappLog).where(WhatsappLog.telefono == telefono, WhatsappLog.estado == "pendiente").order_by(WhatsappLog.creado_en.desc())).first()
+                        if log:
+                            log.mensaje_recibido = f"Corrección: {texto}"
+                            log.datos_extraidos = json.dumps(nuevos_datos)
+                            log.respuesta_enviada = confirmacion
+                            session.add(log)
+                            session.commit()
+                except Exception as e:
+                    await whatsapp_sender.enviar_mensaje(telefono, f"❌ No pude procesar la corrección: {e}")
+                return
+
+            # No hay pendiente, es un mensaje nuevo → Iniciar flujo de extracción
+            print(f"🤖 Procesando nuevo mensaje de texto: '{texto}'")
+            await analizar_y_preguntar(telefono, b"", "text/plain", texto)
+
+        # 2. Manejo de Archivos (Imagen, PDF, Audio)
+        elif msg_type in ["image", "document", "audio", "voice"]:
+            await whatsapp_sender.enviar_mensaje(telefono, "⏳ Analizando contenido... esto puede tardar unos segundos.")
+            
+            try:
+                media_id = message[msg_type]["id"]
+                # Descargar archivo real
+                contenido, mime_type = await whatsapp_media.descargar_media(media_id)
+                # Analizar con Gemini
+                await analizar_y_preguntar(telefono, contenido, mime_type)
             except Exception as e:
-                await whatsapp_sender.enviar_mensaje(telefono, f"❌ No pude procesar la corrección: {e}")
-            return
-
-        # No hay pendiente, es un mensaje nuevo → Iniciar flujo de extracción
-        print(f"🤖 Procesando nuevo mensaje de texto: '{texto}'")
-        await analizar_y_preguntar(telefono, b"", "text/plain", texto)
-
-    # 2. Manejo de Archivos (Imagen, PDF, Audio)
-    elif msg_type in ["image", "document", "audio", "voice"]:
-        await whatsapp_sender.enviar_mensaje(telefono, "⏳ Analizando contenido... esto puede tardar unos segundos.")
-        
-        try:
-            media_id = message[msg_type]["id"]
-            # Descargar archivo real
-            contenido, mime_type = await whatsapp_media.descargar_media(media_id)
-            # Analizar con Gemini
-            await analizar_y_preguntar(telefono, contenido, mime_type)
-        except Exception as e:
-            await whatsapp_sender.enviar_mensaje(telefono, f"❌ Error al procesar el archivo: {e}")
+                await whatsapp_sender.enviar_mensaje(telefono, f"❌ Error al procesar el archivo: {e}")
 
     except Exception as e:
         print(f"❌💥 CRITICAL ERROR en procesar_mensaje: {e}")
