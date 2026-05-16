@@ -5,6 +5,7 @@ from datetime import date, datetime
 class Movimiento(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     tarjeta_id: Optional[int] = Field(default=None, foreign_key="tarjeta.id")
+    reserva_id: Optional[int] = Field(default=None, foreign_key="reserva.id")
     descripcion: str
     categoria: Optional[str] = None
     monto_total: float

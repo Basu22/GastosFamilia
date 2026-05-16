@@ -21,6 +21,8 @@ from models.movimiento import Movimiento
 from models.tarjeta import Tarjeta
 from models.proyeccion_override import ProyeccionOverride
 from models.prestamo import Prestamo
+from models.asignacion_reserva import AsignacionReserva
+from models.reserva import Reserva
 from services.cuotas import get_cuotas_mes, cuota_activa_en_mes
 
 
@@ -67,6 +69,8 @@ def get_proyeccion_12_meses(session: Session) -> List[Dict[str, Any]]:
     movimientos = session.exec(select(Movimiento)).all()
     tarjetas_dict = {t.id: t for t in session.exec(select(Tarjeta)).all()}
     prestamos = session.exec(select(Prestamo)).all()
+    asignaciones = session.exec(select(AsignacionReserva)).all()
+    reservas_dict = {r.id: r for r in session.exec(select(Reserva)).all()}
 
     resultado = []
     mes = mes_actual
@@ -102,6 +106,9 @@ def get_proyeccion_12_meses(session: Session) -> List[Dict[str, Any]]:
             g_fin_val = (g.anio_fin * 12 + g.mes_fin) if g.anio_fin and g.mes_fin else 999999
             aplica = (g.mes == mes and g.anio == anio) or (g.es_fijo and g_val <= mes_val <= g_fin_val)
             if aplica:
+                if getattr(g, "reserva_id", None) is not None:
+                    continue # Excluimos los consumos de reserva de la proyección mensual de egresos
+
                 override_key = f"gasto_mensual-{g.id}-{mes}-{anio}"
                 monto = overrides.get(override_key, g.monto)
                 total_gastos += monto
@@ -116,6 +123,22 @@ def get_proyeccion_12_meses(session: Session) -> List[Dict[str, Any]]:
                     "tarjeta_id": g.tarjeta_id if hasattr(g, 'tarjeta_id') else None,
                     "tarjeta_nombre": t_gasto.nombre if t_gasto else None,
                     "tarjeta_color": t_gasto.color if t_gasto else None,
+                })
+
+        for a in asignaciones:
+            if a.mes == mes and a.anio == anio:
+                reserva = reservas_dict.get(a.reserva_id)
+                total_gastos += a.monto
+                detalle_gastos.append({
+                    "id": a.id,
+                    "descripcion": f"Reserva {reserva.nombre}" if reserva else "Asignación a Reserva",
+                    "monto_base": a.monto,
+                    "monto_proyectado": a.monto,
+                    "tiene_override": False,
+                    "es_fijo": False,
+                    "tarjeta_id": None,
+                    "tarjeta_nombre": None,
+                    "tarjeta_color": None,
                 })
 
         # --- Cuotas de Tarjeta ---

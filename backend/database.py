@@ -138,6 +138,13 @@ def create_db_and_tables():
                         except Exception as ex:
                             print(f"   ⚠️ Error migrando préstamo #{p_id}: {ex}")
 
+        # Migración para reserva_id en movimiento
+        cursor.execute("PRAGMA table_info(movimiento)")
+        columnas_movimiento = [row[1] for row in cursor.fetchall()]
+        if "reserva_id" not in columnas_movimiento:
+            print("🚀 Migración automática: Agregando reserva_id a tabla movimiento...")
+            cursor.execute("ALTER TABLE movimiento ADD COLUMN reserva_id INTEGER REFERENCES reserva(id)")
+
         conn.commit()
         conn.close()
     except Exception as e:

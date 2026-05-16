@@ -9,6 +9,7 @@ import MetricCard from '../components/ui/MetricCard';
 import InlineEditForm from '../components/dashboard/InlineEditForm';
 import InlineCreateForm from '../components/dashboard/InlineCreateForm';
 import PanelArca from '../components/dashboard/PanelArca';
+import { PanelReservas } from '../components/reservas/PanelReservas';
 import ModalTarjetaDetalle from '../components/dashboard/ModalTarjetaDetalle';
 
 const DashboardSkeleton = () => (
@@ -47,53 +48,64 @@ export default function Dashboard() {
 
   // Agrupación de movimientos para PC (por Medio de Pago)
   const movimientosAgrupados = useMemo(() => {
-    if (!data?.movimientos_mes) return { ingresos: [], tarjetas: [], efectivo: null };
+    if (!data?.movimientos_mes) return { ingresos: [], tarjetas: [], reservas: [], efectivo: null };
     
     const ingresos = data.movimientos_mes.filter((m: any) => m.tipo === 'ingreso');
     const gastos = data.movimientos_mes.filter((m: any) => m.tipo !== 'ingreso');
     
     const tarjetasMap = new Map();
-    const efectivo: any = { nombre: 'Efectivo / Transf.', color: '#10B981', cuotas: [], fijos: [], variables: [], prestamos: [], total: 0 };
+    const reservasMap = new Map();
+    const efectivo: any = { nombre: 'Efectivo / Transf.', color: '#10B981', cuotas: [], fijos: [], variables: [], asignaciones: [], prestamos: [], total: 0 };
     
     gastos.forEach((m: any) => {
       const isTarjeta = m.tarjeta_nombre || m.tipo === 'tarjeta';
+      const isReserva = m.reserva_nombre != null;
       
       if (isTarjeta && m.medio_pago !== 'Efectivo / Transf.') {
         const nombreTarjeta = m.tarjeta_nombre || m.medio_pago;
         if (!tarjetasMap.has(nombreTarjeta)) {
           tarjetasMap.set(nombreTarjeta, {
-            nombre: nombreTarjeta,
-            color: m.tarjeta_color || '#64748B',
-            cuotas: [],
-            fijos: [],
-            variables: [],
-            prestamos: [],
-            total: 0
+            nombre: nombreTarjeta, color: m.tarjeta_color || '#64748B',
+            cuotas: [], fijos: [], variables: [], prestamos: [], total: 0
           });
         }
-        
         const tData = tarjetasMap.get(nombreTarjeta);
         tData.total += m.monto;
-        
         if (m.tipo === 'tarjeta') tData.cuotas.push(m);
         else if (m.es_fijo) tData.fijos.push(m);
         else tData.variables.push(m);
+      } else if (isReserva) {
+        const nombreReserva = m.reserva_nombre;
+        if (!reservasMap.has(nombreReserva)) {
+          reservasMap.set(nombreReserva, {
+            nombre: nombreReserva, color: m.reserva_color || '#64748B',
+            cuotas: [], fijos: [], variables: [], prestamos: [], total: 0
+          });
+        }
+        const rData = reservasMap.get(nombreReserva);
+        rData.total += m.monto;
+        if (m.tipo === 'tarjeta') rData.cuotas.push(m);
+        else if (m.es_fijo) rData.fijos.push(m);
+        else rData.variables.push(m);
       } else {
         efectivo.total += m.monto;
         if (m.tipo === 'prestamo') efectivo.prestamos.push(m);
+        else if (m.tipo === 'asignacion_reserva') efectivo.asignaciones.push(m);
         else if (m.es_fijo) efectivo.fijos.push(m);
         else efectivo.variables.push(m);
       }
     });
 
     const tarjetas = Array.from(tarjetasMap.values()).sort((a: any, b: any) => b.total - a.total);
+    const reservas = Array.from(reservasMap.values()).sort((a: any, b: any) => b.total - a.total);
 
-    return { ingresos, tarjetas, efectivo };
+    return { ingresos, tarjetas, reservas, efectivo };
   }, [data]);
 
   const totalFiltrado = useMemo(() => {
     if (!data?.movimientos_mes) return 0;
     return data.movimientos_mes.reduce((acc: number, mov: any) => {
+      if (mov.tipo !== 'ingreso' && mov.reserva_nombre) return acc; // Los gastos con reserva NO restan del balance mensual en UI
       return acc + (mov.tipo === 'ingreso' ? mov.monto : -mov.monto);
     }, 0);
   }, [data]);
@@ -309,6 +321,11 @@ export default function Dashboard() {
             </section>
           )}
 
+          {/* PANEL DE RESERVAS */}
+          <div className="mx-4 lg:mx-0">
+            <PanelReservas mes={mes} anio={anio} disponible={data.ahorro_proyectado} />
+          </div>
+
           {/* MÓDULO ARCA */}
           <div className="mx-4 lg:mx-0">
             <PanelArca mes={mes} anio={anio} />
@@ -361,6 +378,19 @@ export default function Dashboard() {
                   />
                 ))}
 
+                {movimientosAgrupados.reservas.map((r: any) => (
+                  <GrupoCompuestoMobile
+                    key={r.nombre}
+                    titulo={r.nombre + " (Consumos)"} icon={Wallet} colorCls="text-gray-400"
+                    datos={r}
+                    expandido={seccionesAbiertas.has(r.nombre)}
+                    onToggle={() => toggleSeccion(r.nombre)}
+                    editingItem={editingItem} setEditingItem={setEditingItem}
+                    creandoEnSeccion={creandoEnSeccion} setCreandoEnSeccion={setCreandoEnSeccion}
+                    mes={mes} anio={anio}
+                  />
+                ))}
+
                 {movimientosAgrupados.efectivo.total > 0 && (
                   <GrupoCompuestoMobile
                     titulo="Efectivo / Transferencia" icon={Wallet} colorCls="text-aura-coral"
@@ -395,6 +425,19 @@ export default function Dashboard() {
                         datos={t}
                         expandido={seccionesAbiertas.has(t.nombre)}
                         onToggle={() => toggleSeccion(t.nombre)}
+                        editingItem={editingItem} setEditingItem={setEditingItem}
+                        creandoEnSeccion={creandoEnSeccion} setCreandoEnSeccion={setCreandoEnSeccion}
+                        mes={mes} anio={anio}
+                      />
+                    ))}
+
+                    {movimientosAgrupados.reservas.map((r: any) => (
+                      <GrupoCompuestoDesktop
+                        key={r.nombre}
+                        titulo={r.nombre + " (Consumos)"} icon={Wallet} colorCls="text-gray-400"
+                        datos={r}
+                        expandido={seccionesAbiertas.has(r.nombre)}
+                        onToggle={() => toggleSeccion(r.nombre)}
                         editingItem={editingItem} setEditingItem={setEditingItem}
                         creandoEnSeccion={creandoEnSeccion} setCreandoEnSeccion={setCreandoEnSeccion}
                         mes={mes} anio={anio}
@@ -698,6 +741,7 @@ function GrupoCompuestoDesktop({ titulo, icon: Icon, colorCls, datos, expandido,
     { key: 'cuotas', label: 'Cuotas de Tarjeta', items: datos.cuotas },
     { key: 'fijos', label: 'Gastos Fijos', items: datos.fijos },
     { key: 'variables', label: 'Gastos Variables', items: datos.variables },
+    { key: 'asignaciones', label: 'Asignaciones a Reservas', items: datos.asignaciones },
     { key: 'prestamos', label: 'Préstamos', items: datos.prestamos }
   ].filter(s => s.items?.length > 0);
 
@@ -777,6 +821,7 @@ function GrupoCompuestoMobile(props: any) {
     { key: 'cuotas', label: 'Cuotas', items: datos.cuotas },
     { key: 'fijos', label: 'Fijos', items: datos.fijos },
     { key: 'variables', label: 'Variables', items: datos.variables },
+    { key: 'asignaciones', label: 'Asignaciones', items: datos.asignaciones },
     { key: 'prestamos', label: 'Préstamos', items: datos.prestamos }
   ].filter(s => s.items?.length > 0);
 

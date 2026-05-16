@@ -3,6 +3,10 @@ from sqlmodel import Session, select
 from typing import List, Dict, Any
 from datetime import date
 import datetime
+from models.reserva import Reserva
+from models.asignacion_reserva import AsignacionReserva
+from models.reserva import Reserva
+from models.asignacion_reserva import AsignacionReserva
 
 from database import get_session
 from models.tarjeta import Tarjeta
@@ -76,7 +80,16 @@ def get_dashboard_summary(
         # 1. Es el mes exacto
         # 2. O es fijo Y el mes consultado está dentro del rango de validez
         if (g.mes == mes and g.anio == anio) or (g.es_fijo and g_val <= mes_actual_val <= g_fin_val):
+            if getattr(g, "reserva_id", None) is not None:
+                continue # Los gastos con reserva NO suman al total_gastos porque la Asignacion ya los descontó
             total_gastos += g.monto
+            
+    # 3.5. Asignaciones a Reserva (Se restan del disponible, como si fueran un gasto fijo del mes)
+    asignaciones_db = session.exec(
+        select(AsignacionReserva).where(AsignacionReserva.mes == mes, AsignacionReserva.anio == anio)
+    ).all()
+    total_asignaciones = sum(a.monto for a in asignaciones_db)
+    total_gastos += total_asignaciones
             
     # 4. Préstamos del mes (desde cuotas individuales)
     cuotas_prestamo_mes = session.exec(
@@ -140,7 +153,14 @@ def get_dashboard_summary(
             g_val = g.anio * 12 + g.mes
             g_fin_val = (g.anio_fin * 12 + g.mes_fin) if g.anio_fin and g.mes_fin else 999999
             if (g.mes == curr_mes and g.anio == curr_anio) or (g.es_fijo and g_val <= mes_step_val <= g_fin_val):
+                if getattr(g, "reserva_id", None) is not None:
+                    continue
                 step_gastos += g.monto
+                
+        # Asignaciones proyectadas (las asignaciones pasadas no se proyectan automáticamente salvo que hiciéramos asignaciones fijas,
+        # pero asumimos que el usuario no tiene "asignaciones fijas" por ahora, o sí? Dejamos step_asignaciones = 0)
+        step_asignaciones = 0.0
+        step_gastos += step_asignaciones
                 
         # Préstamos proyectados (desde cuotas individuales)
         step_prestamos = 0.0
@@ -205,6 +225,10 @@ def get_dashboard_summary(
             }
         mapa[name]["monto"] += monto
 
+    # Diccionario de Reservas para buscar info rapida
+    reservas_db = session.exec(select(Reserva)).all()
+    reservas_dict = {r.id: r for r in reservas_db}
+
     # 8. Listado Unificado de Movimientos del Mes
     movimientos_mes = []
     
@@ -232,13 +256,21 @@ def get_dashboard_summary(
         g_fin_val = (g.anio_fin * 12 + g.mes_fin) if g.anio_fin and g.mes_fin else 999999
         if (g.mes == mes and g.anio == anio) or (g.es_fijo and g_val <= mes_actual_val <= g_fin_val):
             t = tarjetas_dict.get(g.tarjeta_id) if g.tarjeta_id else None
+            r = reservas_dict.get(g.reserva_id) if getattr(g, 'reserva_id', None) else None
             is_previsionado = g.es_fijo and not (g.mes == mes and g.anio == anio)
             is_baja_effect = (g.activo is False) and (mes == g.mes_fin and anio == g.anio_fin)
+            
+            medio_pago = "Efectivo / Transf."
+            if t:
+                medio_pago = t.nombre
+            elif r:
+                medio_pago = r.nombre
+                
             movimientos_mes.append({
                 "id": g.id,
                 "tipo": "gasto",
                 "origen": "Gastos Fijos" if g.es_fijo else "Gastos Variados",
-                "medio_pago": t.nombre if t else "Efectivo / Transf.",
+                "medio_pago": medio_pago,
                 "descripcion": g.descripcion,
                 "monto": g.monto,
                 "es_fijo": g.es_fijo,
@@ -247,11 +279,32 @@ def get_dashboard_summary(
                 "fecha_baja": f"{g.anio_fin}-{g.mes_fin:02d}-01" if is_baja_effect else None,
                 "tarjeta_nombre": t.nombre if t else None,
                 "tarjeta_color": t.color if t else None,
+                "reserva_nombre": r.nombre if r else None,
+                "reserva_color": r.color if r else None,
                 "categoria": g.categoria,
                 "fecha_referencia": f"{g.anio}-{g.mes:02d}-01"
             })
-            if not is_baja_effect:
+            if not is_baja_effect and not r:
+                # Los gastos con reserva NO afectan el total por categoria porque no son del "flujo" mensual de gastos sino consumos de ahorros pasados/presentes
                 add_to_cat(gastos_por_cat, g.categoria, g.monto)
+            
+    # Agregar Asignaciones a Reservas
+    for a in asignaciones_db:
+        r = reservas_dict.get(a.reserva_id)
+        movimientos_mes.append({
+            "id": a.id,
+            "tipo": "asignacion_reserva",
+            "origen": "Asignación a Reserva",
+            "medio_pago": "Efectivo / Transf.",
+            "descripcion": f"Fondeo: {r.nombre if r else 'Reserva'}",
+            "monto": a.monto,
+            "es_fijo": False,
+            "previsionado": False,
+            "activo": True,
+            "categoria": "Ahorro/Reserva",
+            "fecha_referencia": f"{anio}-{mes:02d}-01"
+        })
+        # Las asignaciones no van a categorias de gastos, o si quieres sí. Lo dejamos fuera de categorias por ahora.
             
     # Agregar Movimientos de Tarjeta (Cuotas activas)
     for m in movs_all:

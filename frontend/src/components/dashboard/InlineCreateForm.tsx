@@ -9,6 +9,7 @@ import { createGastoMensual } from '../../api/gastos_mensuales';
 import { createIngreso } from '../../api/ingresos';
 import { createPrestamo } from '../../api/prestamos';
 import { getCategorias } from '../../api/configuracion';
+import { getReservas } from '../../api/reservas';
 import { Save, X } from 'lucide-react';
 import { NumericFormat } from 'react-number-format';
 
@@ -18,6 +19,8 @@ const schema = z.object({
   monto: z.number().positive('Debe ser mayor a 0'),
   entidad: z.string().optional(),
   tarjeta_id: z.string().optional(),
+  reserva_id: z.string().optional(),
+  medio_pago: z.string().optional(),
   cuotas: z.number().optional(),
   fecha_primera_cuota: z.string().optional(),
   es_fijo: z.boolean().optional(),
@@ -37,6 +40,7 @@ export default function InlineCreateForm({ tipo, mes, anio, onClose }: InlineCre
   const [entryMode, setEntryMode] = useState<'total' | 'cuota'>('total');
   const { data: tarjetas } = useQuery({ queryKey: ['tarjetas'], queryFn: getTarjetas });
   const { data: categorias } = useQuery({ queryKey: ['categorias'], queryFn: getCategorias });
+  const { data: reservas } = useQuery({ queryKey: ['reservas'], queryFn: getReservas });
 
   const { register, handleSubmit, control, setValue, watch, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
@@ -50,7 +54,7 @@ export default function InlineCreateForm({ tipo, mes, anio, onClose }: InlineCre
       es_fijo: tipo === 'gasto_fijo' || (tipo === 'gasto' ? true : false),
       mes: mes,
       anio: anio,
-      tarjeta_id: ""
+      medio_pago: ""
     }
   });
 
@@ -58,10 +62,19 @@ export default function InlineCreateForm({ tipo, mes, anio, onClose }: InlineCre
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
+      let tarjeta_id = null;
+      let reserva_id = null;
+      if (data.medio_pago) {
+        if (data.medio_pago.startsWith('tarjeta_')) tarjeta_id = parseInt(data.medio_pago.split('_')[1]);
+        if (data.medio_pago.startsWith('reserva_')) reserva_id = parseInt(data.medio_pago.split('_')[1]);
+      }
+
       const payload = { 
         ...data, 
-        tarjeta_id: data.tarjeta_id ? parseInt(data.tarjeta_id) : null 
+        tarjeta_id,
+        reserva_id
       };
+      delete payload.medio_pago;
       
       if (tipo === 'tarjeta') {
         return createMovimiento({
@@ -194,12 +207,15 @@ export default function InlineCreateForm({ tipo, mes, anio, onClose }: InlineCre
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-gray-400 uppercase">Medio de Pago</label>
               <select 
-                {...register('tarjeta_id')}
+                {...register('medio_pago')}
                 className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
               >
                 <option value="">Efectivo / Transf.</option>
                 {tarjetas?.map((t: any) => (
-                  <option key={t.id} value={t.id}>{t.nombre}</option>
+                  <option key={`t_${t.id}`} value={`tarjeta_${t.id}`}>💳 {t.nombre}</option>
+                ))}
+                {reservas?.map((r: any) => (
+                  <option key={`r_${r.id}`} value={`reserva_${r.id}`}>📦 {r.nombre} (Reserva)</option>
                 ))}
               </select>
             </div>

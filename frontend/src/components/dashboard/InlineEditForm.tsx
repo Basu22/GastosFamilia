@@ -9,6 +9,7 @@ import { updateGastoMensual, deleteGastoMensual, getGastosMensuales, darBajaGast
 import { updateIngreso, deleteIngreso, getIngresos } from '../../api/ingresos';
 import { getPrestamos, updatePrestamo, deletePrestamo } from '../../api/prestamos';
 import { getCategorias } from '../../api/configuracion';
+import { getReservas } from '../../api/reservas';
 import { Save, Trash2 } from 'lucide-react';
 import { NumericFormat } from 'react-number-format';
 
@@ -19,7 +20,10 @@ const schema = z.object({
   monto: z.number().positive('Debe ser mayor a 0'),
   entidad: z.string().optional(),
   // Campos específicos de tarjeta
+  // Campos específicos de tarjeta o reserva
   tarjeta_id: z.string().optional(),
+  reserva_id: z.string().optional(),
+  medio_pago: z.string().optional(),
   cuotas: z.number().optional(),
   fecha_primera_cuota: z.string().optional(),
   // Campos específicos de fijos
@@ -45,6 +49,7 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
 
   const { data: tarjetas } = useQuery({ queryKey: ['tarjetas'], queryFn: getTarjetas });
   const { data: categorias } = useQuery({ queryKey: ['categorias'], queryFn: getCategorias });
+  const { data: reservas } = useQuery({ queryKey: ['reservas'], queryFn: getReservas });
 
   const { register, handleSubmit, control, setValue, reset, watch, formState: { errors } } = useForm({
     resolver: zodResolver(schema)
@@ -76,7 +81,7 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
             descripcion: m.descripcion,
             categoria: m.categoria || "",
             monto: m.monto_total,
-            tarjeta_id: m.tarjeta_id?.toString() || "",
+            medio_pago: m.reserva_id ? `reserva_${m.reserva_id}` : (m.tarjeta_id ? `tarjeta_${m.tarjeta_id}` : ""),
             cuotas: m.cuotas,
             fecha_primera_cuota: m.fecha_primera_cuota
           });
@@ -92,7 +97,7 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
               mes: item.mes,
               anio: item.anio,
               es_fijo: item.es_fijo,
-              tarjeta_id: item.tarjeta_id?.toString() || "",
+              medio_pago: item.reserva_id ? `reserva_${item.reserva_id}` : (item.tarjeta_id ? `tarjeta_${item.tarjeta_id}` : ""),
               cuotas: item.cuotas,
               fecha_primera_cuota: item.fecha_primera_cuota
             });
@@ -110,12 +115,21 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
+      let tarjeta_id = null;
+      let reserva_id = null;
+      if (data.medio_pago) {
+        if (data.medio_pago.startsWith('tarjeta_')) tarjeta_id = parseInt(data.medio_pago.split('_')[1]);
+        if (data.medio_pago.startsWith('reserva_')) reserva_id = parseInt(data.medio_pago.split('_')[1]);
+      }
+
       const payload = { 
         ...data, 
-        tarjeta_id: data.tarjeta_id ? parseInt(data.tarjeta_id) : null,
+        tarjeta_id,
+        reserva_id,
         mes_edicion: mesActual,
         anio_edicion: anioActual
       };
+      delete payload.medio_pago;
       if (tipo === 'tarjeta') {
         return updateMovimiento(id, {
           ...payload,
@@ -254,12 +268,15 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
                 </label>
                 {tipo === 'tarjeta' ? (
                   <select 
-                    {...register('tarjeta_id')}
+                    {...register('medio_pago')}
                     className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                   >
                     <option value="">Efectivo / Transf.</option>
                     {tarjetas?.map((t: any) => (
-                      <option key={t.id} value={t.id}>{t.nombre}</option>
+                      <option key={`t_${t.id}`} value={`tarjeta_${t.id}`}>💳 {t.nombre}</option>
+                    ))}
+                    {reservas?.map((r: any) => (
+                      <option key={`r_${r.id}`} value={`reserva_${r.id}`}>📦 {r.nombre} (Reserva)</option>
                     ))}
                   </select>
                 ) : (
@@ -316,12 +333,15 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-gray-400 uppercase">Medio de Pago</label>
                   <select 
-                    {...register('tarjeta_id')}
+                    {...register('medio_pago')}
                     className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                   >
                     <option value="">Efectivo / Transf.</option>
                     {tarjetas?.map((t: any) => (
-                      <option key={t.id} value={t.id}>{t.nombre}</option>
+                      <option key={`t_${t.id}`} value={`tarjeta_${t.id}`}>💳 {t.nombre}</option>
+                    ))}
+                    {reservas?.map((r: any) => (
+                      <option key={`r_${r.id}`} value={`reserva_${r.id}`}>📦 {r.nombre} (Reserva)</option>
                     ))}
                   </select>
                 </div>

@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { Settings, Plus, CreditCard, Tag, Trash2, Edit3, Save, RefreshCw, Mail } from 'lucide-react';
+import { Settings, Plus, CreditCard, Tag, Trash2, Edit3, Save, RefreshCw, Mail, Wallet } from 'lucide-react';
 import { ejecutarImportacion, getHistorialImportacion } from '../api/client';
 import LogAccordion from '../components/LogAccordion';
+
+import { getReservas, createReserva, updateReserva, deactivateReserva, Reserva } from '../api/reservas';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -28,7 +30,7 @@ const ICONOS_DISPONIBLES = [
 
 export default function Configuracion() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'medios' | 'categorias' | 'gmail'>('medios');
+  const [activeTab, setActiveTab] = useState<'medios' | 'categorias' | 'gmail' | 'reservas'>('medios');
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const [nombre, setNombre] = useState('');
@@ -39,6 +41,7 @@ export default function Configuracion() {
 
   const { data: medios } = useQuery({ queryKey: ['medios-pago'], queryFn: () => axios.get(`${API_URL}/configuracion/medios-pago`).then(res => res.data) });
   const { data: categorias } = useQuery({ queryKey: ['categorias'], queryFn: () => axios.get(`${API_URL}/configuracion/categorias`).then(res => res.data) });
+  const { data: reservas } = useQuery({ queryKey: ['reservas'], queryFn: getReservas });
 
   const mutationMedio = useMutation({
     mutationFn: (data: MedioPago) => editingId ? axios.put(`${API_URL}/configuracion/medios-pago/${editingId}`, data) : axios.post(`${API_URL}/configuracion/medios-pago`, data),
@@ -50,9 +53,17 @@ export default function Configuracion() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['categorias'] }); resetForm(); }
   });
 
+  const mutationReserva = useMutation({
+    mutationFn: (data: Reserva) => editingId ? updateReserva(editingId, data) : createReserva(data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['reservas'] }); resetForm(); }
+  });
+
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => axios.delete(`${API_URL}/configuracion/${activeTab === 'medios' ? 'medios-pago' : 'categorias'}/${id}`),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: [activeTab === 'medios' ? 'medios-pago' : 'categorias'] }); }
+    mutationFn: async (id: number): Promise<any> => {
+      if (activeTab === 'reservas') return deactivateReserva(id);
+      return axios.delete(`${API_URL}/configuracion/${activeTab === 'medios' ? 'medios-pago' : 'categorias'}/${id}`);
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: [activeTab === 'reservas' ? 'reservas' : (activeTab === 'medios' ? 'medios-pago' : 'categorias')] }); }
   });
 
   const { data: historial } = useQuery({ queryKey: ['historial-importacion'], queryFn: getHistorialImportacion });
@@ -98,7 +109,8 @@ export default function Configuracion() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (activeTab === 'medios') mutationMedio.mutate({ nombre, tipo, color });
-    else mutationCat.mutate({ nombre, icono, color, tipo: tipoCat });
+    else if (activeTab === 'categorias') mutationCat.mutate({ nombre, icono, color, tipo: tipoCat });
+    else if (activeTab === 'reservas') mutationReserva.mutate({ nombre, color } as Reserva);
   };
 
   return (
@@ -128,6 +140,13 @@ export default function Configuracion() {
           <span className="leading-tight text-center">Categorías</span>
         </button>
         <button 
+          onClick={() => { setActiveTab('reservas'); resetForm(); }}
+          className={`flex-1 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 py-3 md:py-4 rounded-xl text-[10px] md:text-sm font-black uppercase tracking-tight md:tracking-widest transition-all duration-300 ${activeTab === 'reservas' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-lg shadow-blue-900/10' : 'text-gray-400 hover:text-gray-600 dark:hover:text-neutral-300'}`}
+        >
+          <Wallet size={20} className={activeTab === 'reservas' ? 'text-blue-600 scale-110' : 'text-gray-400'} />
+          <span className="leading-tight text-center">Reservas</span>
+        </button>
+        <button 
           onClick={() => { setActiveTab('gmail'); resetForm(); }}
           className={`flex-1 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 py-3 md:py-4 rounded-xl text-[10px] md:text-sm font-black uppercase tracking-tight md:tracking-widest transition-all duration-300 ${activeTab === 'gmail' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-lg shadow-blue-900/10' : 'text-gray-400 hover:text-gray-600 dark:hover:text-neutral-300'}`}
         >
@@ -141,7 +160,7 @@ export default function Configuracion() {
           <section className="bg-white dark:bg-neutral-950 p-6 rounded-3xl border border-gray-100 dark:border-neutral-900 shadow-sm mx-4 lg:mx-0">
             <h2 className="text-lg font-bold mb-6 flex items-center gap-2">
               {editingId ? <Edit3 size={20} className="text-amber-500" /> : <Plus size={20} className="text-blue-500" />}
-              {editingId ? 'Editar' : 'Nuevo'} {activeTab === 'medios' ? 'Medio de Pago' : 'Categoría'}
+              {editingId ? 'Editar' : 'Nuevo'} {activeTab === 'medios' ? 'Medio de Pago' : activeTab === 'categorias' ? 'Categoría' : 'Reserva'}
             </h2>
             
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -155,9 +174,10 @@ export default function Configuracion() {
                   />
                 </div>
                 
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">{activeTab === 'medios' ? 'Tipo de Medio' : 'Tipo de Categoría'}</label>
-                  {activeTab === 'medios' ? (
+                {activeTab !== 'reservas' && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">{activeTab === 'medios' ? 'Tipo de Medio' : 'Tipo de Categoría'}</label>
+                    {activeTab === 'medios' ? (
                     <select 
                       value={tipo} onChange={e => setTipo(e.target.value)}
                       className="w-full px-4 py-4 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 outline-none"
@@ -176,7 +196,8 @@ export default function Configuracion() {
                       <option value="Ambos">Ambos</option>
                     </select>
                   )}
-                </div>
+                  </div>
+                )}
 
                 {activeTab === 'categorias' && (
                   <div className="col-span-full space-y-3">
@@ -223,14 +244,14 @@ export default function Configuracion() {
           <section className="px-4 lg:px-0 pb-10">
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 mt-8">Listado Actual</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {(activeTab === 'medios' ? medios : categorias)?.map((item: any) => (
+              {(activeTab === 'medios' ? medios : activeTab === 'categorias' ? categorias : reservas)?.map((item: any) => (
                 <article key={item.id} className="group relative bg-white dark:bg-neutral-900/30 p-5 rounded-2xl border border-gray-100 dark:border-neutral-800 hover:border-blue-500/30 hover:shadow-xl hover:shadow-blue-900/5 transition-all flex items-center justify-between overflow-hidden">
                   {/* Barra de color lateral */}
                   <div className="absolute top-0 left-0 w-1 h-full transition-all group-hover:w-1.5" style={{ backgroundColor: item.color }} />
                   
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-inner" style={{ backgroundColor: item.color }}>
-                      {activeTab === 'medios' ? <CreditCard size={24} /> : <Tag size={24} />}
+                      {activeTab === 'medios' ? <CreditCard size={24} /> : activeTab === 'categorias' ? <Tag size={24} /> : <Wallet size={24} />}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
@@ -242,7 +263,7 @@ export default function Configuracion() {
                         )}
                       </div>
                       <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest mt-0.5 opacity-70">
-                        {activeTab === 'medios' ? item.tipo : item.icono}
+                        {activeTab === 'medios' ? item.tipo : activeTab === 'categorias' ? item.icono : 'Wallet Virtual'}
                       </p>
                     </div>
                   </div>
