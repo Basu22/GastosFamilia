@@ -202,7 +202,7 @@ def migrar_reservas(migraciones: List[MigracionReserva], session: Session = Depe
         # 3. Desactivar gasto original
         gasto.activo = False
         if not gasto.fecha_baja:
-            gasto.fecha_baja = f"{anio_actual}-{mes_actual:02d}-01"
+            gasto.fecha_baja = datetime.date(anio_actual, mes_actual, 1)
             
         session.add(gasto)
         
