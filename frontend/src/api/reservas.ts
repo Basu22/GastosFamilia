@@ -8,6 +8,8 @@ export interface Reserva {
   color: string;
   descripcion?: string;
   activa: boolean;
+  monto_fijo_mensual: number;
+  fecha_baja?: string;
   created_at: string;
 }
 
@@ -15,12 +17,16 @@ export interface ReservaCreate {
   nombre: string;
   color?: string;
   descripcion?: string;
+  monto_fijo_mensual?: number;
+  fecha_baja?: string;
 }
 
 export interface ReservaUpdate {
   nombre?: string;
   color?: string;
   descripcion?: string;
+  monto_fijo_mensual?: number;
+  fecha_baja?: string;
 }
 
 export interface AsignacionReserva {

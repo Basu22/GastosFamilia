@@ -7,4 +7,6 @@ class Reserva(SQLModel, table=True):
     color: str = "#64748B"
     descripcion: str | None = None
     activa: bool = True
+    monto_fijo_mensual: float = Field(default=0.0)
+    fecha_baja: date | None = Field(default=None)
     created_at: date = Field(default_factory=date.today)

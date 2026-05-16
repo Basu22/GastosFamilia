@@ -5,7 +5,7 @@ import { Settings, Plus, CreditCard, Tag, Trash2, Edit3, Save, RefreshCw, Mail, 
 import { ejecutarImportacion, getHistorialImportacion } from '../api/client';
 import LogAccordion from '../components/LogAccordion';
 
-import { getReservas, createReserva, updateReserva, deactivateReserva, Reserva } from '../api/reservas';
+import { getReservas, createReserva, updateReserva, deactivateReserva, ReservaCreate } from '../api/reservas';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -36,8 +36,10 @@ export default function Configuracion() {
   const [nombre, setNombre] = useState('');
   const [tipo, setTipo] = useState('Efectivo');
   const [tipoCat, setTipoCat] = useState('Gasto');
-  const [color, setColor] = useState('#3B82F6');
   const [icono, setIcono] = useState('Tag');
+  const [color, setColor] = useState('#3B82F6');
+  const [montoFijo, setMontoFijo] = useState<number>(0);
+  const [fechaBaja, setFechaBaja] = useState<string>('');
 
   const { data: medios } = useQuery({ queryKey: ['medios-pago'], queryFn: () => axios.get(`${API_URL}/configuracion/medios-pago`).then(res => res.data) });
   const { data: categorias } = useQuery({ queryKey: ['categorias'], queryFn: () => axios.get(`${API_URL}/configuracion/categorias`).then(res => res.data) });
@@ -54,7 +56,7 @@ export default function Configuracion() {
   });
 
   const mutationReserva = useMutation({
-    mutationFn: (data: Reserva) => editingId ? updateReserva(editingId, data) : createReserva(data),
+    mutationFn: (data: ReservaCreate) => editingId ? updateReserva(editingId, data) : createReserva(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['reservas'] }); resetForm(); }
   });
 
@@ -91,8 +93,10 @@ export default function Configuracion() {
     setNombre('');
     setTipo('Efectivo');
     setTipoCat('Gasto');
-    setColor('#3B82F6');
     setIcono('Tag');
+    setColor('#3B82F6');
+    setMontoFijo(0);
+    setFechaBaja('');
   };
 
   const handleEdit = (item: any) => {
@@ -100,9 +104,13 @@ export default function Configuracion() {
     setNombre(item.nombre);
     setColor(item.color);
     if (activeTab === 'medios') setTipo(item.tipo);
-    else {
+    if (activeTab === 'categorias') {
       setIcono(item.icono);
       setTipoCat(item.tipo);
+    }
+    if (activeTab === 'reservas') {
+      setMontoFijo(item.monto_fijo_mensual || 0);
+      setFechaBaja(item.fecha_baja || '');
     }
   };
 
@@ -110,7 +118,12 @@ export default function Configuracion() {
     e.preventDefault();
     if (activeTab === 'medios') mutationMedio.mutate({ nombre, tipo, color });
     else if (activeTab === 'categorias') mutationCat.mutate({ nombre, icono, color, tipo: tipoCat });
-    else if (activeTab === 'reservas') mutationReserva.mutate({ nombre, color } as Reserva);
+    else if (activeTab === 'reservas') mutationReserva.mutate({ 
+      nombre, 
+      color, 
+      monto_fijo_mensual: montoFijo, 
+      fecha_baja: fechaBaja || undefined 
+    } as ReservaCreate);
   };
 
   return (
@@ -228,6 +241,28 @@ export default function Configuracion() {
                     <span className="text-sm font-mono text-gray-500">{color}</span>
                   </div>
                 </div>
+
+                {activeTab === 'reservas' && (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Provisión Fija Mensual</label>
+                      <input 
+                        type="number"
+                        value={montoFijo || ''} onChange={e => setMontoFijo(parseFloat(e.target.value))}
+                        placeholder="Ej: 50000"
+                        className="w-full px-4 py-4 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Fecha de Baja (Opcional)</label>
+                      <input 
+                        type="date"
+                        value={fechaBaja} onChange={e => setFechaBaja(e.target.value)}
+                        className="w-full px-4 py-4 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="flex gap-3 pt-4">
@@ -263,7 +298,12 @@ export default function Configuracion() {
                         )}
                       </div>
                       <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest mt-0.5 opacity-70">
-                        {activeTab === 'medios' ? item.tipo : activeTab === 'categorias' ? item.icono : 'Wallet Virtual'}
+                        {activeTab === 'medios' ? item.tipo : activeTab === 'categorias' ? item.icono : (
+                          <>
+                            {item.monto_fijo_mensual > 0 ? `Provisión: $${item.monto_fijo_mensual.toLocaleString('es-AR')}` : 'Wallet Virtual'}
+                            {item.fecha_baja && ` | Baja: ${item.fecha_baja}`}
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>

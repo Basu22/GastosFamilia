@@ -18,11 +18,15 @@ class ReservaCreate(BaseModel):
     nombre: str
     color: str = "#64748B"
     descripcion: str | None = None
+    monto_fijo_mensual: float = 0.0
+    fecha_baja: str | None = None
 
 class ReservaUpdate(BaseModel):
     nombre: str | None = None
     color: str | None = None
     descripcion: str | None = None
+    monto_fijo_mensual: float | None = None
+    fecha_baja: str | None = None
 
 class AsignacionCreate(BaseModel):
     reserva_id: int
@@ -107,8 +111,9 @@ def crear_asignacion(asig: AsignacionCreate, session: Session = Depends(get_sess
     ).first()
     
     if existente:
-        existente.monto = asig.monto
-        existente.notas = asig.notas
+        existente.monto += asig.monto
+        if asig.notas:
+            existente.notas = asig.notas
         db_asig = existente
     else:
         db_asig = AsignacionReserva(**asig.model_dump())

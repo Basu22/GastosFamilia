@@ -88,7 +88,7 @@ export const ModalFondeoReserva: React.FC<Props> = ({ reserva, mes, anio, dispon
 
             <button 
               type="submit" 
-              disabled={mutation.isPending || monto <= 0}
+              disabled={mutation.isPending || monto <= 0 || disponible < monto}
               className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold rounded-xl transition-all"
             >
               {mutation.isPending ? 'Procesando...' : 'Confirmar Fondeo'}

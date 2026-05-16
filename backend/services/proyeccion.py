@@ -125,20 +125,44 @@ def get_proyeccion_12_meses(session: Session) -> List[Dict[str, Any]]:
                     "tarjeta_color": t_gasto.color if t_gasto else None,
                 })
 
+        reservas_asignadas_este_mes = set()
+
         for a in asignaciones:
             if a.mes == mes and a.anio == anio:
+                reservas_asignadas_este_mes.add(a.reserva_id)
                 reserva = reservas_dict.get(a.reserva_id)
+                if not reserva or not reserva.activa:
+                    continue
                 total_gastos += a.monto
                 detalle_gastos.append({
                     "id": a.id,
-                    "descripcion": f"Reserva {reserva.nombre}" if reserva else "Asignación a Reserva",
+                    "descripcion": f"Reserva {reserva.nombre}",
                     "monto_base": a.monto,
                     "monto_proyectado": a.monto,
-                    "tiene_override": False,
-                    "es_fijo": False,
+                    "tiene_override": True,
+                    "es_fijo": True,
                     "tarjeta_id": None,
                     "tarjeta_nombre": None,
-                    "tarjeta_color": None,
+                    "tarjeta_color": reserva.color,
+                })
+
+        for r_id, reserva in reservas_dict.items():
+            if not reserva.activa or reserva.monto_fijo_mensual <= 0:
+                continue
+            if reserva.fecha_baja and reserva.fecha_baja <= datetime.date(anio, mes, 1):
+                continue
+            if r_id not in reservas_asignadas_este_mes:
+                total_gastos += reserva.monto_fijo_mensual
+                detalle_gastos.append({
+                    "id": f"res_{r_id}",
+                    "descripcion": f"Reserva {reserva.nombre}",
+                    "monto_base": reserva.monto_fijo_mensual,
+                    "monto_proyectado": reserva.monto_fijo_mensual,
+                    "tiene_override": False,
+                    "es_fijo": True,
+                    "tarjeta_id": None,
+                    "tarjeta_nombre": None,
+                    "tarjeta_color": reserva.color,
                 })
 
         # --- Cuotas de Tarjeta ---
