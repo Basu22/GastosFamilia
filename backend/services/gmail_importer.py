@@ -151,14 +151,16 @@ def _importar_por_remitente(service, db: Session, config: GmailImporterConfig, d
             ).first()
 
             if gasto_existente:
+                gasto_existente.mes = mes
+                gasto_existente.anio = anio
                 if gasto_existente.monto == monto:
-                    accion, detalle = "sin_cambios", "El gasto ya existe con el mismo monto"
+                    accion, detalle = "sin_cambios", "El gasto ya existe con el mismo monto (fecha actualizada)"
                 else:
                     monto_anterior = gasto_existente.monto
                     gasto_existente.monto = monto
-                    db.add(gasto_existente)
                     accion = "actualizado"
                     detalle = f"Monto actualizado de {monto_anterior} a {monto}"
+                db.add(gasto_existente)
             else:
                 db.add(GastoMensual(
                     descripcion=config.descripcion, monto=monto,
@@ -278,98 +280,100 @@ def importar_facturas(db: Session, dias_atras: int = 30):
     resultados = service.users().messages().list(userId='me', q=query).execute()
     mensajes = resultados.get('messages', [])
 
-    if not mensajes:
-        return []
+    if mensajes:
+        # Evitamos procesar el mismo mensaje/referente varias veces si hubo múltiples correos en el mismo mes
+        procesados = set()
 
-    # Evitamos procesar el mismo mensaje/referente varias veces si hubo múltiples correos en el mismo mes
-    procesados = set()
-
-    for msg in mensajes:
-        txt_msg = service.users().messages().get(userId='me', id=msg['id'], format='full').execute()
-        payload = txt_msg['payload']
-        headers = payload.get('headers', [])
-        
-        asunto = next((h['value'] for h in headers if h['name'] == 'Subject'), "")
-        cuerpo = extraer_texto_mensaje(payload)
-        
-        monto, fecha_venc = parsear_asunto(asunto)
-        referente = parsear_referente(cuerpo)
-        
-        if not monto or not fecha_venc or not referente:
-            # No es el formato esperado
-            continue
+        for msg in mensajes:
+            txt_msg = service.users().messages().get(userId='me', id=msg['id'], format='full').execute()
+            payload = txt_msg['payload']
+            headers = payload.get('headers', [])
             
-        mes = fecha_venc.month
-        anio = fecha_venc.year
-        
-        clave_unica = f"{referente}-{mes}-{anio}"
-        if clave_unica in procesados:
-            continue
-        procesados.add(clave_unica)
-        
-        # Buscar config para este referente
-        config = next((c for c in configs if c.referente == referente), None)
-        if not config:
-            logs.append(ImportacionLog(
-                referente=referente, descripcion="Desconocido", monto=monto, 
-                mes=mes, anio=anio, fecha_vencimiento=fecha_venc.isoformat(), accion="ignorado", 
-                detalle="Referente no configurado en el sistema"
-            ))
-            continue
+            asunto = next((h['value'] for h in headers if h['name'] == 'Subject'), "")
+            cuerpo = extraer_texto_mensaje(payload)
+            
+            monto, fecha_venc = parsear_asunto(asunto)
+            referente = parsear_referente(cuerpo)
+            
+            if not monto or not fecha_venc or not referente:
+                # No es el formato esperado
+                continue
+                
+            mes = fecha_venc.month
+            anio = fecha_venc.year
+            
+            clave_unica = f"{referente}-{mes}-{anio}"
+            if clave_unica in procesados:
+                continue
+            procesados.add(clave_unica)
+            
+            # Buscar config para este referente
+            config = next((c for c in configs if c.referente == referente), None)
+            if not config:
+                logs.append(ImportacionLog(
+                    referente=referente, descripcion="Desconocido", monto=monto, 
+                    mes=mes, anio=anio, fecha_vencimiento=fecha_venc.isoformat(), accion="ignorado", 
+                    detalle="Referente no configurado en el sistema"
+                ))
+                continue
 
-        # Lógica de creación / actualización del gasto
-        gasto_existente = db.exec(
-            select(GastoMensual)
-            .where(GastoMensual.descripcion == config.descripcion)
-            .where(GastoMensual.es_fijo == True)
-            .where(
-                (GastoMensual.mes_fin == None) | 
-                ((GastoMensual.anio_fin * 12 + GastoMensual.mes_fin) >= (anio * 12 + mes))
-            )
-            .order_by(GastoMensual.id.desc())
-        ).first()
-
-        try:
-            if gasto_existente:
-                if gasto_existente.monto == monto:
-                    # sin_cambios
-                    logs.append(ImportacionLog(
-                        referente=referente, descripcion=config.descripcion, monto=monto, 
-                        mes=mes, anio=anio, fecha_vencimiento=fecha_venc.isoformat(), accion="sin_cambios", 
-                        detalle="El gasto ya existe y tiene el mismo monto"
-                    ))
-                else:
-                    monto_anterior = gasto_existente.monto
-                    gasto_existente.monto = monto
-                    db.add(gasto_existente)
-                    logs.append(ImportacionLog(
-                        referente=referente, descripcion=config.descripcion, monto=monto, 
-                        mes=mes, anio=anio, fecha_vencimiento=fecha_venc.isoformat(), accion="actualizado", 
-                        detalle=f"Monto actualizado de {monto_anterior} a {monto}"
-                    ))
-            else:
-                # Crear nuevo
-                nuevo_gasto = GastoMensual(
-                    descripcion=config.descripcion,
-                    monto=monto,
-                    mes=mes,
-                    anio=anio,
-                    es_fijo=True,
-                    notas=f"Importado automáticamente de Personal (Ref: {referente})"
+            # Lógica de creación / actualización del gasto
+            gasto_existente = db.exec(
+                select(GastoMensual)
+                .where(GastoMensual.descripcion == config.descripcion)
+                .where(GastoMensual.es_fijo == True)
+                .where(
+                    (GastoMensual.mes_fin == None) | 
+                    ((GastoMensual.anio_fin * 12 + GastoMensual.mes_fin) >= (anio * 12 + mes))
                 )
-                db.add(nuevo_gasto)
+                .order_by(GastoMensual.id.desc())
+            ).first()
+
+            try:
+                if gasto_existente:
+                    gasto_existente.mes = mes
+                    gasto_existente.anio = anio
+                    
+                    if gasto_existente.monto == monto:
+                        # sin_cambios (pero fecha actualizada)
+                        db.add(gasto_existente)
+                        logs.append(ImportacionLog(
+                            referente=referente, descripcion=config.descripcion, monto=monto, 
+                            mes=mes, anio=anio, fecha_vencimiento=fecha_venc.isoformat(), accion="sin_cambios", 
+                            detalle="El gasto ya existe y tiene el mismo monto (fecha actualizada)"
+                        ))
+                    else:
+                        monto_anterior = gasto_existente.monto
+                        gasto_existente.monto = monto
+                        db.add(gasto_existente)
+                        logs.append(ImportacionLog(
+                            referente=referente, descripcion=config.descripcion, monto=monto, 
+                            mes=mes, anio=anio, fecha_vencimiento=fecha_venc.isoformat(), accion="actualizado", 
+                            detalle=f"Monto actualizado de {monto_anterior} a {monto}"
+                        ))
+                else:
+                    # Crear nuevo
+                    nuevo_gasto = GastoMensual(
+                        descripcion=config.descripcion,
+                        monto=monto,
+                        mes=mes,
+                        anio=anio,
+                        es_fijo=True,
+                        notas=f"Importado automáticamente de Personal (Ref: {referente})"
+                    )
+                    db.add(nuevo_gasto)
+                    logs.append(ImportacionLog(
+                        referente=referente, descripcion=config.descripcion, monto=monto, 
+                        mes=mes, anio=anio, fecha_vencimiento=fecha_venc.isoformat(), accion="creado", 
+                        detalle="Nuevo gasto mensual creado"
+                    ))
+                    
+            except Exception as e:
                 logs.append(ImportacionLog(
                     referente=referente, descripcion=config.descripcion, monto=monto, 
-                    mes=mes, anio=anio, fecha_vencimiento=fecha_venc.isoformat(), accion="creado", 
-                    detalle="Nuevo gasto mensual creado"
+                    mes=mes, anio=anio, fecha_vencimiento=fecha_venc.isoformat(), accion="error", 
+                    detalle=f"Error al procesar: {str(e)}"
                 ))
-                
-        except Exception as e:
-            logs.append(ImportacionLog(
-                referente=referente, descripcion=config.descripcion, monto=monto, 
-                mes=mes, anio=anio, fecha_vencimiento=fecha_venc.isoformat(), accion="error", 
-                detalle=f"Error al procesar: {str(e)}"
-            ))
 
     # Flujo B: configs con tipo_parser != "referente"
     configs_directas = db.exec(

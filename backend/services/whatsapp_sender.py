@@ -9,9 +9,6 @@ async def enviar_mensaje(telefono: str, texto: str) -> None:
     Envía un mensaje de texto simple al número dado vía WhatsApp Cloud API.
     telefono: número en formato internacional sin el '+' (ej: 5491112345678)
     """
-    # 🇦🇷 FIX ARGENTINA: Meta suele requerir el número sin el '9' para responder
-    if telefono.startswith("549") and len(telefono) == 13:
-        telefono = "54" + telefono[3:]
 
     if not WHATSAPP_TOKEN or not PHONE_NUMBER_ID:
         print("⚠️ WhatsApp Token o Phone Number ID no configurados")
