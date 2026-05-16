@@ -6,6 +6,10 @@ export interface DetalleItem {
   monto_base: number;
   monto_proyectado: number;
   tiene_override: boolean;
+  es_fijo?: boolean;
+  tarjeta_id?: number | null;
+  tarjeta_nombre?: string | null;
+  tarjeta_color?: string | null;
 }
 
 export interface MovimientoCuota {
@@ -35,6 +39,7 @@ export interface MesProyectado {
   detalle_ingresos: DetalleItem[];
   detalle_gastos: DetalleItem[];
   detalle_cuotas_por_tarjeta: CuotasPorTarjeta[];
+  detalle_prestamos: any[];
 }
 
 export interface OverrideCreate {

@@ -6,6 +6,7 @@ class CuotaTarjeta(BaseModel):
     nombre: str
     monto: float
     color: str
+    detalle: Optional[List[dict]] = []
 
 class ProyeccionMes(BaseModel):
     mes: int

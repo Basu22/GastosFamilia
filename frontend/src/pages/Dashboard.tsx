@@ -3,12 +3,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getDashboardInfo } from '../api/client';
 import { reactivarGastoMensual } from '../api/gastos_mensuales';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { TrendingUp, Wallet, CreditCard, PiggyBank, Edit3, ChevronLeft, ChevronRight, Calendar, ChevronDown, Info, Plus, Landmark, Tag } from 'lucide-react';
+import { TrendingUp, Wallet, CreditCard, PiggyBank, Edit3, ChevronLeft, ChevronRight, Calendar, ChevronDown, Plus, Landmark, Tag } from 'lucide-react';
 import { formatARS, MESES_CORTO } from '../utils/format';
 import MetricCard from '../components/ui/MetricCard';
 import InlineEditForm from '../components/dashboard/InlineEditForm';
 import InlineCreateForm from '../components/dashboard/InlineCreateForm';
 import PanelArca from '../components/dashboard/PanelArca';
+import ModalTarjetaDetalle from '../components/dashboard/ModalTarjetaDetalle';
 
 const DashboardSkeleton = () => (
   <div className="space-y-6 animate-pulse px-4 py-4 lg:px-8 lg:py-8">
@@ -24,8 +25,8 @@ export default function Dashboard() {
   const [anio, setAnio] = useState(new Date().getFullYear());
   const [editingItem, setEditingItem] = useState<{id: number, tipo: string} | null>(null);
   const [creandoEnSeccion, setCreandoEnSeccion] = useState<'ingreso' | 'gasto' | 'tarjeta' | null>(null);
-  const [tarjetaFiltro, setTarjetaFiltro] = useState<string | null>(null);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [tarjetaSeleccionada, setTarjetaSeleccionada] = useState<any | null>(null);
   
   // Secciones abiertas (colapsables)
   const [seccionesAbiertas, setSeccionesAbiertas] = useState<Set<string>>(new Set());
@@ -44,32 +45,51 @@ export default function Dashboard() {
     queryFn: () => getDashboardInfo(mes, anio)
   });
 
-  // Agrupación de movimientos para PC
+  // Agrupación de movimientos para PC (por Medio de Pago)
   const movimientosAgrupados = useMemo(() => {
-    if (!data?.movimientos_mes) return { ingresos: [], cuotas: [], fijos: [], variables: [], prestamos: [] };
+    if (!data?.movimientos_mes) return { ingresos: [], tarjetas: [], efectivo: null };
     
-    return {
-      ingresos: data.movimientos_mes.filter((m: any) => m.tipo === 'ingreso'),
-      cuotas: data.movimientos_mes.filter((m: any) => m.tipo === 'tarjeta'),
-      fijos: data.movimientos_mes.filter((m: any) => m.origen === 'Gastos Fijos'),
-      variables: data.movimientos_mes.filter((m: any) => m.origen === 'Gastos Variados'),
-      prestamos: data.movimientos_mes.filter((m: any) => m.tipo === 'prestamo'),
-    };
-  }, [data]);
-
-  // Totales por tarjeta para las pills
-  const totalesPorTarjeta = useMemo(() => {
-    if (!movimientosAgrupados.cuotas.length) return [];
-    const mapa: Record<string, { nombre: string; total: number; color: string }> = {};
+    const ingresos = data.movimientos_mes.filter((m: any) => m.tipo === 'ingreso');
+    const gastos = data.movimientos_mes.filter((m: any) => m.tipo !== 'ingreso');
     
-    movimientosAgrupados.cuotas.forEach((m: any) => {
-      const key = m.medio_pago || 'Sin tarjeta';
-      if (!mapa[key]) mapa[key] = { nombre: key, total: 0, color: m.tarjeta_color || '#64748B' };
-      mapa[key].total += m.monto;
+    const tarjetasMap = new Map();
+    const efectivo: any = { nombre: 'Efectivo / Transf.', color: '#10B981', cuotas: [], fijos: [], variables: [], prestamos: [], total: 0 };
+    
+    gastos.forEach((m: any) => {
+      const isTarjeta = m.tarjeta_nombre || m.tipo === 'tarjeta';
+      
+      if (isTarjeta && m.medio_pago !== 'Efectivo / Transf.') {
+        const nombreTarjeta = m.tarjeta_nombre || m.medio_pago;
+        if (!tarjetasMap.has(nombreTarjeta)) {
+          tarjetasMap.set(nombreTarjeta, {
+            nombre: nombreTarjeta,
+            color: m.tarjeta_color || '#64748B',
+            cuotas: [],
+            fijos: [],
+            variables: [],
+            prestamos: [],
+            total: 0
+          });
+        }
+        
+        const tData = tarjetasMap.get(nombreTarjeta);
+        tData.total += m.monto;
+        
+        if (m.tipo === 'tarjeta') tData.cuotas.push(m);
+        else if (m.es_fijo) tData.fijos.push(m);
+        else tData.variables.push(m);
+      } else {
+        efectivo.total += m.monto;
+        if (m.tipo === 'prestamo') efectivo.prestamos.push(m);
+        else if (m.es_fijo) efectivo.fijos.push(m);
+        else efectivo.variables.push(m);
+      }
     });
-    
-    return Object.values(mapa).sort((a, b) => b.total - a.total);
-  }, [movimientosAgrupados.cuotas]);
+
+    const tarjetas = Array.from(tarjetasMap.values()).sort((a: any, b: any) => b.total - a.total);
+
+    return { ingresos, tarjetas, efectivo };
+  }, [data]);
 
   const totalFiltrado = useMemo(() => {
     if (!data?.movimientos_mes) return 0;
@@ -103,6 +123,10 @@ export default function Dashboard() {
 
   return (
     <main id="dashboard-container" className="space-y-10 lg:space-y-12 animate-in fade-in duration-700 pb-12">
+      <ModalTarjetaDetalle 
+        tarjeta={tarjetaSeleccionada} 
+        onClose={() => setTarjetaSeleccionada(null)} 
+      />
       {/* Header con Selector de Fecha */}
       <header id="dashboard-header" className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between px-4 lg:px-0">
         <div>
@@ -269,7 +293,11 @@ export default function Dashboard() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {data.cuotas_por_tarjeta.map((t: any) => (
-                  <div key={t.nombre} className="glass-card p-4 border border-white/5 flex flex-col justify-between hover:border-white/20 transition-all gap-2">
+                  <div 
+                    key={t.nombre} 
+                    className="glass-card p-4 border border-white/5 flex flex-col justify-between hover:border-white/20 transition-all gap-2 cursor-pointer"
+                    onClick={() => setTarjetaSeleccionada(t)}
+                  >
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.5)]" style={{ backgroundColor: t.color || '#64748B' }} />
                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">{t.nombre}</span>
@@ -310,155 +338,80 @@ export default function Dashboard() {
             <div id="wrapper-movimientos-grid" className="bg-aura-bg/20">
               {/* VISTA MÓVIL (GRUPOS COLAPSABLES) */}
               <div className="flex flex-col gap-6 lg:hidden p-6 pb-12">
-                <GrupoMobile
-                  titulo="Ingresos"
-                  icon={PiggyBank}
+                <GrupoSimpleMobile
+                  titulo="Ingresos" icon={PiggyBank} colorCls="text-aura-mint"
                   movimientos={movimientosAgrupados.ingresos}
                   expandido={seccionesAbiertas.has('ingresos')}
                   onToggle={() => toggleSeccion('ingresos')}
-                  editingItem={editingItem}
-                  setEditingItem={setEditingItem}
-                  creandoEnSeccion={creandoEnSeccion}
-                  setCreandoEnSeccion={setCreandoEnSeccion}
-                  mes={mes}
-                  anio={anio}
+                  editingItem={editingItem} setEditingItem={setEditingItem}
+                  creandoEnSeccion={creandoEnSeccion} setCreandoEnSeccion={setCreandoEnSeccion}
+                  mes={mes} anio={anio}
                 />
-                <GrupoMobile
-                  titulo="Cuotas de Tarjeta"
-                  icon={CreditCard}
-                  movimientos={movimientosAgrupados.cuotas}
-                  expandido={seccionesAbiertas.has('cuotas')}
-                  onToggle={() => toggleSeccion('cuotas')}
-                  editingItem={editingItem}
-                  setEditingItem={setEditingItem}
-                  creandoEnSeccion={creandoEnSeccion}
-                  setCreandoEnSeccion={setCreandoEnSeccion}
-                  tarjetaFiltro={tarjetaFiltro}
-                  mes={mes}
-                  anio={anio}
-                />
-                <GrupoMobile
-                  titulo="Préstamos"
-                  icon={Landmark}
-                  movimientos={movimientosAgrupados.prestamos}
-                  expandido={seccionesAbiertas.has('prestamos')}
-                  onToggle={() => toggleSeccion('prestamos')}
-                  editingItem={editingItem}
-                  setEditingItem={setEditingItem}
-                  creandoEnSeccion={creandoEnSeccion}
-                  setCreandoEnSeccion={setCreandoEnSeccion}
-                  mes={mes}
-                  anio={anio}
-                />
-                <GrupoMobile
-                  titulo="Gastos Fijos"
-                  icon={Wallet}
-                  movimientos={movimientosAgrupados.fijos}
-                  expandido={seccionesAbiertas.has('fijos')}
-                  onToggle={() => toggleSeccion('fijos')}
-                  editingItem={editingItem}
-                  setEditingItem={setEditingItem}
-                  creandoEnSeccion={creandoEnSeccion}
-                  setCreandoEnSeccion={setCreandoEnSeccion}
-                  mes={mes}
-                  anio={anio}
-                />
-                <GrupoMobile
-                  titulo="Gastos Variados"
-                  icon={Info}
-                  movimientos={movimientosAgrupados.variables}
-                  expandido={seccionesAbiertas.has('variables')}
-                  onToggle={() => toggleSeccion('variables')}
-                  editingItem={editingItem}
-                  setEditingItem={setEditingItem}
-                  creandoEnSeccion={creandoEnSeccion}
-                  setCreandoEnSeccion={setCreandoEnSeccion}
-                  mes={mes}
-                  anio={anio}
-                />
+                
+                {movimientosAgrupados.tarjetas.map((t: any) => (
+                  <GrupoCompuestoMobile
+                    key={t.nombre}
+                    titulo={t.nombre} icon={CreditCard} colorCls="text-aura-lavender"
+                    datos={t}
+                    expandido={seccionesAbiertas.has(t.nombre)}
+                    onToggle={() => toggleSeccion(t.nombre)}
+                    editingItem={editingItem} setEditingItem={setEditingItem}
+                    creandoEnSeccion={creandoEnSeccion} setCreandoEnSeccion={setCreandoEnSeccion}
+                    mes={mes} anio={anio}
+                  />
+                ))}
+
+                {movimientosAgrupados.efectivo.total > 0 && (
+                  <GrupoCompuestoMobile
+                    titulo="Efectivo / Transferencia" icon={Wallet} colorCls="text-aura-coral"
+                    datos={movimientosAgrupados.efectivo}
+                    expandido={seccionesAbiertas.has('efectivo')}
+                    onToggle={() => toggleSeccion('efectivo')}
+                    editingItem={editingItem} setEditingItem={setEditingItem}
+                    creandoEnSeccion={creandoEnSeccion} setCreandoEnSeccion={setCreandoEnSeccion}
+                    mes={mes} anio={anio}
+                  />
+                )}
               </div>
 
               {/* VISTA DESKTOP (TABLA AGRUPADA) */}
               <div className="hidden lg:block overflow-x-auto px-6 pb-12">
                 <table className="w-full text-left border-collapse">
                   <tbody className="divide-y divide-white/5">
-                    {/* GRUPO: INGRESOS */}
-                    <GrupoDesktop 
-                      titulo="Ingresos" 
-                      icon={PiggyBank}
+                    <GrupoSimpleDesktop 
+                      titulo="Ingresos" icon={PiggyBank} colorCls="text-aura-mint"
                       movimientos={movimientosAgrupados.ingresos}
                       expandido={seccionesAbiertas.has('ingresos')}
                       onToggle={() => toggleSeccion('ingresos')}
-                      editingItem={editingItem}
-                      setEditingItem={setEditingItem}
-                      creandoEnSeccion={creandoEnSeccion}
-                      setCreandoEnSeccion={setCreandoEnSeccion}
-                      mes={mes}
-                      anio={anio}
+                      editingItem={editingItem} setEditingItem={setEditingItem}
+                      creandoEnSeccion={creandoEnSeccion} setCreandoEnSeccion={setCreandoEnSeccion}
+                      mes={mes} anio={anio}
                     />
 
-                    {/* GRUPO: CUOTAS */}
-                    <GrupoDesktop 
-                      titulo="Cuotas de Tarjeta" 
-                      icon={CreditCard}
-                      movimientos={movimientosAgrupados.cuotas}
-                      expandido={seccionesAbiertas.has('cuotas')}
-                      onToggle={() => toggleSeccion('cuotas')}
-                      editingItem={editingItem}
-                      setEditingItem={setEditingItem}
-                      totalesCards={totalesPorTarjeta}
-                      tarjetaFiltro={tarjetaFiltro}
-                      setTarjetaFiltro={setTarjetaFiltro}
-                      creandoEnSeccion={creandoEnSeccion}
-                      setCreandoEnSeccion={setCreandoEnSeccion}
-                      mes={mes}
-                      anio={anio}
-                    />
+                    {movimientosAgrupados.tarjetas.map((t: any) => (
+                      <GrupoCompuestoDesktop
+                        key={t.nombre}
+                        titulo={t.nombre} icon={CreditCard} colorCls="text-aura-lavender"
+                        datos={t}
+                        expandido={seccionesAbiertas.has(t.nombre)}
+                        onToggle={() => toggleSeccion(t.nombre)}
+                        editingItem={editingItem} setEditingItem={setEditingItem}
+                        creandoEnSeccion={creandoEnSeccion} setCreandoEnSeccion={setCreandoEnSeccion}
+                        mes={mes} anio={anio}
+                      />
+                    ))}
 
-                    {/* GRUPO: PRESTAMOS */}
-                    <GrupoDesktop 
-                      titulo="Préstamos" 
-                      icon={Landmark}
-                      movimientos={movimientosAgrupados.prestamos}
-                      expandido={seccionesAbiertas.has('prestamos')}
-                      onToggle={() => toggleSeccion('prestamos')}
-                      editingItem={editingItem}
-                      setEditingItem={setEditingItem}
-                      creandoEnSeccion={creandoEnSeccion}
-                      setCreandoEnSeccion={setCreandoEnSeccion}
-                      mes={mes}
-                      anio={anio}
-                    />
-
-                    {/* GRUPO: GASTOS FIJOS */}
-                    <GrupoDesktop 
-                      titulo="Gastos Fijos" 
-                      icon={Wallet}
-                      movimientos={movimientosAgrupados.fijos}
-                      expandido={seccionesAbiertas.has('fijos')}
-                      onToggle={() => toggleSeccion('fijos')}
-                      editingItem={editingItem}
-                      setEditingItem={setEditingItem}
-                      creandoEnSeccion={creandoEnSeccion}
-                      setCreandoEnSeccion={setCreandoEnSeccion}
-                      mes={mes}
-                      anio={anio}
-                    />
-
-                    {/* GRUPO: GASTOS VARIABLES */}
-                    <GrupoDesktop 
-                      titulo="Gastos Variados" 
-                      icon={Info}
-                      movimientos={movimientosAgrupados.variables}
-                      expandido={seccionesAbiertas.has('variables')}
-                      onToggle={() => toggleSeccion('variables')}
-                      editingItem={editingItem}
-                      setEditingItem={setEditingItem}
-                      creandoEnSeccion={creandoEnSeccion}
-                      setCreandoEnSeccion={setCreandoEnSeccion}
-                      mes={mes}
-                      anio={anio}
-                    />
+                    {movimientosAgrupados.efectivo.total > 0 && (
+                      <GrupoCompuestoDesktop
+                        titulo="Efectivo / Transferencia" icon={Wallet} colorCls="text-aura-coral"
+                        datos={movimientosAgrupados.efectivo}
+                        expandido={seccionesAbiertas.has('efectivo')}
+                        onToggle={() => toggleSeccion('efectivo')}
+                        editingItem={editingItem} setEditingItem={setEditingItem}
+                        creandoEnSeccion={creandoEnSeccion} setCreandoEnSeccion={setCreandoEnSeccion}
+                        mes={mes} anio={anio}
+                      />
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -597,20 +550,78 @@ export default function Dashboard() {
   );
 }
 
-// ─── Vista Desktop: Fila de Grupo para tabla ─────────────────────────────────────────
-function GrupoDesktop({ titulo, icon: Icon, movimientos, expandido, onToggle, editingItem, setEditingItem, totalesCards, tarjetaFiltro, setTarjetaFiltro, creandoEnSeccion, setCreandoEnSeccion, mes, anio }: any) {
-  
-  const movimientosAMostrar = useMemo(() => {
-    if (titulo === 'Cuotas de Tarjeta' && tarjetaFiltro) {
-      return movimientos.filter((m: any) => m.medio_pago === tarjetaFiltro);
-    }
-    return movimientos;
-  }, [movimientos, tarjetaFiltro, titulo]);
 
-  const totalGrupo = movimientosAMostrar.reduce((acc: number, m: any) => acc + m.monto, 0);
-  const tipoSeccion = titulo === 'Ingresos' ? 'ingreso' : titulo === 'Cuotas de Tarjeta' ? 'tarjeta' : titulo === 'Préstamos' ? 'prestamo' : titulo === 'Gastos Fijos' ? 'gasto_fijo' : 'gasto_variado';
 
-  const auraColor = titulo === 'Ingresos' ? 'text-aura-mint' : (titulo === 'Cuotas de Tarjeta' || titulo === 'Préstamos') ? 'text-aura-lavender' : 'text-aura-coral';
+// ─── COMPONENTES DE TABLA ─────────────────────────────────────────
+
+function RenderItem({ mov, editingItem, setEditingItem, reactivarMutation, mes, anio }: any) {
+  return (
+    <div key={`${mov.tipo}-${mov.id}`} className="space-y-2">
+      <div className={`group flex items-center justify-between p-4 rounded-2xl transition-all duration-300 ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'bg-aura-lavender/10 border border-aura-lavender/30' : 'bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10'} ${mov.activo === false ? 'opacity-40 line-through' : ''}`}>
+        <div className="flex items-center gap-4">
+          <div className="w-1 h-8 rounded-full" style={{ backgroundColor: mov.tarjeta_color || (mov.tipo === 'ingreso' ? '#A7F3D0' : (mov.es_fijo ? '#C7D2FE' : '#94a3b8')) }} />
+          <div>
+            <p className="text-[13px] lg:text-sm font-semibold text-white">
+              {mov.descripcion}
+              {mov.previsionado && (
+                <span className="ml-3 text-[9px] bg-aura-gold/20 text-aura-gold border border-aura-gold/30 px-2 py-0.5 rounded-full uppercase font-bold tracking-[0.1em]">Previsionado</span>
+              )}
+            </p>
+            <div className="flex items-center gap-3 mt-1">
+              <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">{mov.origen}</span>
+              {mov.tipo === 'tarjeta' && (
+                <span className="text-[9px] text-aura-lavender font-bold uppercase tracking-widest opacity-80">Cuota {mov.cuota_actual}/{mov.cuotas_total}</span>
+              )}
+              {mov.activo === false && mov.fecha_baja && (
+                <span className="text-[9px] font-bold text-red-400 uppercase tracking-widest bg-red-400/10 px-2 py-0.5 rounded-full border border-red-400/20">
+                  Baja: {MESES_CORTO[parseInt(mov.fecha_baja.split('-')[1])]} {mov.fecha_baja.split('-')[0]} 🔴
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-4 lg:gap-8">
+          {mov.activo === false ? (
+            <button
+              onClick={() => {
+                if (window.confirm(`¿Reactivar "${mov.descripcion}"?`)) {
+                  reactivarMutation.mutate(mov.id);
+                }
+              }}
+              disabled={reactivarMutation.isPending}
+              className="text-[9px] px-3 py-1.5 font-bold rounded-lg border border-aura-mint/30 text-aura-mint hover:bg-aura-mint/10 transition-all uppercase whitespace-nowrap z-10 hover:!opacity-100 hover:!no-underline"
+            >
+              {reactivarMutation.isPending ? '...' : 'Reactivar'}
+            </button>
+          ) : (
+            <p className={`text-sm lg:text-base font-bold tracking-tight ${mov.tipo === 'ingreso' ? 'text-aura-mint' : 'text-white'}`}>
+              {formatARS(mov.monto)}
+            </p>
+          )}
+          {mov.activo !== false && (
+            <button 
+              onClick={() => setEditingItem((editingItem?.id === mov.id && editingItem?.tipo === mov.tipo) ? null : { id: mov.id, tipo: mov.tipo })}
+              className={`p-2 lg:p-3 rounded-xl transition-all ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'bg-aura-lavender text-aura-bg shadow-lg' : 'text-gray-500 hover:text-white hover:bg-white/10'}`}
+            >
+              <Edit3 size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+      
+      {editingItem?.id === mov.id && editingItem?.tipo === mov.tipo && (
+        <div className="glass-card p-6 border-aura-lavender/30 animate-in slide-in-from-top-4 duration-300">
+          <InlineEditForm id={mov.id} tipo={mov.tipo} mesActual={mes} anioActual={anio} onClose={() => setEditingItem(null)} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GrupoSimpleDesktop({ titulo, icon: Icon, colorCls, movimientos, expandido, onToggle, editingItem, setEditingItem, creandoEnSeccion, setCreandoEnSeccion, mes, anio }: any) {
+  const total = movimientos.reduce((acc: number, m: any) => acc + m.monto, 0);
+  const tipoSeccion = 'ingreso';
   const queryClient = useQueryClient();
   const reactivarMutation = useMutation({
     mutationFn: async (id: number) => reactivarGastoMensual(id),
@@ -628,17 +639,16 @@ function GrupoDesktop({ titulo, icon: Icon, movimientos, expandido, onToggle, ed
             <div className="flex items-center gap-4">
               <div className="flex items-center cursor-pointer group" onClick={onToggle}>
                 <div className={`p-3 rounded-xl bg-white/5 border border-white/10 mr-4 transition-transform group-hover:scale-110`}>
-                  <Icon size={18} className={auraColor} />
+                  <Icon size={18} className={colorCls} />
                 </div>
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
-                    <span className={`text-[12px] font-bold uppercase tracking-[0.2em] ${auraColor}`}>{titulo}</span>
+                    <span className={`text-[12px] font-bold uppercase tracking-[0.2em] ${colorCls}`}>{titulo}</span>
                     <ChevronDown size={14} className={`text-gray-500 transition-transform ${expandido ? '' : '-rotate-90'}`} />
                   </div>
                   <span className="text-[10px] font-medium text-gray-500 uppercase tracking-widest mt-0.5">{movimientos.length} movimientos</span>
                 </div>
               </div>
-              
               <button 
                 onClick={() => setCreandoEnSeccion(creandoEnSeccion === tipoSeccion ? null : tipoSeccion)}
                 className={`ml-4 p-2 rounded-xl transition-all duration-300 ${creandoEnSeccion === tipoSeccion ? 'bg-aura-coral text-aura-bg rotate-45' : 'bg-aura-lavender text-aura-bg hover:scale-110 shadow-lg shadow-aura-lavender/20'}`}
@@ -646,116 +656,91 @@ function GrupoDesktop({ titulo, icon: Icon, movimientos, expandido, onToggle, ed
                 <Plus size={16} strokeWidth={3} />
               </button>
             </div>
-            
             <div className="flex flex-col items-end">
-              <span className={`text-xl font-bold tracking-tight ${auraColor}`}>
-                {titulo === 'Ingresos' ? '+' : '-'} {formatARS(totalGrupo)}
-              </span>
+              <span className={`text-xl font-bold tracking-tight ${colorCls}`}>+{formatARS(total)}</span>
             </div>
           </div>
         </td>
       </tr>
-
       {creandoEnSeccion === tipoSeccion && (
         <tr>
           <td colSpan={4} className="px-6 pb-6">
             <div className="glass-card p-8 border-aura-lavender/20 animate-in slide-in-from-top-4 duration-300">
-              <InlineCreateForm 
-                tipo={tipoSeccion as any} 
-                mes={mes} 
-                anio={anio} 
-                onClose={() => setCreandoEnSeccion(null)} 
-              />
+              <InlineCreateForm tipo={tipoSeccion as any} mes={mes} anio={anio} onClose={() => setCreandoEnSeccion(null)} />
             </div>
           </td>
         </tr>
       )}
-
-      {expandido && totalesCards && (
-        <tr>
-          <td colSpan={4} className="px-10 py-4">
-            <div className="flex flex-wrap gap-3">
-              {totalesCards.map((t: any) => (
-                <button 
-                  key={t.nombre} 
-                  onClick={() => setTarjetaFiltro(tarjetaFiltro === t.nombre ? null : t.nombre)}
-                  className={`flex items-center gap-3 px-4 py-2 rounded-2xl backdrop-blur-md transition-all hover:scale-105 active:scale-95 border ${tarjetaFiltro === t.nombre ? 'ring-2 ring-white ring-offset-4 ring-offset-aura-bg border-white' : 'border-white/10 opacity-70 hover:opacity-100'}`}
-                  style={{ backgroundColor: `${t.color}33`, borderColor: `${t.color}66` }}
-                >
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: t.color }} />
-                  <span className="text-[10px] font-bold text-white uppercase tracking-wider">{t.nombre}</span>
-                  <span className="text-xs font-bold text-white">{formatARS(t.total)}</span>
-                </button>
-              ))}
-            </div>
-          </td>
-        </tr>
-      )}
-
       {expandido && (
         <tr>
           <td colSpan={4} className="px-6">
             <div className="space-y-3 mb-6">
-              {movimientosAMostrar.map((mov: any) => (
-                <div key={`${mov.tipo}-${mov.id}`} className="space-y-2">
-                  <div className={`group flex items-center justify-between p-5 rounded-2xl transition-all duration-300 ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'bg-aura-lavender/10 border border-aura-lavender/30' : 'bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10'} ${mov.activo === false ? 'opacity-40 line-through' : ''}`}>
-                    <div className="flex items-center gap-5">
-                      <div className="w-1 h-10 rounded-full" style={{ backgroundColor: mov.tarjeta_color || (mov.tipo === 'ingreso' ? '#A7F3D0' : (mov.es_fijo ? '#C7D2FE' : '#94a3b8')) }} />
-                      <div>
-                        <p className="text-base font-semibold text-white">
-                          {mov.descripcion}
-                          {mov.previsionado && (
-                            <span className="ml-3 text-[9px] bg-aura-gold/20 text-aura-gold border border-aura-gold/30 px-2 py-0.5 rounded-full uppercase font-bold tracking-[0.1em]">Previsionado</span>
-                          )}
-                        </p>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{mov.medio_pago}</span>
-                          {mov.tipo === 'tarjeta' && (
-                            <span className="text-[10px] text-aura-lavender font-bold uppercase tracking-widest opacity-80">Cuota {mov.cuota_actual}/{mov.cuotas_total}</span>
-                          )}
-                          {mov.activo === false && mov.fecha_baja && (
-                            <span className="text-[9px] font-bold text-red-400 uppercase tracking-widest bg-red-400/10 px-2 py-0.5 rounded-full border border-red-400/20">
-                              Baja: {MESES_CORTO[parseInt(mov.fecha_baja.split('-')[1])]} {mov.fecha_baja.split('-')[0]} 🔴
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-8">
-                      {mov.activo === false ? (
-                        <button
-                          onClick={() => {
-                            if (window.confirm(`¿Reactivar "${mov.descripcion}"?`)) {
-                              reactivarMutation.mutate(mov.id);
-                            }
-                          }}
-                          disabled={reactivarMutation.isPending}
-                          className="text-[9px] px-3 py-1.5 font-bold rounded-lg border border-aura-mint/30 text-aura-mint hover:bg-aura-mint/10 transition-all uppercase whitespace-nowrap z-10 hover:!opacity-100 hover:!no-underline"
-                        >
-                          {reactivarMutation.isPending ? '...' : 'Reactivar'}
-                        </button>
-                      ) : (
-                        <p className={`text-lg font-bold tracking-tight ${mov.tipo === 'ingreso' ? 'text-aura-mint' : 'text-white'}`}>
-                          {formatARS(mov.monto)}
-                        </p>
-                      )}
-                      {mov.activo !== false && (
-                        <button 
-                          onClick={() => setEditingItem((editingItem?.id === mov.id && editingItem?.tipo === mov.tipo) ? null : { id: mov.id, tipo: mov.tipo })}
-                          className={`p-3 rounded-xl transition-all ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'bg-aura-lavender text-aura-bg shadow-lg' : 'text-gray-500 hover:text-white hover:bg-white/10'}`}
-                        >
-                          <Edit3 size={18} />
-                        </button>
-                      )}
-                    </div>
+              {movimientos.map((mov: any) => <RenderItem key={mov.id} mov={mov} editingItem={editingItem} setEditingItem={setEditingItem} reactivarMutation={reactivarMutation} mes={mes} anio={anio} />)}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function GrupoCompuestoDesktop({ titulo, icon: Icon, colorCls, datos, expandido, onToggle, editingItem, setEditingItem, mes, anio }: any) {
+  const queryClient = useQueryClient();
+  const reactivarMutation = useMutation({
+    mutationFn: async (id: number) => reactivarGastoMensual(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['gastos-mensuales'] });
+    }
+  });
+
+  const secciones = [
+    { key: 'cuotas', label: 'Cuotas de Tarjeta', items: datos.cuotas },
+    { key: 'fijos', label: 'Gastos Fijos', items: datos.fijos },
+    { key: 'variables', label: 'Gastos Variables', items: datos.variables },
+    { key: 'prestamos', label: 'Préstamos', items: datos.prestamos }
+  ].filter(s => s.items?.length > 0);
+
+  const cantMovimientos = secciones.reduce((acc, s) => acc + s.items.length, 0);
+
+  return (
+    <>
+      <tr className="border-none">
+        <td colSpan={4} className="px-6 py-4">
+          <div className="flex items-center justify-between bg-aura-surface/30 backdrop-blur-md rounded-2xl p-4 border border-aura-border/20">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center cursor-pointer group" onClick={onToggle}>
+                <div className={`p-3 rounded-xl bg-white/5 border border-white/10 mr-4 transition-transform group-hover:scale-110`}>
+                  <Icon size={18} className={colorCls} />
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[12px] font-bold uppercase tracking-[0.2em] ${colorCls}`}>{titulo}</span>
+                    <ChevronDown size={14} className={`text-gray-500 transition-transform ${expandido ? '' : '-rotate-90'}`} />
                   </div>
-                  
-                  {editingItem?.id === mov.id && editingItem?.tipo === mov.tipo && (
-                    <div className="glass-card p-6 border-aura-lavender/30 animate-in slide-in-from-top-4 duration-300">
-                      <InlineEditForm id={mov.id} tipo={mov.tipo} mesActual={mes} anioActual={anio} onClose={() => setEditingItem(null)} />
-                    </div>
-                  )}
+                  <span className="text-[10px] font-medium text-gray-500 uppercase tracking-widest mt-0.5">{cantMovimientos} movimientos</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col items-end">
+              <span className={`text-xl font-bold tracking-tight ${colorCls}`}>-{formatARS(datos.total)}</span>
+            </div>
+          </div>
+        </td>
+      </tr>
+      {expandido && (
+        <tr>
+          <td colSpan={4} className="px-6 pb-6">
+            <div className="space-y-6">
+              {secciones.map(sec => (
+                <div key={sec.key} className="bg-white/5 rounded-2xl p-4 border border-white/5">
+                  <div className="flex items-center justify-between mb-4 px-2">
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{sec.label}</h4>
+                    <span className="text-xs font-bold text-white">{formatARS(sec.items.reduce((acc: number, m: any) => acc + m.monto, 0))}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {sec.items.map((mov: any) => <RenderItem key={mov.id} mov={mov} editingItem={editingItem} setEditingItem={setEditingItem} reactivarMutation={reactivarMutation} mes={mes} anio={anio} />)}
+                  </div>
                 </div>
               ))}
             </div>
@@ -766,152 +751,59 @@ function GrupoDesktop({ titulo, icon: Icon, movimientos, expandido, onToggle, ed
   );
 }
 
-function GrupoMobile({ titulo, icon: Icon, movimientos, expandido, onToggle, editingItem, setEditingItem, tarjetaFiltro, creandoEnSeccion, setCreandoEnSeccion, mes, anio }: any) {
+function GrupoSimpleMobile(props: any) {
+  // Solo un wrapper para mobile, reutiliza la misma logica simplificada.
+  return (
+     <div className={`glass-card overflow-hidden transition-all duration-500 ${props.expandido ? 'aura-glow-lavender border-aura-lavender/20' : 'border-aura-border/20'}`}>
+        <div className="flex items-center justify-between px-6 py-5 cursor-pointer" onClick={props.onToggle}>
+            <div className="flex flex-col">
+              <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${props.colorCls}`}>{props.titulo}</span>
+              <span className="text-sm font-black text-white mt-1">+{formatARS(props.movimientos.reduce((a:number,m:any)=>a+m.monto,0))}</span>
+            </div>
+            <ChevronDown size={14} className={`text-gray-500 transition-transform ${props.expandido ? 'rotate-180' : ''}`} />
+        </div>
+        {props.expandido && (
+          <div className="px-4 pb-4 space-y-2">
+            {props.movimientos.map((mov: any) => <RenderItem key={mov.id} mov={mov} editingItem={props.editingItem} setEditingItem={props.setEditingItem} reactivarMutation={{isPending:false, mutate:()=>{}}} mes={props.mes} anio={props.anio} />)}
+          </div>
+        )}
+     </div>
+  );
+}
 
-  const movimientosAMostrar = useMemo(() => {
-    if (titulo === 'Cuotas de Tarjeta' && tarjetaFiltro) {
-      return movimientos.filter((m: any) => m.medio_pago === tarjetaFiltro);
-    }
-    return movimientos;
-  }, [movimientos, tarjetaFiltro, titulo]);
-
-  const totalGrupo = movimientosAMostrar.reduce((acc: number, m: any) => acc + m.monto, 0);
-  const tipoSeccion = titulo === 'Ingresos' ? 'ingreso' : titulo === 'Cuotas de Tarjeta' ? 'tarjeta' : titulo === 'Gastos Fijos' ? 'gasto_fijo' : 'gasto_variado';
-  
-  const auraColor = titulo === 'Ingresos' ? 'text-aura-mint' : titulo === 'Cuotas de Tarjeta' ? 'text-aura-lavender' : 'text-aura-coral';
-  const queryClient = useQueryClient();
-  const reactivarMutation = useMutation({
-    mutationFn: async (id: number) => reactivarGastoMensual(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['gastos-mensuales'] });
-    }
-  });
+function GrupoCompuestoMobile(props: any) {
+  const { datos } = props;
+  const secciones = [
+    { key: 'cuotas', label: 'Cuotas', items: datos.cuotas },
+    { key: 'fijos', label: 'Fijos', items: datos.fijos },
+    { key: 'variables', label: 'Variables', items: datos.variables },
+    { key: 'prestamos', label: 'Préstamos', items: datos.prestamos }
+  ].filter(s => s.items?.length > 0);
 
   return (
-    <div className={`glass-card overflow-hidden transition-all duration-500 ${expandido ? 'aura-glow-lavender border-aura-lavender/20' : 'border-aura-border/20'}`}>
-      <div className={`flex flex-col gap-4 px-6 py-6 transition-colors ${expandido ? 'bg-white/5' : ''}`}>
-        {/* FILA 1: Título, Flecha (Centro) y Botón (+) (Derecha) */}
-        <div className="flex items-center justify-between">
-          <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${auraColor} cursor-pointer`} onClick={onToggle}>
-            {titulo}
-          </span>
-          <div className="flex-1 flex justify-center cursor-pointer" onClick={onToggle}>
-            <ChevronDown size={14} className={`text-gray-500 transition-transform ${expandido ? 'rotate-180' : ''}`} />
-          </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); setCreandoEnSeccion(creandoEnSeccion === tipoSeccion ? null : tipoSeccion); }}
-            className={`w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90 ${creandoEnSeccion === tipoSeccion ? 'bg-aura-coral text-aura-bg rotate-45' : 'bg-white/10 text-white border border-white/20 shadow-xl shadow-black/20'}`}
-          >
-            <Plus size={16} strokeWidth={3} />
-          </button>
-        </div>
-
-        {/* FILA 2: Icono + Importe (Centrados o alineados a la izquierda) */}
-        <div className="flex items-center gap-4 mt-1 cursor-pointer" onClick={onToggle}>
-          <div className={`w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 shrink-0 shadow-inner shadow-black/20`}>
-            <Icon size={18} className={auraColor} />
-          </div>
-          <span className="text-xl font-bold text-white tracking-tighter whitespace-nowrap overflow-hidden text-ellipsis">
-            {titulo === 'Ingresos' ? '+' : '-'} {formatARS(totalGrupo)}
-          </span>
-        </div>
-      </div>
-
-      {creandoEnSeccion === tipoSeccion && (
-        <div className="px-6 py-6 bg-aura-surface/50 animate-in slide-in-from-top-4 duration-300">
-          <InlineCreateForm tipo={tipoSeccion as any} mes={mes} anio={anio} onClose={() => setCreandoEnSeccion(null)} />
-        </div>
-      )}
-
-      {expandido && (
-        <div className="px-4 pb-6 space-y-3 animate-in fade-in duration-500">
-          {movimientosAMostrar.map((mov: any) => (
-            <div 
-              key={`${mov.tipo}-${mov.id}`} 
-              className={`p-6 rounded-[24px] border transition-all ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'bg-aura-lavender/10 border-aura-lavender/40 shadow-lg shadow-aura-lavender/5' : 'bg-white/5 border-white/5'}`}
-            >
-              <div className="flex gap-4">
-                {/* Barra de color lateral */}
-                <div 
-                  className="w-1.5 h-auto rounded-full shrink-0 shadow-[0_0_15px_rgba(0,0,0,0.2)]" 
-                  style={{ backgroundColor: mov.tarjeta_color || (mov.tipo === 'ingreso' ? '#A7F3D0' : (mov.es_fijo ? '#C7D2FE' : '#94a3b8')), opacity: mov.activo === false ? 0.3 : 1 }} 
-                />
-
-                <div className={`flex-1 flex flex-col gap-4 ${mov.activo === false ? 'opacity-40 line-through' : ''}`}>
-                  {/* Fila 1: Descripción */}
-                  <div className="flex items-start justify-between">
-                    <p className="text-base font-bold text-white leading-tight tracking-tight">
-                      {mov.descripcion.replace(/\s*\(\d+\s*[\/\-]\s*\d+\)$/, '')}
-                    </p>
-                    {mov.previsionado && (
-                      <span className="shrink-0 ml-2 text-[8px] bg-aura-gold/10 text-aura-gold border border-aura-gold/20 px-2 py-0.5 rounded-full uppercase font-bold tracking-widest">
-                        Prev
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Fila 2: Tarjeta y Cuotas (2 col) */}
-                  <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                    <div className="flex flex-col">
-                      <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest leading-none">Medio de Pago</span>
-                      <span className="text-[10px] font-bold text-gray-300 uppercase tracking-wider mt-1">{mov.medio_pago}</span>
-                    </div>
-                    {mov.tipo === 'tarjeta' && (
-                      <div className="flex flex-col items-end">
-                        <span className="text-[9px] font-bold text-aura-lavender/60 uppercase tracking-widest leading-none">Estado</span>
-                        <span className="text-[10px] text-aura-lavender font-bold uppercase tracking-widest mt-1">Cuota {mov.cuota_actual}/{mov.cuotas_total}</span>
-                      </div>
-                    )}
-                    {mov.activo === false && mov.fecha_baja && (
-                      <div className="flex flex-col items-end">
-                        <span className="text-[9px] font-bold text-red-400/60 uppercase tracking-widest leading-none">Estado</span>
-                        <span className="text-[10px] text-red-400 font-bold uppercase tracking-widest mt-1">Baja: {MESES_CORTO[parseInt(mov.fecha_baja.split('-')[1])]} {mov.fecha_baja.split('-')[0]} 🔴</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Fila 3: Importe y Lápiz (2 col) */}
-                  <div className="flex items-center justify-between pt-1">
-                    <div className="flex flex-col">
-                      <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest leading-none mb-1.5">Importe</span>
-                      <span className={`text-xl font-black tracking-tighter ${mov.tipo === 'ingreso' ? 'text-aura-mint' : 'text-white'}`}>
-                        {mov.tipo === 'ingreso' ? '+' : ''} {formatARS(mov.monto)}
-                      </span>
-                    </div>
-                    
-                    {mov.activo === false ? (
-                      <button
-                        onClick={() => {
-                          if (window.confirm(`¿Reactivar "${mov.descripcion}"?`)) {
-                            reactivarMutation.mutate(mov.id);
-                          }
-                        }}
-                        disabled={reactivarMutation.isPending}
-                        className="text-[9px] px-3 py-1.5 font-bold rounded-lg border border-aura-mint/30 text-aura-mint hover:bg-aura-mint/10 transition-all uppercase whitespace-nowrap z-10 hover:!opacity-100 hover:!no-underline"
-                      >
-                        {reactivarMutation.isPending ? '...' : 'Reactivar'}
-                      </button>
-                    ) : (
-                      <button 
-                        onClick={() => setEditingItem((editingItem?.id === mov.id && editingItem?.tipo === mov.tipo) ? null : { id: mov.id, tipo: mov.tipo })}
-                        className={`p-2 rounded-xl transition-all active:scale-90 ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'bg-aura-lavender text-aura-bg shadow-lg shadow-aura-lavender/30' : 'bg-white/5 text-gray-400 border border-white/5 hover:bg-white/10'}`}
-                      >
-                        <Edit3 size={16} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-              {editingItem?.id === mov.id && editingItem?.tipo === mov.tipo && (
-                <div className="mt-6 pt-6 border-t border-aura-border/20">
-                  <InlineEditForm id={mov.id} tipo={mov.tipo} mesActual={mes} anioActual={anio} onClose={() => setEditingItem(null)} />
-                </div>
-              )}
+     <div className={`glass-card overflow-hidden transition-all duration-500 ${props.expandido ? 'aura-glow-lavender border-aura-lavender/20' : 'border-aura-border/20'}`}>
+        <div className="flex items-center justify-between px-6 py-5 cursor-pointer" onClick={props.onToggle}>
+            <div className="flex flex-col">
+              <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${props.colorCls}`}>{props.titulo}</span>
+              <span className="text-sm font-black text-white mt-1">-{formatARS(datos.total)}</span>
             </div>
-          ))}
+            <ChevronDown size={14} className={`text-gray-500 transition-transform ${props.expandido ? 'rotate-180' : ''}`} />
         </div>
-      )}
-    </div>
+        {props.expandido && (
+          <div className="px-4 pb-4 space-y-4">
+            {secciones.map(sec => (
+               <div key={sec.key} className="bg-white/5 rounded-xl p-3 border border-white/5">
+                 <div className="flex items-center justify-between mb-3 px-1 border-b border-white/5 pb-2">
+                    <h4 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{sec.label}</h4>
+                    <span className="text-xs font-bold text-white">{formatARS(sec.items.reduce((acc: number, m: any) => acc + m.monto, 0))}</span>
+                 </div>
+                 <div className="space-y-2">
+                    {sec.items.map((mov: any) => <RenderItem key={mov.id} mov={mov} editingItem={props.editingItem} setEditingItem={props.setEditingItem} reactivarMutation={{isPending:false, mutate:()=>{}}} mes={props.mes} anio={props.anio} />)}
+                 </div>
+               </div>
+            ))}
+          </div>
+        )}
+     </div>
   );
 }

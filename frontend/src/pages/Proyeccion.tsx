@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, Legend
 } from 'recharts';
-import { TrendingUp, TrendingDown, Edit3, ChevronDown, ChevronUp, BarChart2, CreditCard } from 'lucide-react';
+import { TrendingUp, Edit3, ChevronDown, ChevronUp, BarChart2 } from 'lucide-react';
 import { NumericFormat } from 'react-number-format';
 import { getProyeccion, upsertOverride, MesProyectado, DetalleItem } from '../api/proyeccion';
 import { formatARS, formatARSCompact, MESES_CORTO } from '../utils/format';
@@ -94,7 +94,7 @@ const CeldaEditable: FC<CeldaEditableProps> = ({
           thousandSeparator="."
           decimalSeparator=","
           prefix="$ "
-          className="w-40 h-11 px-3 py-2 text-base rounded-xl border border-blue-400 dark:border-blue-600 bg-white dark:bg-neutral-950 text-gray-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-40 h-11 px-3 py-2 text-[0.7rem] rounded-xl border border-blue-400 dark:border-blue-600 bg-white dark:bg-neutral-950 text-gray-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
           onBlur={handleConfirmar}
           onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmar(); if (e.key === 'Escape') setEditando(false); }}
         />
@@ -102,7 +102,7 @@ const CeldaEditable: FC<CeldaEditableProps> = ({
         <button
           id={`btn-edit-proyeccion-${tipo}-${item.id}-${mes}-${anio}`}
           onClick={() => { setEditando(true); setValor(item.monto_proyectado); }}
-          className={`flex items-center gap-2 h-11 text-base font-bold rounded-xl px-3 transition-all active:scale-95 bg-gray-50 dark:bg-neutral-800/50 border border-transparent hover:border-gray-200 dark:hover:border-neutral-700 group
+          className={`flex items-center gap-2 h-11 text-[0.7rem] font-bold rounded-xl px-3 transition-all active:scale-95 bg-gray-50 dark:bg-neutral-800/50 border border-transparent hover:border-gray-200 dark:hover:border-neutral-700 group
             ${item.tiene_override ? 'text-amber-600 dark:text-amber-400 border-amber-200/50 dark:border-amber-900/30' : 'text-gray-800 dark:text-neutral-200'}`}
           title={item.tiene_override ? `Base: ${formatARS(item.monto_base)}` : 'Click para editar'}
         >
@@ -128,6 +128,42 @@ const FilaMes: FC<FilaMesProps> = ({ mes_data, onGuardar, expandido, onToggleExp
   const ahorro = mes_data.ahorro_proyectado;
   const esPositivo = ahorro >= 0;
   const esPasado = mes_data.es_pasado;
+
+  // 1. Agrupar datos por Medio de Pago
+  const tarjetasMap = new Map();
+  const efectivo: any = { fijos: [], prestamos: [], total: 0 };
+  
+  mes_data.detalle_cuotas_por_tarjeta.forEach(t => {
+     if (!tarjetasMap.has(t.nombre)) {
+        tarjetasMap.set(t.nombre, { nombre: t.nombre, color: t.color, cuotas: [], fijos: [], subtotal: 0 });
+     }
+     const tData = tarjetasMap.get(t.nombre);
+     tData.cuotas = t.movimientos;
+     tData.subtotal += t.subtotal;
+  });
+
+  mes_data.detalle_gastos.forEach(g => {
+     if (g.tarjeta_nombre) {
+        if (!tarjetasMap.has(g.tarjeta_nombre)) {
+           tarjetasMap.set(g.tarjeta_nombre, { nombre: g.tarjeta_nombre, color: g.tarjeta_color || '#64748B', cuotas: [], fijos: [], subtotal: 0 });
+        }
+        const tData = tarjetasMap.get(g.tarjeta_nombre);
+        tData.fijos.push(g);
+        tData.subtotal += g.monto_proyectado;
+     } else {
+        efectivo.fijos.push(g);
+        efectivo.total += g.monto_proyectado;
+     }
+  });
+
+  if (mes_data.detalle_prestamos) {
+     mes_data.detalle_prestamos.forEach((p: any) => {
+        efectivo.prestamos.push(p);
+        efectivo.total += p.monto_cuota;
+     });
+  }
+
+  const tarjetas = Array.from(tarjetasMap.values()).sort((a, b) => b.subtotal - a.subtotal);
 
   return (
     <>
@@ -219,93 +255,126 @@ const FilaMes: FC<FilaMesProps> = ({ mes_data, onGuardar, expandido, onToggleExp
       {/* Expansión con detalle editable */}
       {expandido && !esPasado && (
         <tr className="bg-gray-50/80 dark:bg-neutral-900/60 border-b border-gray-100 dark:border-neutral-800">
-          <td colSpan={6} className="px-4 py-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-sm">
-              {/* Detalle Ingresos */}
-              <div className="space-y-3">
-                <p className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 rounded w-fit flex items-center gap-1">
-                  <TrendingUp size={10} /> Ingresos
-                </p>
-                <div className="space-y-1">
-                  {mes_data.detalle_ingresos.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between gap-2 py-1.5 border-b border-gray-100 dark:border-neutral-800 last:border-0">
-                      <span className="text-gray-600 dark:text-neutral-400 truncate flex-1">{item.descripcion}</span>
-                      <CeldaEditable
-                        item={item}
-                        tipo="ingreso"
-                        mes={mes_data.mes}
-                        anio={mes_data.anio}
-                        esPasado={false}
-                        onGuardar={onGuardar}
-                      />
-                    </div>
-                  ))}
-                  {mes_data.detalle_ingresos.length === 0 && (
-                    <p className="text-gray-400 dark:text-neutral-600 text-xs italic">Sin ingresos registrados</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Detalle Gastos */}
-              <div className="space-y-3">
-                <p className="text-[10px] font-black uppercase text-red-600 dark:text-red-500 bg-red-50 dark:bg-red-950/30 px-2 py-1 rounded w-fit flex items-center gap-1">
-                  <TrendingDown size={10} /> Gastos Fijos
-                </p>
-                <div className="space-y-1">
-                  {mes_data.detalle_gastos.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between gap-2 py-1.5 border-b border-gray-100 dark:border-neutral-800 last:border-0">
-                      <span className="text-gray-600 dark:text-neutral-400 truncate flex-1">{item.descripcion}</span>
-                      <CeldaEditable
-                        item={item}
-                        tipo="gasto_mensual"
-                        mes={mes_data.mes}
-                        anio={mes_data.anio}
-                        esPasado={false}
-                        onGuardar={onGuardar}
-                      />
-                    </div>
-                  ))}
-                  {mes_data.detalle_gastos.length === 0 && (
-                    <p className="text-gray-400 dark:text-neutral-600 text-xs italic">Sin gastos registrados</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Detalle Cuotas de Tarjeta */}
-              <div className="space-y-3">
-                <p className="text-[10px] font-black uppercase text-violet-600 dark:text-violet-500 bg-violet-50 dark:bg-violet-950/30 px-2 py-1 rounded w-fit flex items-center gap-1">
-                  <CreditCard size={10} /> Cuotas de Tarjeta
-                </p>
-                <div className="space-y-4">
-                  {mes_data.detalle_cuotas_por_tarjeta.map((tarjeta) => (
-                    <div key={tarjeta.tarjeta_id || 'sin-tarjeta'} className="space-y-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span 
-                          className="text-[9px] font-black px-2 py-0.5 rounded-full text-white uppercase tracking-tighter"
-                          style={{ backgroundColor: tarjeta.color }}
-                        >
-                          {tarjeta.nombre}
-                        </span>
-                        <span className="text-[10px] font-bold text-gray-500">{formatARS(tarjeta.subtotal)}</span>
+          <td colSpan={6} className="px-4 py-5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              
+              {/* COLUMNA IZQ: Ingresos (Aislado) */}
+              <div className="space-y-4">
+                <div className="bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-3 border-b border-emerald-100 dark:border-emerald-900/50 pb-2">
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-500 flex items-center gap-1.5">
+                      <TrendingUp size={12} /> INGRESOS
+                    </h4>
+                    <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400">{formatARS(mes_data.total_ingresos)}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {mes_data.detalle_ingresos.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between gap-2 py-1">
+                        <span className="text-xs text-emerald-900 dark:text-emerald-100 font-medium truncate flex-1">{item.descripcion}</span>
+                        <CeldaEditable item={item} tipo="ingreso" mes={mes_data.mes} anio={mes_data.anio} esPasado={false} onGuardar={onGuardar} />
                       </div>
-                      <div className="pl-1 space-y-1 border-l-2 border-gray-100 dark:border-neutral-800 ml-1">
-                        {tarjeta.movimientos.map((m, idx) => (
-                          <div key={idx} className="flex justify-between items-center text-[11px] py-0.5">
-                            <span className="text-gray-500 dark:text-neutral-400 truncate pr-2">
-                              {m.descripcion} <span className="opacity-50 font-bold">({m.cuota_actual}/{m.cuotas_total})</span>
-                            </span>
-                            <span className="font-bold text-gray-700 dark:text-neutral-300">
-                              {formatARS(m.monto_cuota)}
-                            </span>
+                    ))}
+                    {mes_data.detalle_ingresos.length === 0 && <p className="text-emerald-600/50 text-xs italic">Sin ingresos</p>}
+                  </div>
+                </div>
+              </div>
+
+              {/* COLUMNA DER: Gastos Agrupados (Tarjetas + Efectivo) */}
+              <div className="grid grid-cols-1 gap-4 content-start">
+                
+                {/* 1. TARJETAS */}
+                {tarjetas.map(t => (
+                  <div key={t.nombre} className="bg-white dark:bg-neutral-950 border border-gray-100 dark:border-neutral-800 rounded-xl p-4 shadow-sm">
+                    <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-50 dark:border-neutral-800/50">
+                      <div className="flex items-center gap-2">
+                         <div className="w-1.5 h-3.5 rounded-full" style={{backgroundColor: t.color}} />
+                         <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-700 dark:text-neutral-300">{t.nombre}</h4>
+                      </div>
+                      <span className="text-sm font-bold text-gray-900 dark:text-neutral-100">{formatARS(t.subtotal)}</span>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Subseccion Cuotas */}
+                      {t.cuotas.length > 0 && (
+                        <div>
+                          <p className="text-[9px] font-bold text-violet-500 uppercase tracking-widest mb-1">Cuotas</p>
+                          <div className="space-y-1.5">
+                            {t.cuotas.map((m: any, idx: number) => (
+                              <div key={idx} className="flex justify-between items-center text-[11px]">
+                                <span className="text-gray-600 dark:text-neutral-400 truncate pr-2">
+                                  {m.descripcion} <span className="opacity-50 font-bold">({m.cuota_actual}/{m.cuotas_total})</span>
+                                </span>
+                                <span className="font-bold text-gray-800 dark:text-neutral-200">{formatARS(m.monto_cuota)}</span>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      )}
+                      
+                      {/* Subseccion Gastos Fijos */}
+                      {t.fijos.length > 0 && (
+                        <div>
+                          <p className="text-[9px] font-bold text-red-500 uppercase tracking-widest mb-1">Fijos</p>
+                          <div className="space-y-2">
+                            {t.fijos.map((item: any) => (
+                              <div key={item.id} className="flex items-center justify-between gap-2 py-0.5">
+                                <span className="text-[11px] text-gray-600 dark:text-neutral-400 truncate flex-1">{item.descripcion}</span>
+                                <CeldaEditable item={item} tipo="gasto_mensual" mes={mes_data.mes} anio={mes_data.anio} esPasado={false} onGuardar={onGuardar} />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  ))}
-                  {mes_data.detalle_cuotas_por_tarjeta.length === 0 && (
-                    <p className="text-gray-400 dark:text-neutral-600 text-xs italic">Sin cuotas activas</p>
-                  )}
-                </div>
+                  </div>
+                ))}
+
+                {/* 2. EFECTIVO / TRANSFERENCIA */}
+                {efectivo.total > 0 && (
+                  <div className="bg-red-50/30 dark:bg-red-950/10 border border-red-100 dark:border-red-900/30 rounded-xl p-4 shadow-sm">
+                    <div className="flex items-center justify-between mb-3 pb-2 border-b border-red-100 dark:border-red-900/50">
+                      <div className="flex items-center gap-2">
+                         <div className="w-1.5 h-3.5 rounded-full bg-red-400" />
+                         <h4 className="text-[10px] font-black uppercase tracking-widest text-red-700 dark:text-red-400">Efectivo / Transf.</h4>
+                      </div>
+                      <span className="text-sm font-bold text-red-700 dark:text-red-400">{formatARS(efectivo.total)}</span>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Gastos Fijos Efectivo */}
+                      {efectivo.fijos.length > 0 && (
+                        <div>
+                          <p className="text-[9px] font-bold text-red-500/70 uppercase tracking-widest mb-1">Fijos</p>
+                          <div className="space-y-2">
+                            {efectivo.fijos.map((item: any) => (
+                              <div key={item.id} className="flex items-center justify-between gap-2 py-0.5">
+                                <span className="text-[11px] text-gray-700 dark:text-neutral-300 truncate flex-1">{item.descripcion}</span>
+                                <CeldaEditable item={item} tipo="gasto_mensual" mes={mes_data.mes} anio={mes_data.anio} esPasado={false} onGuardar={onGuardar} />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Prestamos Efectivo */}
+                      {efectivo.prestamos.length > 0 && (
+                        <div>
+                          <p className="text-[9px] font-bold text-blue-500/70 uppercase tracking-widest mb-1">Préstamos</p>
+                          <div className="space-y-1.5">
+                            {efectivo.prestamos.map((p: any, idx: number) => (
+                              <div key={idx} className="flex justify-between items-center text-[11px]">
+                                <span className="text-gray-700 dark:text-neutral-300 truncate pr-2">
+                                  {p.descripcion} <span className="opacity-50 font-bold">({p.cuota_actual}/{p.cuotas_total})</span>
+                                </span>
+                                <span className="font-bold text-gray-900 dark:text-neutral-100">{formatARS(p.monto_cuota)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </td>

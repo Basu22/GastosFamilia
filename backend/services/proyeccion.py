@@ -105,13 +105,17 @@ def get_proyeccion_12_meses(session: Session) -> List[Dict[str, Any]]:
                 override_key = f"gasto_mensual-{g.id}-{mes}-{anio}"
                 monto = overrides.get(override_key, g.monto)
                 total_gastos += monto
+                t_gasto = tarjetas_dict.get(g.tarjeta_id) if getattr(g, 'tarjeta_id', None) else None
                 detalle_gastos.append({
                     "id": g.id,
                     "descripcion": g.descripcion,
                     "monto_base": g.monto,
                     "monto_proyectado": monto,
                     "tiene_override": override_key in overrides,
-                    "es_fijo": g.es_fijo
+                    "es_fijo": g.es_fijo,
+                    "tarjeta_id": g.tarjeta_id if hasattr(g, 'tarjeta_id') else None,
+                    "tarjeta_nombre": t_gasto.nombre if t_gasto else None,
+                    "tarjeta_color": t_gasto.color if t_gasto else None,
                 })
 
         # --- Cuotas de Tarjeta ---
