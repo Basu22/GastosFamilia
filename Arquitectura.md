@@ -248,6 +248,7 @@ Gastos fijos recurrentes (ej: luz, streaming) o gastos específicos de un mes de
 * `mes_fin`: `Optional[int]` (Mes finalizador en caso de baja o cambio de monto)
 * `anio_fin`: `Optional[int]` (Año finalizador en caso de baja o cambio de monto)
 * `tarjeta_id`: `Optional[int]` (FK -> `tarjeta.id`, medio de pago asociado)
+* `reserva_id`: `Optional[int]` (FK -> `reserva.id`, reserva de ahorros asociada)
 * `notas`: `Optional[str]`
 * `activo`: `Optional[bool]` (Flag de baja lógica, default `True`)
 * `fecha_baja`: `Optional[date]` (Fecha exacta del registro de la baja)
@@ -533,6 +534,20 @@ El componente de Sobres y Reservas tiene un diseño de tarjeta personalizado con
 - **Saldo Acumulado**: Sigue las directrices de tamaño unificadas con la sección de Tarjetas de Crédito, empleando `text-lg font-black`.
 - **Información Mensual**: Los montos de "Asignado mes" y "Consumido mes" se presentan con salto de línea entre la etiqueta y el valor, manteniendo los colores semánticos correspondientes (verde para asignación y rojo para consumos).
 - **Modal de Detalle (ModalReservaDetalle)**: Al presionar el botón de ver detalle, despliega una vista modal que lista de manera segregada todos los movimientos del mes asociados a la reserva (tanto ingresos/fondeos en verde como consumos/gastos en rojo), incluyendo un pie con los totales asignados y consumidos del período y el saldo actual de la misma.
+
+### 7.6. Módulo de Filtro (Visualización y Detalle de Movimientos)
+El antiguo bloque "A Pagar" fue reestructurado y expandido bajo el nombre de **"Filtro"** en el [Dashboard](file:///home/flink/Documentos/Gastos%20Familia/frontend/src/pages/Dashboard.tsx):
+- **Estructura de Visualización**:
+  - **Por Tarjeta**: Muestra el total consolidado de tarjetas de crédito ordenado bajo el encabezado "A PAGAR". Las tarjetas se visualizan en una grilla simétrica de **3 columnas por fila** en pantallas grandes.
+  - **Por Movimiento**: Agrupa e identifica todos los tipos de movimientos (Ingresos, Cuotas de Tarjeta, Gastos Fijos, Gastos Variables, y Efectivo/Transferencias) en una grilla de 3 columnas para optimizar la organización.
+- **Detalle Dinámico y Acciones Integradas (ModalTarjetaDetalle)**:
+  - Al abrir el modal detallado, se renderiza la lista de consumos. Si se visualiza por Tarjeta, agrupa los ítems por tipo; si se visualiza por Movimiento, los lista de manera plana incluyendo una etiqueta de procedencia de fondos.
+  - Cuenta con un botón de adición rápida `+` (en el encabezado de grupo en tarjetas o en el tope del modal en movimientos) que abre el formulario `InlineCreateForm` para registrar nuevos consumos al vuelo sin abandonar el modal.
+  - Cada fila posee un botón de edición que despliega el formulario `InlineEditForm` directamente debajo del ítem seleccionado, permitiendo cambios interactivos reactivos.
+- **Formateador de Cuotas de Tarjeta (Regex Parser)**:
+  - En los modales del módulo de filtros, cuando el movimiento está financiado por tarjeta, se extrae el índice de cuotas (ej: `(X/Y)`) al final de la descripción original mediante una expresión regular (`/\s*\((\d+)\/(\d+)\)$/`).
+  - La descripción del movimiento se limpia para remover el sufijo `(X/Y)`.
+  - El badge del tipo de consumo se muestra como `CUOTAS` (en plural) y se renderiza de forma contigua el texto en mayúsculas `CUOTA X/Y` en color gris, manteniendo el estilo original de AURA.
 
 ---
 
