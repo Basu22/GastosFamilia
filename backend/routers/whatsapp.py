@@ -608,7 +608,6 @@ async def guardar_en_db(telefono: str, tipo: str, datos: dict):
                     tarjeta_id=tarjeta_id,
                     reserva_id=reserva_id,
                     creado_por="whatsapp",
-                    notes=None,
                     notas=f"Cargado vía WhatsApp por {telefono}"
                 )
                 session.add(nuevo)

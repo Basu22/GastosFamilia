@@ -28,6 +28,7 @@ def create_db_and_tables():
     from models.importacion import GmailImporterConfig, ImportacionLog
     from models.prestamo import Prestamo
     from models.cuota_prestamo import CuotaPrestamo
+    from models.reserva import Reserva
 
     # 1. Crear tablas si no existen
     SQLModel.metadata.create_all(engine)
@@ -144,6 +145,21 @@ def create_db_and_tables():
         if "reserva_id" not in columnas_movimiento:
             print("🚀 Migración automática: Agregando reserva_id a tabla movimiento...")
             cursor.execute("ALTER TABLE movimiento ADD COLUMN reserva_id INTEGER REFERENCES reserva(id)")
+
+        # Migración para tabla reserva (columnas nuevas)
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='reserva'")
+        if cursor.fetchone() is not None:
+            cursor.execute("PRAGMA table_info(reserva)")
+            columnas_reserva = [row[1] for row in cursor.fetchall()]
+            if "monto_fijo_mensual" not in columnas_reserva:
+                print("🚀 Migración automática: Agregando monto_fijo_mensual a tabla reserva...")
+                cursor.execute("ALTER TABLE reserva ADD COLUMN monto_fijo_mensual REAL DEFAULT 0.0")
+            if "fecha_baja" not in columnas_reserva:
+                print("🚀 Migración automática: Agregando fecha_baja a tabla reserva...")
+                cursor.execute("ALTER TABLE reserva ADD COLUMN fecha_baja TEXT")
+            if "created_at" not in columnas_reserva:
+                print("🚀 Migración automática: Agregando created_at a tabla reserva...")
+                cursor.execute("ALTER TABLE reserva ADD COLUMN created_at TEXT")
 
         conn.commit()
         conn.close()
