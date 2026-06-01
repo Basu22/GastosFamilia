@@ -4,6 +4,7 @@ from datetime import date
 
 class MovimientoCreate(BaseModel):
     tarjeta_id: Optional[int] = None
+    reserva_id: Optional[int] = None
     descripcion: str
     categoria: Optional[str] = None
     monto_total: float = Field(gt=0, description="El monto total de la compra debe ser mayor a 0")
@@ -13,6 +14,7 @@ class MovimientoCreate(BaseModel):
 
 class MovimientoUpdate(BaseModel):
     tarjeta_id: Optional[int] = None
+    reserva_id: Optional[int] = None
     descripcion: Optional[str] = None
     categoria: Optional[str] = None
     monto_total: Optional[float] = Field(None, gt=0)

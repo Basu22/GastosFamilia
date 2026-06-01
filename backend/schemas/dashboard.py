@@ -35,6 +35,8 @@ class MovimientoDetalle(BaseModel):
     cuotas_total: Optional[int] = None
     tarjeta_nombre: Optional[str] = None
     tarjeta_color: Optional[str] = None
+    reserva_nombre: Optional[str] = None
+    reserva_color: Optional[str] = None
     es_fijo: bool = False
     previsionado: Optional[bool] = False
     activo: Optional[bool] = True

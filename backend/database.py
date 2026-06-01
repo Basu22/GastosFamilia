@@ -146,6 +146,13 @@ def create_db_and_tables():
             print("🚀 Migración automática: Agregando reserva_id a tabla movimiento...")
             cursor.execute("ALTER TABLE movimiento ADD COLUMN reserva_id INTEGER REFERENCES reserva(id)")
 
+        # Migración para reserva_id en gastomensual
+        cursor.execute("PRAGMA table_info(gastomensual)")
+        columnas_gasto = [row[1] for row in cursor.fetchall()]
+        if "reserva_id" not in columnas_gasto:
+            print("🚀 Migración automática: Agregando reserva_id a tabla gastomensual...")
+            cursor.execute("ALTER TABLE gastomensual ADD COLUMN reserva_id INTEGER REFERENCES reserva(id)")
+
         # Migración para tabla reserva (columnas nuevas)
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='reserva'")
         if cursor.fetchone() is not None:

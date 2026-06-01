@@ -123,12 +123,19 @@ def create_movimiento(data: MovimientoCreate, session: Session = Depends(get_ses
         tarjeta = session.get(Tarjeta, data.tarjeta_id)
         if not tarjeta:
             raise HTTPException(status_code=400, detail="Tarjeta no encontrada")
+            
+    reserva = None
+    if data.reserva_id is not None:
+        reserva = session.get(Reserva, data.reserva_id)
+        if not reserva:
+            raise HTTPException(status_code=400, detail="Reserva no encontrada")
         
     monto_cuota = data.monto_total / data.cuotas
     fecha_ultima = calcular_fecha_ultima_cuota(data.fecha_primera_cuota, data.cuotas)
     
     mov = Movimiento(
         tarjeta_id=data.tarjeta_id,
+        reserva_id=data.reserva_id,
         descripcion=data.descripcion,
         categoria=data.categoria,
         monto_total=data.monto_total,
@@ -147,15 +154,17 @@ def create_movimiento(data: MovimientoCreate, session: Session = Depends(get_ses
     return MovimientoResponse(
         id=mov.id,
         tarjeta_id=mov.tarjeta_id,
-        tarjeta_nombre=tarjeta.nombre,
-        tarjeta_color=tarjeta.color,
+        tarjeta_nombre=tarjeta.nombre if tarjeta else "N/A",
+        tarjeta_color=tarjeta.color if tarjeta else None,
+        reserva_id=mov.reserva_id,
+        reserva_nombre=reserva.nombre if reserva else None,
         descripcion=mov.descripcion,
         categoria=mov.categoria,
         monto_total=mov.monto_total,
         cuotas=mov.cuotas,
         monto_cuota=mov.monto_cuota,
         fecha_primera_cuota=mov.fecha_primera_cuota,
-        fecha_ultima_cuota=mov.fecha_ultima_cuota,
+        fecha_ultima_cuota=fecha_ultima,
         notas=mov.notas
     )
 
@@ -180,14 +189,17 @@ def update_movimiento(mov_id: int, data: MovimientoUpdate, session: Session = De
     session.commit()
     session.refresh(mov)
     
-    # Obtener info de la tarjeta para la respuesta
+    # Obtener info de la tarjeta y reserva para la respuesta
     tarjeta = session.get(Tarjeta, mov.tarjeta_id) if mov.tarjeta_id else None
+    reserva = session.get(Reserva, mov.reserva_id) if mov.reserva_id else None
     
     return MovimientoResponse(
         id=mov.id,
         tarjeta_id=mov.tarjeta_id,
         tarjeta_nombre=tarjeta.nombre if tarjeta else "N/A",
         tarjeta_color=tarjeta.color if tarjeta else None,
+        reserva_id=mov.reserva_id,
+        reserva_nombre=reserva.nombre if reserva else None,
         descripcion=mov.descripcion,
         categoria=mov.categoria,
         monto_total=mov.monto_total,

@@ -12,6 +12,7 @@ import { getTarjetas } from '../api/tarjetas';
 import { getPrestamos, createPrestamo, updatePrestamo, deletePrestamo } from '../api/prestamos';
 import { getMovimientos, createMovimiento, updateMovimiento, deleteMovimiento, previewMovimiento } from '../api/movimientos';
 import { getCategorias } from '../api/configuracion';
+import { getReservas } from '../api/reservas';
 
 // UI
 import { formatARS, MESES_CORTO } from '../utils/format';
@@ -26,11 +27,11 @@ const schemaFijos = z.object({
   mes: z.number().min(1).max(12),
   anio: z.number().min(2020).max(2050),
   es_fijo: z.boolean().default(false),
-  tarjeta_id: z.string().optional().nullable()
+  medio_pago: z.string().optional().nullable()
 });
 
 const schemaCuotas = z.object({
-  tarjeta_id: z.string().optional().nullable(),
+  medio_pago: z.string().optional().nullable(),
   descripcion: z.string().min(3, 'Mínimo 3 caracteres'),
   categoria: z.string().optional().nullable(),
   monto_total: z.number({ invalid_type_error: 'Debe ser un número válido' }).min(0.01, 'El monto debe ser mayor a 0'),
@@ -74,6 +75,7 @@ export default function Movimientos() {
   const { data: movimientos, isLoading: loadingMovimientos } = useQuery({ queryKey: ['movimientos'], queryFn: () => getMovimientos() });
   const { data: prestamos, isLoading: loadingPrestamos } = useQuery({ queryKey: ['prestamos'], queryFn: () => getPrestamos() });
   const { data: categorias } = useQuery({ queryKey: ['categorias'], queryFn: getCategorias });
+  const { data: reservas } = useQuery({ queryKey: ['reservas'], queryFn: getReservas });
 
   // Forms
   const formFijos = useForm<FijosType>({
@@ -85,14 +87,14 @@ export default function Movimientos() {
       mes: new Date().getMonth() + 1, 
       anio: new Date().getFullYear(), 
       es_fijo: false,
-      tarjeta_id: ''
+      medio_pago: ''
     }
   });
 
   const formCuotas = useForm<CuotasType>({
     resolver: zodResolver(schemaCuotas),
     defaultValues: { 
-      tarjeta_id: '',
+      medio_pago: '',
       descripcion: '',
       categoria: '',
       monto_total: 0,
@@ -172,7 +174,18 @@ export default function Movimientos() {
   // Mutations
   const mutationFijos = useMutation({
     mutationFn: (data: any) => {
-      const payload = { ...data, tarjeta_id: data.tarjeta_id ? parseInt(data.tarjeta_id) : null };
+      let tarjeta_id = null;
+      let reserva_id = null;
+      if (data.medio_pago) {
+        if (data.medio_pago.startsWith('tarjeta_')) tarjeta_id = parseInt(data.medio_pago.split('_')[1], 10);
+        if (data.medio_pago.startsWith('reserva_')) reserva_id = parseInt(data.medio_pago.split('_')[1], 10);
+      }
+      const payload = { 
+        ...data, 
+        tarjeta_id, 
+        reserva_id 
+      };
+      delete payload.medio_pago;
       if (editingId) return activeTab === 'egresos' ? updateGastoMensual(editingId, payload) : updateIngreso(editingId, payload);
       return activeTab === 'egresos' ? createGastoMensual(payload) : createIngreso(payload);
     },
@@ -188,7 +201,18 @@ export default function Movimientos() {
 
   const mutationCuotas = useMutation({
     mutationFn: (data: any) => {
-      const payload = { ...data, tarjeta_id: data.tarjeta_id ? parseInt(data.tarjeta_id) : null };
+      let tarjeta_id = null;
+      let reserva_id = null;
+      if (data.medio_pago) {
+        if (data.medio_pago.startsWith('tarjeta_')) tarjeta_id = parseInt(data.medio_pago.split('_')[1], 10);
+        if (data.medio_pago.startsWith('reserva_')) reserva_id = parseInt(data.medio_pago.split('_')[1], 10);
+      }
+      const payload = { 
+        ...data, 
+        tarjeta_id, 
+        reserva_id 
+      };
+      delete payload.medio_pago;
       if (editingId) return updateMovimiento(editingId, payload);
       return createMovimiento(payload);
     },
@@ -278,7 +302,7 @@ export default function Movimientos() {
       }
     } else if (activeTab === 'tarjetas') {
       formCuotas.reset({
-        tarjeta_id: item.tarjeta_id?.toString() || "",
+        medio_pago: item.reserva_id ? `reserva_${item.reserva_id}` : (item.tarjeta_id ? `tarjeta_${item.tarjeta_id}` : ""),
         descripcion: item.descripcion,
         categoria: item.categoria || "",
         monto_total: item.monto_total,
@@ -294,7 +318,7 @@ export default function Movimientos() {
         mes: item.mes,
         anio: item.anio,
         es_fijo: item.es_fijo,
-        tarjeta_id: item.tarjeta_id?.toString() || ""
+        medio_pago: item.reserva_id ? `reserva_${item.reserva_id}` : (item.tarjeta_id ? `tarjeta_${item.tarjeta_id}` : "")
       });
     }
   };
@@ -307,10 +331,10 @@ export default function Movimientos() {
       mes: new Date().getMonth() + 1,
       anio: new Date().getFullYear(),
       es_fijo: false,
-      tarjeta_id: ''
+      medio_pago: ''
     });
     formCuotas.reset({ 
-      tarjeta_id: '',
+      medio_pago: '',
       descripcion: '',
       categoria: '',
       monto_total: 0,
@@ -427,9 +451,10 @@ export default function Movimientos() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Medio de Pago</label>
-                <select {...formCuotas.register('tarjeta_id')} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                <select {...formCuotas.register('medio_pago')} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="">Efectivo / Transferencia</option>
-                  {tarjetas?.map((t: any) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                  {tarjetas?.map((t: any) => <option key={`t_${t.id}`} value={`tarjeta_${t.id}`}>💳 {t.nombre}</option>)}
+                  {reservas?.map((r: any) => <option key={`r_${r.id}`} value={`reserva_${r.id}`}>📦 {r.nombre} (Reserva)</option>)}
                 </select>
               </div>
               <div className="space-y-2">
@@ -602,9 +627,10 @@ export default function Movimientos() {
               {activeTab === 'egresos' && (
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Medio de Pago</label>
-                  <select {...formFijos.register('tarjeta_id')} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                  <select {...formFijos.register('medio_pago')} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Efectivo / Transferencia</option>
-                    {tarjetas?.map((t: any) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                    {tarjetas?.map((t: any) => <option key={`t_${t.id}`} value={`tarjeta_${t.id}`}>💳 {t.nombre}</option>)}
+                    {reservas?.map((r: any) => <option key={`r_${r.id}`} value={`reserva_${r.id}`}>📦 {r.nombre} (Reserva)</option>)}
                   </select>
                 </div>
               )}

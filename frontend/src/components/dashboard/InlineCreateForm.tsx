@@ -33,9 +33,10 @@ interface InlineCreateFormProps {
   mes: number;
   anio: number;
   onClose: () => void;
+  defaultMedioPago?: string;
 }
 
-export default function InlineCreateForm({ tipo, mes, anio, onClose }: InlineCreateFormProps) {
+export default function InlineCreateForm({ tipo, mes, anio, onClose, defaultMedioPago }: InlineCreateFormProps) {
   const queryClient = useQueryClient();
   const [entryMode, setEntryMode] = useState<'total' | 'cuota'>('total');
   const { data: tarjetas } = useQuery({ queryKey: ['tarjetas'], queryFn: getTarjetas });
@@ -54,7 +55,7 @@ export default function InlineCreateForm({ tipo, mes, anio, onClose }: InlineCre
       es_fijo: tipo === 'gasto_fijo' || (tipo === 'gasto' ? true : false),
       mes: mes,
       anio: anio,
-      medio_pago: ""
+      medio_pago: defaultMedioPago || ""
     }
   });
 

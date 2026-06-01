@@ -75,6 +75,7 @@ def update_gasto_mensual(gasto_id: int, data: GastoMensualUpdate, session: Sessi
                 anio=data.anio_edicion,
                 es_fijo=True,
                 tarjeta_id=data.tarjeta_id if data.tarjeta_id is not None else gasto.tarjeta_id,
+                reserva_id=data.reserva_id if data.reserva_id is not None else gasto.reserva_id,
                 notas=data.notas if data.notas else gasto.notas
             )
             session.add(nuevo_gasto)

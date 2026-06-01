@@ -70,6 +70,8 @@ def get_cuotas_por_tarjeta(mes: int, anio: int, session: Session) -> List[Dict[s
                 n_cuota = (mes_actual_val - inicio_val) + 1
                 
                 detalle.append({
+                    "id": m.id,
+                    "edit_tipo": "tarjeta",
                     "descripcion": f"{m.descripcion} ({n_cuota}/{m.cuotas})",
                     "monto": m.monto_cuota,
                     "tipo": "cuota"
@@ -101,6 +103,8 @@ def get_cuotas_por_tarjeta(mes: int, anio: int, session: Session) -> List[Dict[s
             if incluir:
                 monto_gastos += g.monto
                 detalle.append({
+                    "id": g.id,
+                    "edit_tipo": "gasto",
                     "descripcion": g.descripcion,
                     "monto": g.monto,
                     "tipo": "fijo" if g.es_fijo else "variable"

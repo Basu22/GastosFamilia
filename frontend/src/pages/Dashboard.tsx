@@ -1,16 +1,14 @@
 import { useState, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { getDashboardInfo } from '../api/client';
-import { reactivarGastoMensual } from '../api/gastos_mensuales';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { TrendingUp, Wallet, CreditCard, PiggyBank, Edit3, ChevronLeft, ChevronRight, Calendar, ChevronDown, Plus, Landmark, Tag } from 'lucide-react';
+import { TrendingUp, Wallet, CreditCard, PiggyBank, ChevronLeft, ChevronRight, Calendar, Landmark, Tag } from 'lucide-react';
 import { formatARS, MESES_CORTO } from '../utils/format';
 import MetricCard from '../components/ui/MetricCard';
-import InlineEditForm from '../components/dashboard/InlineEditForm';
-import InlineCreateForm from '../components/dashboard/InlineCreateForm';
 import PanelArca from '../components/dashboard/PanelArca';
 import { PanelReservas } from '../components/reservas/PanelReservas';
 import ModalTarjetaDetalle from '../components/dashboard/ModalTarjetaDetalle';
+import { getReservas } from '../api/reservas';
 
 const DashboardSkeleton = () => (
   <div className="space-y-6 animate-pulse px-4 py-4 lg:px-8 lg:py-8">
@@ -24,26 +22,18 @@ const DashboardSkeleton = () => (
 export default function Dashboard() {
   const [mes, setMes] = useState(new Date().getMonth() + 1);
   const [anio, setAnio] = useState(new Date().getFullYear());
-  const [editingItem, setEditingItem] = useState<{id: number, tipo: string} | null>(null);
-  const [creandoEnSeccion, setCreandoEnSeccion] = useState<'ingreso' | 'gasto' | 'tarjeta' | null>(null);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
-  const [tarjetaSeleccionada, setTarjetaSeleccionada] = useState<any | null>(null);
-  
-  // Secciones abiertas (colapsables)
-  const [seccionesAbiertas, setSeccionesAbiertas] = useState<Set<string>>(new Set());
-
-  const toggleSeccion = (key: string) => {
-    setSeccionesAbiertas(prev => {
-      const nuevo = new Set(prev);
-      if (nuevo.has(key)) nuevo.delete(key);
-      else nuevo.add(key);
-      return nuevo;
-    });
-  };
+  const [filtroPago, setFiltroPago] = useState<'tarjeta' | 'movimiento'>('tarjeta');
+  const [activeDetail, setActiveDetail] = useState<{ type: 'tarjeta'; name: string } | { type: 'movimiento'; name: 'cuota' | 'fijo' | 'variable' | 'efectivo' | 'ingreso' } | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['dashboard', mes, anio],
     queryFn: () => getDashboardInfo(mes, anio)
+  });
+
+  const { data: listReservas } = useQuery({
+    queryKey: ['reservas'],
+    queryFn: getReservas
   });
 
   // Agrupación de movimientos para PC (por Medio de Pago)
@@ -64,8 +54,10 @@ export default function Dashboard() {
       if (isTarjeta && m.medio_pago !== 'Efectivo / Transf.') {
         const nombreTarjeta = m.tarjeta_nombre || m.medio_pago;
         if (!tarjetasMap.has(nombreTarjeta)) {
+          const tarjetaObj = data?.cuotas_por_tarjeta?.find((t: any) => t.nombre === nombreTarjeta);
           tarjetasMap.set(nombreTarjeta, {
             nombre: nombreTarjeta, color: m.tarjeta_color || '#64748B',
+            tarjeta_id: tarjetaObj?.tarjeta_id,
             cuotas: [], fijos: [], variables: [], prestamos: [], total: 0
           });
         }
@@ -77,8 +69,10 @@ export default function Dashboard() {
       } else if (isReserva) {
         const nombreReserva = m.reserva_nombre;
         if (!reservasMap.has(nombreReserva)) {
+          const resObj = listReservas?.find((r: any) => r.nombre === nombreReserva);
           reservasMap.set(nombreReserva, {
             nombre: nombreReserva, color: m.reserva_color || '#64748B',
+            reserva_id: resObj?.id,
             cuotas: [], fijos: [], variables: [], prestamos: [], total: 0
           });
         }
@@ -100,15 +94,142 @@ export default function Dashboard() {
     const reservas = Array.from(reservasMap.values()).sort((a: any, b: any) => b.total - a.total);
 
     return { ingresos, tarjetas, reservas, efectivo };
-  }, [data]);
+  }, [data, listReservas]);
 
-  const totalFiltrado = useMemo(() => {
-    if (!data?.movimientos_mes) return 0;
-    return data.movimientos_mes.reduce((acc: number, mov: any) => {
-      if (mov.tipo !== 'ingreso' && mov.reserva_nombre) return acc; // Los gastos con reserva NO restan del balance mensual en UI
-      return acc + (mov.tipo === 'ingreso' ? mov.monto : -mov.monto);
-    }, 0);
-  }, [data]);
+
+  const selectedDetailData = useMemo(() => {
+    if (!activeDetail || !data?.cuotas_por_tarjeta) return null;
+
+    if (activeDetail.type === 'tarjeta') {
+      const tarjeta = data.cuotas_por_tarjeta.find((t: any) => t.nombre === activeDetail.name);
+      if (!tarjeta) return null;
+
+      const details = tarjeta.detalle || [];
+      const cuotas = details.filter((item: any) => item.tipo === 'cuota');
+      const fijos = details.filter((item: any) => item.tipo === 'fijo');
+      const variables = details.filter((item: any) => item.tipo === 'variable');
+
+      return {
+        type: 'tarjeta' as const,
+        name: tarjeta.nombre,
+        color: tarjeta.color,
+        monto: tarjeta.monto,
+        tarjeta_id: tarjeta.tarjeta_id,
+        groups: [
+          { key: 'cuotas', label: 'Cuotas de Tarjeta', items: cuotas },
+          { key: 'fijos', label: 'Gastos Fijos', items: fijos },
+          { key: 'variables', label: 'Gastos Variables', items: variables },
+        ].filter(g => g.items.length > 0)
+      };
+    } else if (activeDetail.name === 'efectivo') {
+      const items: any[] = [];
+      const ef = movimientosAgrupados.efectivo;
+      if (ef) {
+        const collect = (arr: any[], typeName: string) => {
+          arr.forEach((item: any) => {
+            items.push({
+              id: item.id,
+              edit_tipo: item.tipo,
+              descripcion: item.descripcion,
+              monto: item.monto,
+              tipo: typeName,
+              tarjeta_nombre: 'Efectivo / Transf.',
+              tarjeta_color: '#10B981'
+            });
+          });
+        };
+        collect(ef.fijos, 'fijo');
+        collect(ef.variables, 'variable');
+        collect(ef.asignaciones, 'asignación');
+        collect(ef.prestamos, 'préstamo');
+      }
+
+      return {
+        type: 'movimiento' as const,
+        name: 'Efectivo / Transferencia',
+        color: '#10B981',
+        monto: ef?.total || 0,
+        items: items
+      };
+    } else if (activeDetail.name === 'ingreso') {
+      const items: any[] = [];
+      const ing = movimientosAgrupados.ingresos;
+      if (ing) {
+        ing.forEach((item: any) => {
+          items.push({
+            id: item.id,
+            edit_tipo: 'ingreso',
+            descripcion: item.descripcion,
+            monto: item.monto,
+            tipo: 'ingreso',
+            tarjeta_nombre: 'Ingresos',
+            tarjeta_color: '#10B981'
+          });
+        });
+      }
+
+      return {
+        type: 'movimiento' as const,
+        name: 'Ingresos',
+        color: '#10B981',
+        monto: data.ingreso || 0,
+        items: items
+      };
+    } else {
+      const items: any[] = [];
+      data.cuotas_por_tarjeta.forEach((t: any) => {
+        t.detalle?.forEach((item: any) => {
+          if (item.tipo === activeDetail.name) {
+            items.push({
+              ...item,
+              tarjeta_nombre: t.nombre,
+              tarjeta_color: t.color
+            });
+          }
+        });
+      });
+
+      const total = items.reduce((acc, m) => acc + m.monto, 0);
+      const label = activeDetail.name === 'cuota' 
+        ? 'Cuotas de Tarjeta' 
+        : activeDetail.name === 'fijo' 
+          ? 'Gastos Fijos' 
+          : 'Gastos Variables';
+      const color = activeDetail.name === 'cuota'
+        ? '#8B5CF6' 
+        : activeDetail.name === 'fijo'
+          ? '#3B82F6' 
+          : '#EC4899';
+
+      return {
+        type: 'movimiento' as const,
+        name: label,
+        color: color,
+        monto: total,
+        items: items
+      };
+    }
+  }, [activeDetail, data, movimientosAgrupados]);
+
+  const totalesMovimiento = useMemo(() => {
+    if (!data?.cuotas_por_tarjeta) return { cuotas: 0, fijos: 0, variables: 0, efectivo: 0 };
+    
+    let cuotas = 0;
+    let fijos = 0;
+    let variables = 0;
+    
+    data.cuotas_por_tarjeta.forEach((t: any) => {
+      t.detalle?.forEach((item: any) => {
+        if (item.tipo === 'cuota') cuotas += item.monto;
+        else if (item.tipo === 'fijo') fijos += item.monto;
+        else if (item.tipo === 'variable') variables += item.monto;
+      });
+    });
+
+    const efectivoTotal = movimientosAgrupados.efectivo?.total || 0;
+    
+    return { cuotas, fijos, variables, efectivo: efectivoTotal };
+  }, [data, movimientosAgrupados]);
 
   if (isLoading) return <DashboardSkeleton />;
   if (error || !data) return (
@@ -136,8 +257,11 @@ export default function Dashboard() {
   return (
     <main id="dashboard-container" className="space-y-10 lg:space-y-12 animate-in fade-in duration-700 pb-12">
       <ModalTarjetaDetalle 
-        tarjeta={tarjetaSeleccionada} 
-        onClose={() => setTarjetaSeleccionada(null)} 
+        detailData={selectedDetailData} 
+        mesActual={mes}
+        anioActual={anio}
+        activeName={activeDetail?.type === 'movimiento' ? activeDetail.name : undefined}
+        onClose={() => setActiveDetail(null)} 
       />
       {/* Header con Selector de Fecha */}
       <header id="dashboard-header" className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between px-4 lg:px-0">
@@ -297,27 +421,121 @@ export default function Dashboard() {
           {/* TOTALES POR TARJETA (Mobile & Desktop) */}
           {data.cuotas_por_tarjeta?.length > 0 && (
             <section id="section-totales-tarjetas" className="px-4 lg:px-0">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="p-2 bg-aura-lavender/20 rounded-xl border border-aura-lavender/30">
-                  <CreditCard className="text-aura-lavender" size={16} />
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-aura-lavender/20 rounded-xl border border-aura-lavender/30">
+                    <CreditCard className="text-aura-lavender" size={16} />
+                  </div>
+                  <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-white/90">Filtro</h3>
                 </div>
-                <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-white/90">A Pagar por Tarjeta</h3>
+                
+                {/* Filtros visuales / Tabs */}
+                <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 self-start sm:self-auto shadow-md">
+                  <button 
+                    onClick={() => setFiltroPago('tarjeta')}
+                    className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all ${
+                      filtroPago === 'tarjeta' 
+                        ? 'bg-aura-lavender text-aura-bg shadow-lg shadow-aura-lavender/20' 
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    Por Tarjeta
+                  </button>
+                  <button 
+                    onClick={() => setFiltroPago('movimiento')}
+                    className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all ${
+                      filtroPago === 'movimiento' 
+                        ? 'bg-aura-lavender text-aura-bg shadow-lg shadow-aura-lavender/20' 
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    Por Movimiento
+                  </button>
+                </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                {data.cuotas_por_tarjeta.map((t: any) => (
+
+              {filtroPago === 'tarjeta' ? (
+                <div className="space-y-4">
+                  <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mb-1 px-1">A PAGAR</h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
+                    {data.cuotas_por_tarjeta.map((t: any) => (
+                      <div 
+                        key={t.nombre} 
+                        className="glass-card p-4 border border-white/5 flex flex-col justify-between hover:border-white/20 hover:scale-[1.02] active:scale-95 transition-all gap-2 cursor-pointer"
+                        onClick={() => setActiveDetail({ type: 'tarjeta', name: t.nombre })}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.5)]" style={{ backgroundColor: t.color || '#64748B' }} />
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">{t.nombre}</span>
+                        </div>
+                        <span className="text-lg font-black text-white tracking-tight">{formatARS(t.monto)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
+                  {/* Ingresos */}
                   <div 
-                    key={t.nombre} 
-                    className="glass-card p-4 border border-white/5 flex flex-col justify-between hover:border-white/20 transition-all gap-2 cursor-pointer"
-                    onClick={() => setTarjetaSeleccionada(t)}
+                    className="glass-card p-4 border border-white/5 flex flex-col justify-between hover:border-white/20 hover:scale-[1.02] active:scale-95 transition-all gap-2 cursor-pointer"
+                    onClick={() => setActiveDetail({ type: 'movimiento', name: 'ingreso' })}
                   >
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.5)]" style={{ backgroundColor: t.color || '#64748B' }} />
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">{t.nombre}</span>
+                      <div className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]" style={{ backgroundColor: '#10B981' }} />
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">Ingresos</span>
                     </div>
-                    <span className="text-lg font-black text-white tracking-tight">{formatARS(t.monto)}</span>
+                    <span className="text-lg font-black text-white tracking-tight">{formatARS(data.ingreso)}</span>
                   </div>
-                ))}
-              </div>
+
+                  {/* Cuotas de Tarjeta */}
+                  <div 
+                    className="glass-card p-4 border border-white/5 flex flex-col justify-between hover:border-white/20 hover:scale-[1.02] active:scale-95 transition-all gap-2 cursor-pointer"
+                    onClick={() => setActiveDetail({ type: 'movimiento', name: 'cuota' })}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(139,92,246,0.5)]" style={{ backgroundColor: '#8B5CF6' }} />
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">Cuotas de Tarjeta</span>
+                    </div>
+                    <span className="text-lg font-black text-white tracking-tight">{formatARS(totalesMovimiento.cuotas)}</span>
+                  </div>
+                  
+                  {/* Gastos Fijos */}
+                  <div 
+                    className="glass-card p-4 border border-white/5 flex flex-col justify-between hover:border-white/20 hover:scale-[1.02] active:scale-95 transition-all gap-2 cursor-pointer"
+                    onClick={() => setActiveDetail({ type: 'movimiento', name: 'fijo' })}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]" style={{ backgroundColor: '#3B82F6' }} />
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">Gastos Fijos</span>
+                    </div>
+                    <span className="text-lg font-black text-white tracking-tight">{formatARS(totalesMovimiento.fijos)}</span>
+                  </div>
+
+                  {/* Gastos Variables */}
+                  <div 
+                    className="glass-card p-4 border border-white/5 flex flex-col justify-between hover:border-white/20 hover:scale-[1.02] active:scale-95 transition-all gap-2 cursor-pointer"
+                    onClick={() => setActiveDetail({ type: 'movimiento', name: 'variable' })}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(236,72,153,0.5)]" style={{ backgroundColor: '#EC4899' }} />
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">Gastos Variables</span>
+                    </div>
+                    <span className="text-lg font-black text-white tracking-tight">{formatARS(totalesMovimiento.variables)}</span>
+                  </div>
+
+                  {/* Efectivo / Transferencia */}
+                  <div 
+                    className="glass-card p-4 border border-white/5 flex flex-col justify-between hover:border-white/20 hover:scale-[1.02] active:scale-95 transition-all gap-2 cursor-pointer"
+                    onClick={() => setActiveDetail({ type: 'movimiento', name: 'efectivo' })}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]" style={{ backgroundColor: '#10B981' }} />
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">Efectivo / Transf.</span>
+                    </div>
+                    <span className="text-lg font-black text-white tracking-tight">{formatARS(totalesMovimiento.efectivo)}</span>
+                  </div>
+                </div>
+              )}
             </section>
           )}
 
@@ -329,138 +547,7 @@ export default function Dashboard() {
           {/* MÓDULO ARCA */}
           <div className="mx-4 lg:mx-0">
             <PanelArca mes={mes} anio={anio} />
-          </div>
-
-          <section id="section-movimientos-detalle" className="glass-card border-white/5 mx-4 lg:mx-0 overflow-hidden shadow-2xl shadow-black/40">
-            <header id="header-movimientos-detalle" className="p-8 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-6 bg-white/5 backdrop-blur-md">
-              <div className="flex items-center gap-5">
-                <div className="p-4 bg-aura-lavender/10 rounded-2xl border border-aura-lavender/20 shadow-[0_0_20px_rgba(199,210,254,0.1)]">
-                  <Wallet className="text-aura-lavender" size={24}/>
-                </div>
-                <div className="flex flex-col">
-                  <h2 id="title-movimientos-detalle" className="font-bold text-white text-xl tracking-tight">
-                    Detalle de Movimientos
-                  </h2>
-                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mt-1">Gestión de flujo mensual</p>
-                </div>
-              </div>
-              <div className="flex flex-col items-start sm:items-end p-4 bg-white/5 rounded-2xl border border-white/5 min-w-[200px]">
-                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Balance del Mes</span>
-                <p className={`text-2xl font-black tracking-tighter ${totalFiltrado >= 0 ? 'text-aura-mint' : 'text-aura-coral'}`}>
-                  {totalFiltrado >= 0 ? '+' : ''} {formatARS(totalFiltrado)}
-                </p>
-              </div>
-            </header>
-            
-            <div id="wrapper-movimientos-grid" className="bg-aura-bg/20">
-              {/* VISTA MÓVIL (GRUPOS COLAPSABLES) */}
-              <div className="flex flex-col gap-6 lg:hidden p-6 pb-12">
-                <GrupoSimpleMobile
-                  titulo="Ingresos" icon={PiggyBank} colorCls="text-aura-mint"
-                  movimientos={movimientosAgrupados.ingresos}
-                  expandido={seccionesAbiertas.has('ingresos')}
-                  onToggle={() => toggleSeccion('ingresos')}
-                  editingItem={editingItem} setEditingItem={setEditingItem}
-                  creandoEnSeccion={creandoEnSeccion} setCreandoEnSeccion={setCreandoEnSeccion}
-                  mes={mes} anio={anio}
-                />
-                
-                {movimientosAgrupados.tarjetas.map((t: any) => (
-                  <GrupoCompuestoMobile
-                    key={t.nombre}
-                    titulo={t.nombre} icon={CreditCard} colorCls="text-aura-lavender"
-                    datos={t}
-                    expandido={seccionesAbiertas.has(t.nombre)}
-                    onToggle={() => toggleSeccion(t.nombre)}
-                    editingItem={editingItem} setEditingItem={setEditingItem}
-                    creandoEnSeccion={creandoEnSeccion} setCreandoEnSeccion={setCreandoEnSeccion}
-                    mes={mes} anio={anio}
-                  />
-                ))}
-
-                {movimientosAgrupados.reservas.map((r: any) => (
-                  <GrupoCompuestoMobile
-                    key={r.nombre}
-                    titulo={r.nombre + " (Consumos)"} icon={Wallet} colorCls="text-gray-400"
-                    datos={r}
-                    expandido={seccionesAbiertas.has(r.nombre)}
-                    onToggle={() => toggleSeccion(r.nombre)}
-                    editingItem={editingItem} setEditingItem={setEditingItem}
-                    creandoEnSeccion={creandoEnSeccion} setCreandoEnSeccion={setCreandoEnSeccion}
-                    mes={mes} anio={anio}
-                  />
-                ))}
-
-                {movimientosAgrupados.efectivo.total > 0 && (
-                  <GrupoCompuestoMobile
-                    titulo="Efectivo / Transferencia" icon={Wallet} colorCls="text-aura-coral"
-                    datos={movimientosAgrupados.efectivo}
-                    expandido={seccionesAbiertas.has('efectivo')}
-                    onToggle={() => toggleSeccion('efectivo')}
-                    editingItem={editingItem} setEditingItem={setEditingItem}
-                    creandoEnSeccion={creandoEnSeccion} setCreandoEnSeccion={setCreandoEnSeccion}
-                    mes={mes} anio={anio}
-                  />
-                )}
-              </div>
-
-              {/* VISTA DESKTOP (TABLA AGRUPADA) */}
-              <div className="hidden lg:block overflow-x-auto px-6 pb-12">
-                <table className="w-full text-left border-collapse">
-                  <tbody className="divide-y divide-white/5">
-                    <GrupoSimpleDesktop 
-                      titulo="Ingresos" icon={PiggyBank} colorCls="text-aura-mint"
-                      movimientos={movimientosAgrupados.ingresos}
-                      expandido={seccionesAbiertas.has('ingresos')}
-                      onToggle={() => toggleSeccion('ingresos')}
-                      editingItem={editingItem} setEditingItem={setEditingItem}
-                      creandoEnSeccion={creandoEnSeccion} setCreandoEnSeccion={setCreandoEnSeccion}
-                      mes={mes} anio={anio}
-                    />
-
-                    {movimientosAgrupados.tarjetas.map((t: any) => (
-                      <GrupoCompuestoDesktop
-                        key={t.nombre}
-                        titulo={t.nombre} icon={CreditCard} colorCls="text-aura-lavender"
-                        datos={t}
-                        expandido={seccionesAbiertas.has(t.nombre)}
-                        onToggle={() => toggleSeccion(t.nombre)}
-                        editingItem={editingItem} setEditingItem={setEditingItem}
-                        creandoEnSeccion={creandoEnSeccion} setCreandoEnSeccion={setCreandoEnSeccion}
-                        mes={mes} anio={anio}
-                      />
-                    ))}
-
-                    {movimientosAgrupados.reservas.map((r: any) => (
-                      <GrupoCompuestoDesktop
-                        key={r.nombre}
-                        titulo={r.nombre + " (Consumos)"} icon={Wallet} colorCls="text-gray-400"
-                        datos={r}
-                        expandido={seccionesAbiertas.has(r.nombre)}
-                        onToggle={() => toggleSeccion(r.nombre)}
-                        editingItem={editingItem} setEditingItem={setEditingItem}
-                        creandoEnSeccion={creandoEnSeccion} setCreandoEnSeccion={setCreandoEnSeccion}
-                        mes={mes} anio={anio}
-                      />
-                    ))}
-
-                    {movimientosAgrupados.efectivo.total > 0 && (
-                      <GrupoCompuestoDesktop
-                        titulo="Efectivo / Transferencia" icon={Wallet} colorCls="text-aura-coral"
-                        datos={movimientosAgrupados.efectivo}
-                        expandido={seccionesAbiertas.has('efectivo')}
-                        onToggle={() => toggleSeccion('efectivo')}
-                        editingItem={editingItem} setEditingItem={setEditingItem}
-                        creandoEnSeccion={creandoEnSeccion} setCreandoEnSeccion={setCreandoEnSeccion}
-                        mes={mes} anio={anio}
-                      />
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </section>
-        </div>
+              </div>        </div>
 
         {/* COLUMNA DERECHA: Gráficos y Tendencia (Desktop Only) */}
         <aside className="hidden lg:flex lg:flex-col gap-10">
@@ -595,260 +682,4 @@ export default function Dashboard() {
 
 
 
-// ─── COMPONENTES DE TABLA ─────────────────────────────────────────
 
-function RenderItem({ mov, editingItem, setEditingItem, reactivarMutation, mes, anio }: any) {
-  return (
-    <div key={`${mov.tipo}-${mov.id}`} className="space-y-2">
-      <div className={`group flex items-center justify-between p-4 rounded-2xl transition-all duration-300 ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'bg-aura-lavender/10 border border-aura-lavender/30' : 'bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10'} ${mov.activo === false ? 'opacity-40 line-through' : ''}`}>
-        <div className="flex items-center gap-4">
-          <div className="w-1 h-8 rounded-full" style={{ backgroundColor: mov.tarjeta_color || (mov.tipo === 'ingreso' ? '#A7F3D0' : (mov.es_fijo ? '#C7D2FE' : '#94a3b8')) }} />
-          <div>
-            <p className="text-[13px] lg:text-sm font-semibold text-white">
-              {mov.descripcion}
-              {mov.previsionado && (
-                <span className="ml-3 text-[9px] bg-aura-gold/20 text-aura-gold border border-aura-gold/30 px-2 py-0.5 rounded-full uppercase font-bold tracking-[0.1em]">Previsionado</span>
-              )}
-            </p>
-            <div className="flex items-center gap-3 mt-1">
-              <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">{mov.origen}</span>
-              {mov.tipo === 'tarjeta' && (
-                <span className="text-[9px] text-aura-lavender font-bold uppercase tracking-widest opacity-80">Cuota {mov.cuota_actual}/{mov.cuotas_total}</span>
-              )}
-              {mov.activo === false && mov.fecha_baja && (
-                <span className="text-[9px] font-bold text-red-400 uppercase tracking-widest bg-red-400/10 px-2 py-0.5 rounded-full border border-red-400/20">
-                  Baja: {MESES_CORTO[parseInt(mov.fecha_baja.split('-')[1])]} {mov.fecha_baja.split('-')[0]} 🔴
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-4 lg:gap-8">
-          {mov.activo === false ? (
-            <button
-              onClick={() => {
-                if (window.confirm(`¿Reactivar "${mov.descripcion}"?`)) {
-                  reactivarMutation.mutate(mov.id);
-                }
-              }}
-              disabled={reactivarMutation.isPending}
-              className="text-[9px] px-3 py-1.5 font-bold rounded-lg border border-aura-mint/30 text-aura-mint hover:bg-aura-mint/10 transition-all uppercase whitespace-nowrap z-10 hover:!opacity-100 hover:!no-underline"
-            >
-              {reactivarMutation.isPending ? '...' : 'Reactivar'}
-            </button>
-          ) : (
-            <p className={`text-sm lg:text-base font-bold tracking-tight ${mov.tipo === 'ingreso' ? 'text-aura-mint' : 'text-white'}`}>
-              {formatARS(mov.monto)}
-            </p>
-          )}
-          {mov.activo !== false && (
-            <button 
-              onClick={() => setEditingItem((editingItem?.id === mov.id && editingItem?.tipo === mov.tipo) ? null : { id: mov.id, tipo: mov.tipo })}
-              className={`p-2 lg:p-3 rounded-xl transition-all ${editingItem?.id === mov.id && editingItem?.tipo === mov.tipo ? 'bg-aura-lavender text-aura-bg shadow-lg' : 'text-gray-500 hover:text-white hover:bg-white/10'}`}
-            >
-              <Edit3 size={16} />
-            </button>
-          )}
-        </div>
-      </div>
-      
-      {editingItem?.id === mov.id && editingItem?.tipo === mov.tipo && (
-        <div className="glass-card p-6 border-aura-lavender/30 animate-in slide-in-from-top-4 duration-300">
-          <InlineEditForm id={mov.id} tipo={mov.tipo} mesActual={mes} anioActual={anio} onClose={() => setEditingItem(null)} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function GrupoSimpleDesktop({ titulo, icon: Icon, colorCls, movimientos, expandido, onToggle, editingItem, setEditingItem, creandoEnSeccion, setCreandoEnSeccion, mes, anio }: any) {
-  const total = movimientos.reduce((acc: number, m: any) => acc + m.monto, 0);
-  const tipoSeccion = 'ingreso';
-  const queryClient = useQueryClient();
-  const reactivarMutation = useMutation({
-    mutationFn: async (id: number) => reactivarGastoMensual(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['gastos-mensuales'] });
-    }
-  });
-
-  return (
-    <>
-      <tr className="border-none">
-        <td colSpan={4} className="px-6 py-4">
-          <div className="flex items-center justify-between bg-aura-surface/30 backdrop-blur-md rounded-2xl p-4 border border-aura-border/20">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center cursor-pointer group" onClick={onToggle}>
-                <div className={`p-3 rounded-xl bg-white/5 border border-white/10 mr-4 transition-transform group-hover:scale-110`}>
-                  <Icon size={18} className={colorCls} />
-                </div>
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[12px] font-bold uppercase tracking-[0.2em] ${colorCls}`}>{titulo}</span>
-                    <ChevronDown size={14} className={`text-gray-500 transition-transform ${expandido ? '' : '-rotate-90'}`} />
-                  </div>
-                  <span className="text-[10px] font-medium text-gray-500 uppercase tracking-widest mt-0.5">{movimientos.length} movimientos</span>
-                </div>
-              </div>
-              <button 
-                onClick={() => setCreandoEnSeccion(creandoEnSeccion === tipoSeccion ? null : tipoSeccion)}
-                className={`ml-4 p-2 rounded-xl transition-all duration-300 ${creandoEnSeccion === tipoSeccion ? 'bg-aura-coral text-aura-bg rotate-45' : 'bg-aura-lavender text-aura-bg hover:scale-110 shadow-lg shadow-aura-lavender/20'}`}
-              >
-                <Plus size={16} strokeWidth={3} />
-              </button>
-            </div>
-            <div className="flex flex-col items-end">
-              <span className={`text-xl font-bold tracking-tight ${colorCls}`}>+{formatARS(total)}</span>
-            </div>
-          </div>
-        </td>
-      </tr>
-      {creandoEnSeccion === tipoSeccion && (
-        <tr>
-          <td colSpan={4} className="px-6 pb-6">
-            <div className="glass-card p-8 border-aura-lavender/20 animate-in slide-in-from-top-4 duration-300">
-              <InlineCreateForm tipo={tipoSeccion as any} mes={mes} anio={anio} onClose={() => setCreandoEnSeccion(null)} />
-            </div>
-          </td>
-        </tr>
-      )}
-      {expandido && (
-        <tr>
-          <td colSpan={4} className="px-6">
-            <div className="space-y-3 mb-6">
-              {movimientos.map((mov: any) => <RenderItem key={mov.id} mov={mov} editingItem={editingItem} setEditingItem={setEditingItem} reactivarMutation={reactivarMutation} mes={mes} anio={anio} />)}
-            </div>
-          </td>
-        </tr>
-      )}
-    </>
-  );
-}
-
-function GrupoCompuestoDesktop({ titulo, icon: Icon, colorCls, datos, expandido, onToggle, editingItem, setEditingItem, mes, anio }: any) {
-  const queryClient = useQueryClient();
-  const reactivarMutation = useMutation({
-    mutationFn: async (id: number) => reactivarGastoMensual(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['gastos-mensuales'] });
-    }
-  });
-
-  const secciones = [
-    { key: 'cuotas', label: 'Cuotas de Tarjeta', items: datos.cuotas },
-    { key: 'fijos', label: 'Gastos Fijos', items: datos.fijos },
-    { key: 'variables', label: 'Gastos Variables', items: datos.variables },
-    { key: 'asignaciones', label: 'Asignaciones a Reservas', items: datos.asignaciones },
-    { key: 'prestamos', label: 'Préstamos', items: datos.prestamos }
-  ].filter(s => s.items?.length > 0);
-
-  const cantMovimientos = secciones.reduce((acc, s) => acc + s.items.length, 0);
-
-  return (
-    <>
-      <tr className="border-none">
-        <td colSpan={4} className="px-6 py-4">
-          <div className="flex items-center justify-between bg-aura-surface/30 backdrop-blur-md rounded-2xl p-4 border border-aura-border/20">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center cursor-pointer group" onClick={onToggle}>
-                <div className={`p-3 rounded-xl bg-white/5 border border-white/10 mr-4 transition-transform group-hover:scale-110`}>
-                  <Icon size={18} className={colorCls} />
-                </div>
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[12px] font-bold uppercase tracking-[0.2em] ${colorCls}`}>{titulo}</span>
-                    <ChevronDown size={14} className={`text-gray-500 transition-transform ${expandido ? '' : '-rotate-90'}`} />
-                  </div>
-                  <span className="text-[10px] font-medium text-gray-500 uppercase tracking-widest mt-0.5">{cantMovimientos} movimientos</span>
-                </div>
-              </div>
-            </div>
-            <div className="flex flex-col items-end">
-              <span className={`text-xl font-bold tracking-tight ${colorCls}`}>-{formatARS(datos.total)}</span>
-            </div>
-          </div>
-        </td>
-      </tr>
-      {expandido && (
-        <tr>
-          <td colSpan={4} className="px-6 pb-6">
-            <div className="space-y-6">
-              {secciones.map(sec => (
-                <div key={sec.key} className="bg-white/5 rounded-2xl p-4 border border-white/5">
-                  <div className="flex items-center justify-between mb-4 px-2">
-                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{sec.label}</h4>
-                    <span className="text-xs font-bold text-white">{formatARS(sec.items.reduce((acc: number, m: any) => acc + m.monto, 0))}</span>
-                  </div>
-                  <div className="space-y-2">
-                    {sec.items.map((mov: any) => <RenderItem key={mov.id} mov={mov} editingItem={editingItem} setEditingItem={setEditingItem} reactivarMutation={reactivarMutation} mes={mes} anio={anio} />)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </td>
-        </tr>
-      )}
-    </>
-  );
-}
-
-function GrupoSimpleMobile(props: any) {
-  // Solo un wrapper para mobile, reutiliza la misma logica simplificada.
-  return (
-     <div className={`glass-card overflow-hidden transition-all duration-500 ${props.expandido ? 'aura-glow-lavender border-aura-lavender/20' : 'border-aura-border/20'}`}>
-        <div className="flex items-center justify-between px-6 py-5 cursor-pointer" onClick={props.onToggle}>
-            <div className="flex flex-col">
-              <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${props.colorCls}`}>{props.titulo}</span>
-              <span className="text-sm font-black text-white mt-1">+{formatARS(props.movimientos.reduce((a:number,m:any)=>a+m.monto,0))}</span>
-            </div>
-            <ChevronDown size={14} className={`text-gray-500 transition-transform ${props.expandido ? 'rotate-180' : ''}`} />
-        </div>
-        {props.expandido && (
-          <div className="px-4 pb-4 space-y-2">
-            {props.movimientos.map((mov: any) => <RenderItem key={mov.id} mov={mov} editingItem={props.editingItem} setEditingItem={props.setEditingItem} reactivarMutation={{isPending:false, mutate:()=>{}}} mes={props.mes} anio={props.anio} />)}
-          </div>
-        )}
-     </div>
-  );
-}
-
-function GrupoCompuestoMobile(props: any) {
-  const { datos } = props;
-  const secciones = [
-    { key: 'cuotas', label: 'Cuotas', items: datos.cuotas },
-    { key: 'fijos', label: 'Fijos', items: datos.fijos },
-    { key: 'variables', label: 'Variables', items: datos.variables },
-    { key: 'asignaciones', label: 'Asignaciones', items: datos.asignaciones },
-    { key: 'prestamos', label: 'Préstamos', items: datos.prestamos }
-  ].filter(s => s.items?.length > 0);
-
-  return (
-     <div className={`glass-card overflow-hidden transition-all duration-500 ${props.expandido ? 'aura-glow-lavender border-aura-lavender/20' : 'border-aura-border/20'}`}>
-        <div className="flex items-center justify-between px-6 py-5 cursor-pointer" onClick={props.onToggle}>
-            <div className="flex flex-col">
-              <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${props.colorCls}`}>{props.titulo}</span>
-              <span className="text-sm font-black text-white mt-1">-{formatARS(datos.total)}</span>
-            </div>
-            <ChevronDown size={14} className={`text-gray-500 transition-transform ${props.expandido ? 'rotate-180' : ''}`} />
-        </div>
-        {props.expandido && (
-          <div className="px-4 pb-4 space-y-4">
-            {secciones.map(sec => (
-               <div key={sec.key} className="bg-white/5 rounded-xl p-3 border border-white/5">
-                 <div className="flex items-center justify-between mb-3 px-1 border-b border-white/5 pb-2">
-                    <h4 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{sec.label}</h4>
-                    <span className="text-xs font-bold text-white">{formatARS(sec.items.reduce((acc: number, m: any) => acc + m.monto, 0))}</span>
-                 </div>
-                 <div className="space-y-2">
-                    {sec.items.map((mov: any) => <RenderItem key={mov.id} mov={mov} editingItem={props.editingItem} setEditingItem={props.setEditingItem} reactivarMutation={{isPending:false, mutate:()=>{}}} mes={props.mes} anio={props.anio} />)}
-                 </div>
-               </div>
-            ))}
-          </div>
-        )}
-     </div>
-  );
-}

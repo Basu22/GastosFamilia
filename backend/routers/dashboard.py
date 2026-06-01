@@ -310,17 +310,24 @@ def get_dashboard_summary(
     for m in movs_all:
         if cuota_activa_en_mes(m, mes, anio):
             t = tarjetas_dict.get(m.tarjeta_id) if m.tarjeta_id else None
+            r = reservas_dict.get(m.reserva_id) if getattr(m, 'reserva_id', None) else None
             
             # Calcular que número de cuota es
             fecha_primera = date.fromisoformat(m.fecha_primera_cuota) if isinstance(m.fecha_primera_cuota, str) else m.fecha_primera_cuota
             inicio_val = fecha_primera.year * 12 + fecha_primera.month
             n_cuota = (mes_actual_val - inicio_val) + 1
             
+            medio_pago = "Tarjeta S/N"
+            if t:
+                medio_pago = t.nombre
+            elif r:
+                medio_pago = r.nombre
+            
             movimientos_mes.append({
                 "id": m.id,
                 "tipo": "tarjeta",
                 "origen": "Cuotas",
-                "medio_pago": t.nombre if t else "Tarjeta S/N",
+                "medio_pago": medio_pago,
                 "descripcion": f"{m.descripcion} ({n_cuota}/{m.cuotas})",
                 "monto": m.monto_cuota,
                 "monto_total": m.monto_total,
@@ -329,6 +336,8 @@ def get_dashboard_summary(
                 "es_fijo": False,
                 "tarjeta_nombre": t.nombre if t else None,
                 "tarjeta_color": t.color if t else None,
+                "reserva_nombre": r.nombre if r else None,
+                "reserva_color": r.color if r else None,
                 "categoria": m.categoria,
                 "fecha_referencia": f"{anio}-{mes:02d}-01"
             })
