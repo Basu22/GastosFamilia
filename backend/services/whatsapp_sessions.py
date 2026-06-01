@@ -10,11 +10,21 @@ from datetime import datetime, timedelta
 # }
 pendientes: dict[str, dict] = {}
 
-def guardar_pendiente(telefono: str, tipo: str, datos: dict) -> None:
+def guardar_pendiente(
+    telefono: str, 
+    tipo: str, 
+    datos: dict, 
+    estado: str = "esperando_confirmacion", 
+    tarjetas_temp: list = None, 
+    reservas_temp: list = None
+) -> None:
     """Guarda un gasto pendiente de confirmación."""
     pendientes[telefono] = {
         "tipo": tipo,
         "datos": datos,
+        "estado": estado,
+        "tarjetas_temp": tarjetas_temp or [],
+        "reservas_temp": reservas_temp or [],
         "timestamp": datetime.now()
     }
 
