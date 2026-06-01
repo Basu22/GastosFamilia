@@ -38,44 +38,45 @@ export const PanelReservas: React.FC<Props> = ({ mes, anio, disponible }) => {
               {/* Color Accent Line */}
               <div className="absolute top-0 left-0 w-full h-1" style={{ backgroundColor: res.color }} />
               
-              <div className="flex justify-between items-start mb-2">
-                <span className="font-semibold text-gray-800 dark:text-neutral-200 truncate pr-2" style={{ color: res.color }}>
+              <div className="mb-2 w-full">
+                <span className="block font-semibold text-gray-800 dark:text-neutral-200 truncate w-full text-base" style={{ color: res.color }}>
                   {res.nombre}
                 </span>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button 
-                    onClick={() => setReservaFondeo(res)}
-                    className="p-1.5 bg-emerald-50 dark:bg-emerald-900/30 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-500"
-                    title="Fondear Reserva"
-                  >
-                    <ArrowDownCircle size={14} />
-                  </button>
-                  <button 
-                    onClick={() => setReservaAjuste(res)}
-                    className="p-1.5 bg-gray-100 dark:bg-neutral-800 rounded hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-500"
-                    title="Reasignar / Liberar saldo"
-                  >
-                    <ArrowRightLeft size={14} />
-                  </button>
-                </div>
               </div>
 
               <div className="mb-3">
                 <p className="text-xs text-gray-500 dark:text-neutral-400 uppercase tracking-wide">Saldo Acumulado</p>
-                <p className={`text-2xl font-bold ${isDanger ? 'text-red-500' : 'text-gray-900 dark:text-neutral-100'}`}>
+                <p className={`text-lg font-black ${isDanger ? 'text-red-500' : 'text-gray-900 dark:text-neutral-100'}`}>
                   {formatARS(res.saldo_actual)}
                 </p>
               </div>
 
-              <div className="space-y-1.5 pt-3 border-t border-gray-100 dark:border-neutral-800">
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-gray-500 dark:text-neutral-400">Asignado mes</span>
-                  <span className="font-medium text-emerald-600 dark:text-emerald-400">+{formatARS(res.asignacion_mes)}</span>
+              <div className="space-y-3 pt-3 border-t border-gray-100 dark:border-neutral-800">
+                <div className="text-[11px]">
+                  <span className="block text-gray-500 dark:text-neutral-400 mb-0.5">Asignado mes</span>
+                  <span className="block font-bold text-emerald-600 dark:text-emerald-400 text-sm">+{formatARS(res.asignacion_mes)}</span>
                 </div>
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-gray-500 dark:text-neutral-400">Consumido mes</span>
-                  <span className="font-medium text-red-500 dark:text-red-400">-{formatARS(res.consumo_mes)}</span>
+                <div className="text-[11px]">
+                  <span className="block text-gray-500 dark:text-neutral-400 mb-0.5">Consumido mes</span>
+                  <span className="block font-bold text-red-500 dark:text-red-400 text-sm">-{formatARS(res.consumo_mes)}</span>
                 </div>
+              </div>
+
+              <div className="flex justify-center gap-3 mt-4 pt-3 border-t border-gray-100 dark:border-neutral-800">
+                <button 
+                  onClick={() => setReservaFondeo(res)}
+                  className="p-2.5 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-500 transition-all active:scale-95"
+                  title="Fondear Reserva"
+                >
+                  <ArrowDownCircle size={18} />
+                </button>
+                <button 
+                  onClick={() => setReservaAjuste(res)}
+                  className="p-2.5 bg-gray-100 dark:bg-neutral-800 rounded-lg hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-500 transition-all active:scale-95"
+                  title="Reasignar / Liberar saldo"
+                >
+                  <ArrowRightLeft size={18} />
+                </button>
               </div>
             </div>
           );

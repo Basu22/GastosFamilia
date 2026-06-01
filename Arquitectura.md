@@ -467,11 +467,17 @@ Usuario ──[Mensaje de Voz/Foto/PDF]──▶ Meta Cloud API ──[Webhook H
 
 1. **GET `/api/whatsapp/webhook`**: Endpoint que valida el `hub.challenge` y el token de verificación con la plataforma de Meta developers.
 2. **POST `/api/whatsapp/webhook`**: Endpoint de recepción de mensajes. Valida la firma `X-Hub-Signature-256` utilizando HMAC-SHA256 y la clave secreta `WHATSAPP_APP_SECRET`. Si la verificación es correcta, delega el procesamiento de forma asíncrona a un `BackgroundTasks` de FastAPI y retorna un código `200` de forma inmediata.
-3. **Control de Sesión**: La clase `whatsapp_sessions` almacena temporalmente (TTL de 10 minutos) las confirmaciones pendientes de transacciones en un diccionario en memoria por número telefónico.
-4. **Respuesta al Usuario**:
-   - Si no hay sesión y se envía una factura/imagen/voz, el bot llama a Gemini para pre-cargar la confirmación y guarda el estado como `pendiente`.
-   - Si el usuario responde "OK", el bot escribe el registro real en la base de datos (creando un `Movimiento` o `GastoMensual`) y responde "✅ Guardado".
-   - Si el usuario envía texto libre con correcciones (ej: "el monto es 25000"), el bot re-analiza el mensaje y actualiza el borrador del gasto.
+3. **Control de Sesión**: La clase `whatsapp_sessions` almacena temporalmente (TTL de 10 minutos) las confirmaciones pendientes en memoria por número telefónico. Este almacenamiento incluye:
+   - `estado`: Estado conversacional actual (`esperando_confirmacion`, `esperando_tarjeta`, `esperando_cuotas`, `esperando_reserva`).
+   - `tarjetas_temp` y `reservas_temp`: Listados numerados en caché para facilitar la selección.
+4. **Flujo Conversacional Interactivo**:
+   - **Registro de Gasto**: Al recibir un ticket/texto, el bot formatea los datos y pre-selecciona el medio sugerido. Invita al usuario a confirmar (`OK`) o cambiar el medio enviando:
+     - `1`: Cambia el pago a Efectivo/Transferencia (tipo `gasto_mensual`).
+     - `2`: Muestra un listado de todas las **Tarjetas** activas en base de datos. Al responder el número de tarjeta, solicita ingresar la cantidad de **Cuotas** antes de retornar al resumen.
+     - `3`: Muestra un listado de todas las **Reservas** activas en base de datos para financiar la compra directamente desde allí.
+     - En cualquier sub-menú, enviar `0` o `volver` retorna al paso anterior.
+   - **Comando Global `opciones`**: Enviar `opciones` o `ver pagos` en cualquier momento muestra una lista con todas las tarjetas y reservas activas registradas en el sistema.
+   - **Corrección**: Si el usuario envía texto libre con datos numéricos o aclaraciones, el bot re-analiza el mensaje y regenera el borrador.
 
 ---
 
@@ -516,6 +522,13 @@ Evitar estructuras basadas en anidamientos masivos de `div`.
 
 ### 7.4. Identificadores Únicos
 Todos los elementos interactivos o contenedores principales deben incorporar un atributo `id` descriptivo escrito en formato `kebab-case` bajo la regla: `[pagina]-[componente]-[accion]` (ej: `dashboard-btn-guardar`, `movimientos-tab-prestamos`).
+
+### 7.5. Panel de Sobres / Reservas
+El componente de Sobres y Reservas tiene un diseño de tarjeta personalizado con las siguientes especificaciones:
+- **Botonera**: Se ubica de forma permanente (siempre visible) en la parte inferior de la tarjeta, centrada horizontalmente, facilitando el acceso directo a fondear o reasignar saldos.
+- **Nombre de la Reserva**: Ocupa el 100% de la cabecera de la tarjeta para evitar recortes prematuros del texto.
+- **Saldo Acumulado**: Sigue las directrices de tamaño unificadas con la sección de Tarjetas de Crédito, empleando `text-lg font-black`.
+- **Información Mensual**: Los montos de "Asignado mes" y "Consumido mes" se presentan con salto de línea entre la etiqueta y el valor, manteniendo los colores semánticos correspondientes (verde para asignación y rojo para consumos).
 
 ---
 
