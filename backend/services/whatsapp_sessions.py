@@ -16,7 +16,8 @@ def guardar_pendiente(
     datos: dict, 
     estado: str = "esperando_confirmacion", 
     tarjetas_temp: list = None, 
-    reservas_temp: list = None
+    reservas_temp: list = None,
+    categorias_temp: list = None
 ) -> None:
     """Guarda un gasto pendiente de confirmación."""
     pendientes[telefono] = {
@@ -25,6 +26,7 @@ def guardar_pendiente(
         "estado": estado,
         "tarjetas_temp": tarjetas_temp or [],
         "reservas_temp": reservas_temp or [],
+        "categorias_temp": categorias_temp or [],
         "timestamp": datetime.now()
     }
 

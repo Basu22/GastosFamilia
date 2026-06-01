@@ -25,6 +25,8 @@ class MovimientoResponse(BaseModel):
     tarjeta_id: Optional[int] = None
     tarjeta_nombre: str
     tarjeta_color: Optional[str] = None
+    reserva_id: Optional[int] = None
+    reserva_nombre: Optional[str] = None
     descripcion: str
     categoria: Optional[str]
     monto_total: float

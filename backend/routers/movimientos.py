@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 from database import get_session
 from models.movimiento import Movimiento
 from models.tarjeta import Tarjeta
+from models.reserva import Reserva
 from schemas.movimiento import MovimientoCreate, MovimientoUpdate, MovimientoResponse, MovimientoPreview, CuotaPreview
 
 router = APIRouter(tags=["Movimientos"])
@@ -17,18 +18,23 @@ def calcular_fecha_ultima_cuota(primera: date, cuotas: int) -> date:
 
 @router.get("/{mov_id}", response_model=MovimientoResponse)
 def get_movimiento(mov_id: int, session: Session = Depends(get_session)):
-    query = select(Movimiento, Tarjeta).join(Tarjeta, isouter=True).where(Movimiento.id == mov_id)
+    query = select(Movimiento, Tarjeta, Reserva)\
+        .join(Tarjeta, isouter=True)\
+        .join(Reserva, isouter=True)\
+        .where(Movimiento.id == mov_id)
     resultado = session.exec(query).first()
     
     if not resultado:
         raise HTTPException(status_code=404, detail="Movimiento no encontrado")
     
-    mov, tarj = resultado
+    mov, tarj, res = resultado
     return MovimientoResponse(
         id=mov.id,
         tarjeta_id=mov.tarjeta_id,
         tarjeta_nombre=tarj.nombre if tarj else "N/A",
         tarjeta_color=tarj.color if tarj else None,
+        reserva_id=mov.reserva_id,
+        reserva_nombre=res.nombre if res else None,
         descripcion=mov.descripcion,
         categoria=mov.categoria,
         monto_total=mov.monto_total,
@@ -46,14 +52,16 @@ def get_movimientos(
     tarjeta_id: Optional[int] = None,
     session: Session = Depends(get_session)
 ):
-    query = select(Movimiento, Tarjeta).join(Tarjeta, isouter=True)
+    query = select(Movimiento, Tarjeta, Reserva)\
+        .join(Tarjeta, isouter=True)\
+        .join(Reserva, isouter=True)
     if tarjeta_id:
         query = query.where(Movimiento.tarjeta_id == tarjeta_id)
     
     resultados = session.exec(query).all()
     
     response = []
-    for mov, tarj in resultados:
+    for mov, tarj, res in resultados:
         # Filtrar por mes activo si se solicita
         if mes and anio:
             val_inicio = mov.fecha_primera_cuota.year * 12 + mov.fecha_primera_cuota.month
@@ -67,6 +75,8 @@ def get_movimientos(
             tarjeta_id=mov.tarjeta_id,
             tarjeta_nombre=tarj.nombre if tarj else "N/A",
             tarjeta_color=tarj.color if tarj else None,
+            reserva_id=mov.reserva_id,
+            reserva_nombre=res.nombre if res else None,
             descripcion=mov.descripcion,
             categoria=mov.categoria,
             monto_total=mov.monto_total,

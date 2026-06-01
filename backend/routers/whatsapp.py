@@ -14,6 +14,7 @@ from models.gasto_mensual import GastoMensual
 from models.compra_deseada import CompraDeseada
 from models.whatsapp_log import WhatsappLog
 from models.reserva import Reserva
+from models.config import Categoria
 from services import gemini_parser, whatsapp_media, whatsapp_sender, whatsapp_sessions
 
 VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "gastos_familia_webhook_2026")
@@ -107,53 +108,59 @@ async def recibir_mensaje(request: Request, background_tasks: BackgroundTasks):
     
     return {"status": "ok"}
 
-def formatear_resumen_gasto(datos: dict, tipo_pago: str = None, nombre_pago: str = None, cuotas: int = 1) -> str:
-    """
-    Formatea el resumen del gasto incluyendo la descripción, monto y forma de pago actual.
-    """
+def formatear_inicio_wizard(datos: dict) -> str:
+    """Genera el mensaje inicial solicitando cómo pagar el gasto."""
     monto = datos.get("monto")
     monto_str = f"${monto:,.0f}".replace(",", ".") if monto is not None else "No detectado"
     
     lineas = [
-        "✅ *Detalle del Gasto:*",
+        "✅ *Gasto Detectado:*",
+        f"📌 *Descripción:* {datos.get('descripcion', 'No detectada')}",
+        f"💰 *Monto:* {monto_str}",
+        "",
+        "*¿Cómo lo pagaste?*",
+        "1. Efectivo / Transferencia",
+        "2. Tarjeta de Crédito / Débito",
+        "3. Reserva de Ahorros",
+        "",
+        "❌ Respondé *NO* para cancelar."
+    ]
+    return "\n".join(lineas)
+
+
+def formatear_resumen_gasto(datos: dict) -> str:
+    """Genera el resumen completo para confirmación final (Paso 4)."""
+    monto = datos.get("monto")
+    monto_str = f"${monto:,.0f}".replace(",", ".") if monto is not None else "No detectado"
+    
+    lineas = [
+        "📝 *Resumen del Gasto para Guardar:*",
         f"📌 *Descripción:* {datos.get('descripcion', 'No detectada')}",
         f"💰 *Monto:* {monto_str}"
     ]
     
-    # Pre-cargar sugerencia de tarjeta de Gemini si no se especificó un tipo de pago explícito
-    if tipo_pago is None:
-        tarjeta_sug = datos.get("tarjeta_sugerida")
-        if tarjeta_sug:
-            tipo_pago = "tarjeta"
-            nombre_pago = tarjeta_sug
-            cuotas = int(datos.get("cuotas") or 1)
-        elif datos.get("reserva_id"):
-            tipo_pago = "reserva"
-            # Buscaremos el nombre del pago si es necesario, o lo dejamos como reserva
-            nombre_pago = datos.get("reserva_nombre") or "Reserva"
-        else:
-            tipo_pago = "efectivo"
-            
-    # Determinar qué forma de pago mostrar
-    if tipo_pago == "tarjeta":
-        lineas.append(f"💳 *Forma de pago:* Tarjeta - {nombre_pago}")
+    # Pago
+    tarjeta_id = datos.get("tarjeta_id")
+    reserva_id = datos.get("reserva_id")
+    
+    if tarjeta_id:
+        lineas.append(f"💳 *Pago:* Tarjeta - {datos.get('tarjeta_nombre')}")
+        cuotas = int(datos.get("cuotas") or 1)
         if cuotas > 1:
             monto_cuota = monto / cuotas if monto else 0
             lineas.append(f"📅 *Cuotas:* {cuotas} cuotas de ${monto_cuota:,.0f}".replace(",", "."))
         else:
             lineas.append("📅 *Cuotas:* 1 (Pago único / Contado)")
-    elif tipo_pago == "reserva":
-        lineas.append(f"💸 *Forma de pago:* Reserva - {nombre_pago}")
+    elif reserva_id:
+        lineas.append(f"💸 *Pago:* Reserva - {datos.get('reserva_nombre')}")
     else:
-        lineas.append("💵 *Forma de pago:* Efectivo / Transferencia")
+        lineas.append("💵 *Pago:* Efectivo / Transferencia")
         
-    lineas.append("\n*¿Qué querés hacer?*")
-    lineas.append("👍 Respondé *OK* para confirmar y guardar.")
-    lineas.append("💳 Envia *1*, *2* o *3* para cambiar la forma de pago:")
-    lineas.append("  *1.* Efectivo / Transferencia")
-    lineas.append("  *2.* Tarjetas")
-    lineas.append("  *3.* Reservas")
-    lineas.append("❌ Respondé *NO* para cancelar.")
+    # Categoría
+    lineas.append(f"🏷️ *Categoría:* {datos.get('categoria') or 'Sin Categoría'}")
+    
+    lineas.append("\n¿Confirmar y guardar? Respondé *OK* para guardar, o enviá una corrección de texto.")
+    lineas.append("0. ⬅️ Volver")
     
     return "\n".join(lineas)
 
@@ -207,7 +214,7 @@ async def procesar_mensaje(telefono: str, message: dict):
                 return
             
             if pendiente:
-                estado = pendiente.get("estado", "esperando_confirmacion")
+                estado = pendiente.get("estado", "esperando_pago_tipo")
                 
                 # --- CANCELAR ---
                 if texto_upper in ["NO", "CANCELAR", "CANCEL", "CHAU"]:
@@ -225,45 +232,22 @@ async def procesar_mensaje(telefono: str, message: dict):
                             session.commit()
                     return
                 
-                # --- ESTADO: esperando_confirmacion ---
-                if estado == "esperando_confirmacion":
-                    # Confirmación
-                    if texto_upper in ["OK", "SI", "SÍ", "CONFIRMAR", "GUARDAR"]:
-                        tipo_actual = pendiente["datos"].get("tipo", pendiente["tipo"])
-                        await guardar_en_db(telefono, tipo_actual, pendiente["datos"])
-                        with Session(engine) as session:
-                            log = session.exec(
-                                select(WhatsappLog)
-                                .where(WhatsappLog.telefono == telefono, WhatsappLog.estado == "pendiente")
-                                .order_by(WhatsappLog.creado_en.desc())
-                            ).first()
-                            if log:
-                                log.estado = "confirmado"
-                                session.add(log)
-                                session.commit()
-                        return
-                    
-                    # Cambio a Efectivo/Transferencia
-                    elif texto == "1":
+                # --- ESTADO: esperando_pago_tipo ---
+                if estado == "esperando_pago_tipo":
+                    # 1. Efectivo / Transferencia
+                    if texto == "1":
                         pendiente["datos"]["tipo"] = "gasto_mensual"
                         pendiente["datos"]["tarjeta_id"] = None
-                        pendiente["datos"]["tarjeta_sugerida"] = None
+                        pendiente["datos"]["tarjeta_nombre"] = None
                         pendiente["datos"]["reserva_id"] = None
+                        pendiente["datos"]["reserva_nombre"] = None
                         pendiente["datos"]["cuotas"] = 1
                         
-                        confirmacion = formatear_resumen_gasto(pendiente["datos"], tipo_pago="efectivo")
-                        await whatsapp_sender.enviar_mensaje(telefono, confirmacion)
-                        
-                        # Guardar actualización en sesión
-                        whatsapp_sessions.guardar_pendiente(
-                            telefono, 
-                            "gasto_mensual", 
-                            pendiente["datos"], 
-                            estado="esperando_confirmacion"
-                        )
+                        # Ir a selección de Categorías
+                        await mostrar_menu_categorias(telefono, pendiente)
                         return
                     
-                    # Cambio a Tarjetas
+                    # 2. Tarjeta
                     elif texto == "2":
                         with Session(engine) as session:
                             tarjetas = session.exec(select(Tarjeta).where(Tarjeta.activa == True)).all()
@@ -290,7 +274,7 @@ async def procesar_mensaje(telefono: str, message: dict):
                         await whatsapp_sender.enviar_mensaje(telefono, "\n".join(lineas))
                         return
                     
-                    # Cambio a Reservas
+                    # 3. Reserva de Ahorros
                     elif texto == "3":
                         with Session(engine) as session:
                             reservas = session.exec(select(Reserva).where(Reserva.activa == True)).all()
@@ -317,57 +301,16 @@ async def procesar_mensaje(telefono: str, message: dict):
                         await whatsapp_sender.enviar_mensaje(telefono, "\n".join(lineas))
                         return
                     
-                    # Si no es un comando de menú y mandó texto, es una corrección
+                    # Cualquier otra cosa es una corrección
                     else:
-                        await whatsapp_sender.enviar_mensaje(telefono, "⏳ Procesando corrección...")
-                        try:
-                            datos_viejos = pendiente["datos"]
-                            contexto = f"Datos anteriores: {datos_viejos}. Corrección del usuario: {texto}"
-                            nuevos_datos = await gemini_parser.analizar_contenido(b"", "text/plain", contexto)
-                            
-                            tipo_nuevo = nuevos_datos.get("tipo", "gasto_mensual")
-                            confirmacion = formatear_resumen_gasto(nuevos_datos)
-                            await whatsapp_sender.enviar_mensaje(telefono, confirmacion)
-                            
-                            whatsapp_sessions.guardar_pendiente(telefono, tipo_nuevo, nuevos_datos, estado="esperando_confirmacion")
-                            
-                            with Session(engine) as session:
-                                log = session.exec(
-                                    select(WhatsappLog)
-                                    .where(WhatsappLog.telefono == telefono, WhatsappLog.estado == "pendiente")
-                                    .order_by(WhatsappLog.creado_en.desc())
-                                ).first()
-                                if log:
-                                    log.mensaje_recibido = f"Corrección: {texto}"
-                                    log.datos_extraidos = json.dumps(nuevos_datos)
-                                    log.respuesta_enviada = confirmacion
-                                    session.add(log)
-                                    session.commit()
-                        except Exception as e:
-                            await whatsapp_sender.enviar_mensaje(telefono, f"❌ No pude procesar la corrección: {e}")
+                        await procesar_corrección_gasto(telefono, pendiente, texto)
                         return
                 
                 # --- ESTADO: esperando_tarjeta ---
                 elif estado == "esperando_tarjeta":
                     if texto == "0" or texto_upper == "VOLVER":
-                        t_id = pendiente["datos"].get("tarjeta_id")
-                        t_nom = pendiente["datos"].get("tarjeta_nombre")
-                        r_id = pendiente["datos"].get("reserva_id")
-                        r_nom = pendiente["datos"].get("reserva_nombre")
-                        cuotas = pendiente["datos"].get("cuotas", 1)
-                        
-                        tipo_pago = "tarjeta" if t_id else ("reserva" if r_id else "efectivo")
-                        nombre_pago = t_nom if t_id else (r_nom if r_id else None)
-                        
-                        confirmacion = formatear_resumen_gasto(pendiente["datos"], tipo_pago=tipo_pago, nombre_pago=nombre_pago, cuotas=cuotas)
-                        await whatsapp_sender.enviar_mensaje(telefono, confirmacion)
-                        
-                        whatsapp_sessions.guardar_pendiente(
-                            telefono,
-                            pendiente["tipo"],
-                            pendiente["datos"],
-                            estado="esperando_confirmacion"
-                        )
+                        # Volver al inicio del wizard
+                        await volver_a_inicio_wizard(telefono, pendiente)
                         return
                     
                     try:
@@ -392,7 +335,7 @@ async def procesar_mensaje(telefono: str, message: dict):
                             
                             await whatsapp_sender.enviar_mensaje(
                                 telefono,
-                                f"💳 Elegiste *{selected_card['nombre']}*.\n\n📅 *¿En cuántas cuotas?*\nIngresá el número de cuotas (ej. *1* para pago único, *3*, *6*, *12*).\n\n0. ⬅️ Volver"
+                                f"💳 Elegiste *{selected_card['nombre']}*.\n\n📅 *¿En cuántas cuotas?*\nIngresá el número de cuotas (ej. *1* para contado, *3*, *6*, *12*).\n\n0. ⬅️ Volver"
                             )
                         else:
                             raise ValueError
@@ -406,6 +349,7 @@ async def procesar_mensaje(telefono: str, message: dict):
                 # --- ESTADO: esperando_cuotas ---
                 elif estado == "esperando_cuotas":
                     if texto == "0" or texto_upper == "VOLVER":
+                        # Volver a listar tarjetas
                         tarjetas_temp = pendiente.get("tarjetas_temp", [])
                         whatsapp_sessions.guardar_pendiente(
                             telefono,
@@ -428,20 +372,8 @@ async def procesar_mensaje(telefono: str, message: dict):
                         if cuotas >= 1:
                             pendiente["datos"]["cuotas"] = cuotas
                             
-                            confirmacion = formatear_resumen_gasto(
-                                pendiente["datos"],
-                                tipo_pago="tarjeta",
-                                nombre_pago=pendiente["datos"]["tarjeta_nombre"],
-                                cuotas=cuotas
-                            )
-                            await whatsapp_sender.enviar_mensaje(telefono, confirmacion)
-                            
-                            whatsapp_sessions.guardar_pendiente(
-                                telefono,
-                                "movimiento",
-                                pendiente["datos"],
-                                estado="esperando_confirmacion"
-                            )
+                            # Ir a selección de Categorías
+                            await mostrar_menu_categorias(telefono, pendiente)
                         else:
                             raise ValueError
                     except ValueError:
@@ -454,24 +386,7 @@ async def procesar_mensaje(telefono: str, message: dict):
                 # --- ESTADO: esperando_reserva ---
                 elif estado == "esperando_reserva":
                     if texto == "0" or texto_upper == "VOLVER":
-                        t_id = pendiente["datos"].get("tarjeta_id")
-                        t_nom = pendiente["datos"].get("tarjeta_nombre")
-                        r_id = pendiente["datos"].get("reserva_id")
-                        r_nom = pendiente["datos"].get("reserva_nombre")
-                        cuotas = pendiente["datos"].get("cuotas", 1)
-                        
-                        tipo_pago = "tarjeta" if t_id else ("reserva" if r_id else "efectivo")
-                        nombre_pago = t_nom if t_id else (r_nom if r_id else None)
-                        
-                        confirmacion = formatear_resumen_gasto(pendiente["datos"], tipo_pago=tipo_pago, nombre_pago=nombre_pago, cuotas=cuotas)
-                        await whatsapp_sender.enviar_mensaje(telefono, confirmacion)
-                        
-                        whatsapp_sessions.guardar_pendiente(
-                            telefono,
-                            pendiente["tipo"],
-                            pendiente["datos"],
-                            estado="esperando_confirmacion"
-                        )
+                        await volver_a_inicio_wizard(telefono, pendiente)
                         return
                     
                     try:
@@ -487,19 +402,8 @@ async def procesar_mensaje(telefono: str, message: dict):
                             pendiente["datos"]["cuotas"] = 1
                             pendiente["datos"]["tipo"] = "movimiento"
                             
-                            confirmacion = formatear_resumen_gasto(
-                                pendiente["datos"],
-                                tipo_pago="reserva",
-                                nombre_pago=selected_reserva["nombre"]
-                            )
-                            await whatsapp_sender.enviar_mensaje(telefono, confirmacion)
-                            
-                            whatsapp_sessions.guardar_pendiente(
-                                telefono,
-                                "movimiento",
-                                pendiente["datos"],
-                                estado="esperando_confirmacion"
-                            )
+                            # Ir a selección de Categorías
+                            await mostrar_menu_categorias(telefono, pendiente)
                         else:
                             raise ValueError
                     except ValueError:
@@ -508,6 +412,102 @@ async def procesar_mensaje(telefono: str, message: dict):
                             "⚠️ Opción inválida. Respondé con el número de reserva (1, 2...) o 0 para volver."
                         )
                     return
+
+                # --- ESTADO: esperando_categoria ---
+                elif estado == "esperando_categoria":
+                    if texto == "0" or texto_upper == "VOLVER":
+                        # Volver al paso de pago previo
+                        t_id = pendiente["datos"].get("tarjeta_id")
+                        r_id = pendiente["datos"].get("reserva_id")
+                        
+                        if t_id:
+                            # Volver a cuotas
+                            whatsapp_sessions.guardar_pendiente(
+                                telefono,
+                                "movimiento",
+                                pendiente["datos"],
+                                estado="esperando_cuotas",
+                                tarjetas_temp=pendiente.get("tarjetas_temp")
+                            )
+                            await whatsapp_sender.enviar_mensaje(
+                                telefono,
+                                f"📅 *¿En cuántas cuotas?*\nIngresá el número de cuotas o 0 para volver."
+                            )
+                        elif r_id:
+                            # Volver a reservas
+                            reservas_temp = pendiente.get("reservas_temp")
+                            whatsapp_sessions.guardar_pendiente(
+                                telefono,
+                                "movimiento",
+                                pendiente["datos"],
+                                estado="esperando_reserva",
+                                reservas_temp=reservas_temp
+                            )
+                            lineas = ["💸 *Seleccioná la Reserva:*"]
+                            for idx, r in enumerate(reservas_temp, 1):
+                                lineas.append(f"{idx}. {r['nombre']}")
+                            lineas.append("\n0. ⬅️ Volver")
+                            await whatsapp_sender.enviar_mensaje(telefono, "\n".join(lineas))
+                        else:
+                            # Volver al inicio del wizard (Efectivo)
+                            await volver_a_inicio_wizard(telefono, pendiente)
+                        return
+                    
+                    try:
+                        idx = int(texto) - 1
+                        categorias_temp = pendiente.get("categorias_temp", [])
+                        if 0 <= idx < len(categorias_temp):
+                            selected_cat = categorias_temp[idx]
+                            
+                            pendiente["datos"]["categoria"] = selected_cat["nombre"]
+                            
+                            # Pasar a confirmación final
+                            whatsapp_sessions.guardar_pendiente(
+                                telefono,
+                                pendiente["tipo"],
+                                pendiente["datos"],
+                                estado="esperando_confirmacion",
+                                tarjetas_temp=pendiente.get("tarjetas_temp"),
+                                reservas_temp=pendiente.get("reservas_temp"),
+                                categorias_temp=categorias_temp
+                            )
+                            
+                            confirmacion = formatear_resumen_gasto(pendiente["datos"])
+                            await whatsapp_sender.enviar_mensaje(telefono, confirmacion)
+                        else:
+                            raise ValueError
+                    except ValueError:
+                        await whatsapp_sender.enviar_mensaje(
+                            telefono,
+                            "⚠️ Opción inválida. Seleccioná una categoría enviando su número o 0 para volver."
+                        )
+                    return
+
+                # --- ESTADO: esperando_confirmacion ---
+                elif estado == "esperando_confirmacion":
+                    if texto == "0" or texto_upper == "VOLVER":
+                        # Volver a selección de categoría
+                        await mostrar_menu_categorias(telefono, pendiente)
+                        return
+                        
+                    if texto_upper in ["OK", "SI", "SÍ", "CONFIRMAR", "GUARDAR"]:
+                        tipo_actual = pendiente["datos"].get("tipo", pendiente["tipo"])
+                        await guardar_en_db(telefono, tipo_actual, pendiente["datos"])
+                        with Session(engine) as session:
+                            log = session.exec(
+                                select(WhatsappLog)
+                                .where(WhatsappLog.telefono == telefono, WhatsappLog.estado == "pendiente")
+                                .order_by(WhatsappLog.creado_en.desc())
+                            ).first()
+                            if log:
+                                log.estado = "confirmado"
+                                session.add(log)
+                                session.commit()
+                        return
+                    else:
+                        # Tratar como corrección de texto
+                        await procesar_corrección_gasto(telefono, pendiente, texto)
+                        return
 
             # No hay pendiente, es un mensaje nuevo → Iniciar flujo de extracción
             print(f"🤖 Procesando nuevo mensaje de texto: '{texto}'")
@@ -531,18 +531,111 @@ async def procesar_mensaje(telefono: str, message: dict):
         traceback.print_exc()
 
 
+async def mostrar_menu_categorias(telefono: str, pendiente: dict):
+    """Obtiene y envía la lista de categorías activas para su selección."""
+    with Session(engine) as session:
+        categorias = session.exec(select(Categoria).where(Categoria.activa == True)).all()
+        
+    if not categorias:
+        # Si no hay categorías, saltar directo a confirmación
+        pendiente["datos"]["categoria"] = None
+        whatsapp_sessions.guardar_pendiente(
+            telefono,
+            pendiente["tipo"],
+            pendiente["datos"],
+            estado="esperando_confirmacion",
+            tarjetas_temp=pendiente.get("tarjetas_temp"),
+            reservas_temp=pendiente.get("reservas_temp")
+        )
+        confirmacion = formatear_resumen_gasto(pendiente["datos"])
+        await whatsapp_sender.enviar_mensaje(telefono, confirmacion)
+        return
+        
+    categorias_temp = [{"id": c.id, "nombre": c.nombre} for c in categorias]
+    
+    whatsapp_sessions.guardar_pendiente(
+        telefono,
+        pendiente["tipo"],
+        pendiente["datos"],
+        estado="esperando_categoria",
+        tarjetas_temp=pendiente.get("tarjetas_temp"),
+        reservas_temp=pendiente.get("reservas_temp"),
+        categorias_temp=categorias_temp
+    )
+    
+    lineas = ["🏷️ *Seleccioná la Categoría:*"]
+    for idx, c in enumerate(categorias_temp, 1):
+        lineas.append(f"{idx}. {c['nombre']}")
+    lineas.append("\n0. ⬅️ Volver")
+    
+    await whatsapp_sender.enviar_mensaje(telefono, "\n".join(lineas))
+
+
+async def volver_a_inicio_wizard(telefono: str, pendiente: dict):
+    """Regresa al primer paso del asistente guiado (selección de pago)."""
+    whatsapp_sessions.guardar_pendiente(
+        telefono,
+        pendiente["tipo"],
+        pendiente["datos"],
+        estado="esperando_pago_tipo"
+    )
+    msg_wizard = formatear_inicio_wizard(pendiente["datos"])
+    await whatsapp_sender.enviar_mensaje(telefono, msg_wizard)
+
+
+async def procesar_corrección_gasto(telefono: str, pendiente: dict, texto: str):
+    """Envía la corrección a Gemini, actualiza los datos y reinicia el wizard."""
+    await whatsapp_sender.enviar_mensaje(telefono, "⏳ Procesando corrección...")
+    try:
+        datos_viejos = pendiente["datos"]
+        contexto = f"Datos anteriores: {datos_viejos}. Corrección del usuario: {texto}"
+        nuevos_datos = await gemini_parser.analizar_contenido(b"", "text/plain", contexto)
+        
+        tipo_nuevo = nuevos_datos.get("tipo", "gasto_mensual")
+        
+        # Reiniciar al paso 1 con los datos nuevos corregidos
+        whatsapp_sessions.guardar_pendiente(
+            telefono, 
+            tipo_nuevo, 
+            nuevos_datos, 
+            estado="esperando_pago_tipo"
+        )
+        
+        msg_wizard = formatear_inicio_wizard(nuevos_datos)
+        await whatsapp_sender.enviar_mensaje(telefono, msg_wizard)
+        
+        # Actualizar log
+        with Session(engine) as session:
+            log = session.exec(
+                select(WhatsappLog)
+                .where(WhatsappLog.telefono == telefono, WhatsappLog.estado == "pendiente")
+                .order_by(WhatsappLog.creado_en.desc())
+            ).first()
+            if log:
+                log.mensaje_recibido = f"Corrección: {texto}"
+                log.datos_extraidos = json.dumps(nuevos_datos)
+                log.respuesta_enviada = msg_wizard
+                session.add(log)
+                session.commit()
+    except Exception as e:
+        await whatsapp_sender.enviar_mensaje(telefono, f"❌ No pude procesar la corrección: {e}")
+
+
 async def analizar_y_preguntar(telefono: str, contenido: bytes, mime_type: str, texto: str = ""):
-    """Analiza con Gemini y envía la respuesta de confirmación al usuario."""
+    """Analiza con Gemini y envía la respuesta del paso 1 del wizard."""
     try:
         datos = await gemini_parser.analizar_contenido(contenido, mime_type, texto)
         tipo = datos.get("tipo", "gasto_mensual")
         
-        whatsapp_sessions.guardar_pendiente(telefono, tipo, datos, estado="esperando_confirmacion")
+        # Iniciar sesión en el primer paso (esperando_pago_tipo)
+        whatsapp_sessions.guardar_pendiente(telefono, tipo, datos, estado="esperando_pago_tipo")
         
         if tipo == "compra_deseada":
+            # Las compras deseadas (wishlist) no tienen wizard de pago, confirman directo
             confirmacion = gemini_parser.formatear_confirmacion(datos)
+            whatsapp_sessions.guardar_pendiente(telefono, tipo, datos, estado="esperando_confirmacion")
         else:
-            confirmacion = formatear_resumen_gasto(datos)
+            confirmacion = formatear_inicio_wizard(datos)
             
         await whatsapp_sender.enviar_mensaje(telefono, confirmacion)
         
@@ -607,6 +700,7 @@ async def guardar_en_db(telefono: str, tipo: str, datos: dict):
                     fecha_ultima_cuota=fecha_fin,
                     tarjeta_id=tarjeta_id,
                     reserva_id=reserva_id,
+                    categoria=datos.get("categoria"),
                     creado_por="whatsapp",
                     notas=f"Cargado vía WhatsApp por {telefono}"
                 )
@@ -651,6 +745,7 @@ async def guardar_en_db(telefono: str, tipo: str, datos: dict):
                     mes=hoy.month,
                     anio=hoy.year,
                     es_fijo=datos.get("es_fijo", False),
+                    categoria=datos.get("categoria"),
                     notas=f"Cargado vía WhatsApp por {telefono}"
                 )
                 session.add(nuevo)

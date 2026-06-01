@@ -730,7 +730,7 @@ export default function Movimientos() {
                   <div onClick={() => handleEdit(item)}>
                     <div className="flex flex-col gap-0.5">
                       <p className="text-[10px] text-gray-400 font-medium uppercase">
-                        {activeTab === 'tarjetas' ? (item.tarjeta_nombre || 'Sin Tarjeta') : activeTab === 'prestamos' ? (item.entidad || 'Sin Entidad') : `${item.mes}/${item.anio}`}
+                        {activeTab === 'tarjetas' ? (item.reserva_nombre ? `Reserva: ${item.reserva_nombre}` : (item.tarjeta_nombre || 'Sin Tarjeta')) : activeTab === 'prestamos' ? (item.entidad || 'Sin Entidad') : `${item.mes}/${item.anio}`}
                       </p>
                       {activeTab === 'tarjetas' && item.fecha_primera_cuota && item.fecha_ultima_cuota && (
                         <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">
@@ -743,7 +743,13 @@ export default function Movimientos() {
                         {formatARS(activeTab === 'tarjetas' || activeTab === 'prestamos' ? item.monto_total : item.monto)}
                       </p>
                       {(activeTab === 'tarjetas' || activeTab === 'prestamos') && (
-                        <span className="text-[10px] font-bold text-blue-500">{item.cuotas} CUOTAS</span>
+                        item.reserva_nombre ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-900/50 dark:text-emerald-400">
+                            RESERVA
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-blue-500">{item.cuotas} CUOTAS</span>
+                        )
                       )}
                     </div>
                   </div>
