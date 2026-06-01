@@ -1,20 +1,23 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getSaldos, SaldoReserva } from '../../api/reservas';
-import { Wallet, ArrowRightLeft, ArrowDownCircle } from 'lucide-react';
+import { Wallet, ArrowRightLeft, ArrowDownCircle, Eye } from 'lucide-react';
 import { formatARS } from '../../utils/format';
 import { ModalAjusteReserva } from './ModalAjusteReserva';
 import { ModalFondeoReserva } from './ModalFondeoReserva';
+import ModalReservaDetalle from './ModalReservaDetalle';
 
 interface Props {
   mes: number;
   anio: number;
   disponible: number;
+  movimientos?: any[];
 }
 
-export const PanelReservas: React.FC<Props> = ({ mes, anio, disponible }) => {
+export const PanelReservas: React.FC<Props> = ({ mes, anio, disponible, movimientos }) => {
   const [reservaAjuste, setReservaAjuste] = useState<SaldoReserva | null>(null);
   const [reservaFondeo, setReservaFondeo] = useState<SaldoReserva | null>(null);
+  const [reservaDetalle, setReservaDetalle] = useState<SaldoReserva | null>(null);
 
   const { data: reservas, isLoading } = useQuery({
     queryKey: ['saldos-reservas', mes, anio],
@@ -77,6 +80,13 @@ export const PanelReservas: React.FC<Props> = ({ mes, anio, disponible }) => {
                 >
                   <ArrowRightLeft size={18} />
                 </button>
+                <button 
+                  onClick={() => setReservaDetalle(res)}
+                  className="p-2.5 bg-blue-50 dark:bg-blue-900/30 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 transition-all active:scale-95"
+                  title="Ver detalle de movimientos"
+                >
+                  <Eye size={18} />
+                </button>
               </div>
             </div>
           );
@@ -100,6 +110,14 @@ export const PanelReservas: React.FC<Props> = ({ mes, anio, disponible }) => {
           anio={anio}
           disponible={disponible}
           onClose={() => setReservaFondeo(null)}
+        />
+      )}
+
+      {reservaDetalle && (
+        <ModalReservaDetalle
+          reserva={reservaDetalle}
+          movimientos={movimientos || []}
+          onClose={() => setReservaDetalle(null)}
         />
       )}
     </div>

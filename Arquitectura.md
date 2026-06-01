@@ -525,10 +525,14 @@ Todos los elementos interactivos o contenedores principales deben incorporar un 
 
 ### 7.5. Panel de Sobres / Reservas
 El componente de Sobres y Reservas tiene un diseño de tarjeta personalizado con las siguientes especificaciones:
-- **Botonera**: Se ubica de forma permanente (siempre visible) en la parte inferior de la tarjeta, centrada horizontalmente, facilitando el acceso directo a fondear o reasignar saldos.
+- **Botonera**: Se ubica de forma permanente (siempre visible) en la parte inferior de la tarjeta, centrada horizontalmente. Cuenta con tres botones:
+  1. *Fondeo* (ícono verde): Abre el modal de fondeo de la reserva.
+  2. *Ajuste* (ícono gris): Abre el modal de reasignación o liberación de saldo.
+  3. *Ver Detalle* (ícono de ojo azul): Abre un modal detallado de movimientos (ver item siguiente).
 - **Nombre de la Reserva**: Ocupa el 100% de la cabecera de la tarjeta para evitar recortes prematuros del texto.
 - **Saldo Acumulado**: Sigue las directrices de tamaño unificadas con la sección de Tarjetas de Crédito, empleando `text-lg font-black`.
 - **Información Mensual**: Los montos de "Asignado mes" y "Consumido mes" se presentan con salto de línea entre la etiqueta y el valor, manteniendo los colores semánticos correspondientes (verde para asignación y rojo para consumos).
+- **Modal de Detalle (ModalReservaDetalle)**: Al presionar el botón de ver detalle, despliega una vista modal que lista de manera segregada todos los movimientos del mes asociados a la reserva (tanto ingresos/fondeos en verde como consumos/gastos en rojo), incluyendo un pie con los totales asignados y consumidos del período y el saldo actual de la misma.
 
 ---
 

@@ -323,7 +323,7 @@ export default function Dashboard() {
 
           {/* PANEL DE RESERVAS */}
           <div className="mx-4 lg:mx-0">
-            <PanelReservas mes={mes} anio={anio} disponible={data.ahorro_proyectado} />
+            <PanelReservas mes={mes} anio={anio} disponible={data.ahorro_proyectado} movimientos={data.movimientos_mes} />
           </div>
 
           {/* MÓDULO ARCA */}
