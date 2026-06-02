@@ -224,6 +224,11 @@ export default function ModalTarjetaDetalle({ detailData, mesActual, anioActual,
                   
                   <div className="space-y-3">
                     {group.items.map(renderMovementItem)}
+                    {group.items.length === 0 && (
+                      <p className="text-[10px] text-gray-500 italic px-2 py-1 select-none">
+                        Sin consumos cargados este mes
+                      </p>
+                    )}
                   </div>
                 </div>
               );
@@ -254,7 +259,7 @@ export default function ModalTarjetaDetalle({ detailData, mesActual, anioActual,
                         }`}
                       >
                         <Plus size={12} strokeWidth={3} className={`transition-transform duration-350 ${showCreate ? 'rotate-45' : ''}`} />
-                        {showCreate ? 'Cerrar' : `Agregar ${activeName === 'ingreso' ? 'Ingreso' : 'Egreso'}`}
+                        {showCreate ? 'Cerrar' : `Agregar ${activeName === 'ingreso' ? 'Ingreso' : 'Gasto'}`}
                       </button>
                     </div>
 

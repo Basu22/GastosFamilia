@@ -119,7 +119,7 @@ export default function Dashboard() {
           { key: 'cuotas', label: 'Cuotas de Tarjeta', items: cuotas },
           { key: 'fijos', label: 'Gastos Fijos', items: fijos },
           { key: 'variables', label: 'Gastos Variables', items: variables },
-        ].filter(g => g.items.length > 0)
+        ]
       };
     } else if (activeDetail.name === 'efectivo') {
       const items: any[] = [];
@@ -558,7 +558,7 @@ export default function Dashboard() {
             </h3>
             <div className="h-[250px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.cuotas_por_tarjeta} layout="vertical" margin={{ left: -20 }}>
+                <BarChart data={data.cuotas_por_tarjeta.filter((t: any) => t.monto > 0)} layout="vertical" margin={{ left: -20 }}>
                   <XAxis type="number" hide />
                   <YAxis 
                     dataKey="nombre" 
@@ -583,7 +583,7 @@ export default function Dashboard() {
                     }} 
                   />
                   <Bar dataKey="monto" radius={[0, 12, 12, 0]} barSize={20}>
-                    {data.cuotas_por_tarjeta.map((entry: any, index: number) => (
+                    {data.cuotas_por_tarjeta.filter((t: any) => t.monto > 0).map((entry: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Bar>

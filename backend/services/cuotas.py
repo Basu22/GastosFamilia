@@ -96,8 +96,8 @@ def get_cuotas_por_tarjeta(mes: int, anio: int, session: Session) -> List[Dict[s
                 if g_val <= mes_actual_val <= g_fin_val:
                     incluir = True
             else:
-                # Gastos variados con tarjeta se pagan al mes siguiente
-                if mes_actual_val == g_val + 1:
+                # Gastos variados con tarjeta se pagan en el mismo mes que fueron cargados
+                if mes_actual_val == g_val:
                     incluir = True
                     
             if incluir:
@@ -112,13 +112,12 @@ def get_cuotas_por_tarjeta(mes: int, anio: int, session: Session) -> List[Dict[s
         
         total_tarjeta = monto_cuotas + monto_gastos
         
-        if total_tarjeta > 0:
-            resultado.append({
-                "tarjeta_id": tarjeta.id,
-                "nombre": tarjeta.nombre,
-                "monto": round(float(total_tarjeta), 2),
-                "color": tarjeta.color,
-                "detalle": detalle
-            })
+        resultado.append({
+            "tarjeta_id": tarjeta.id,
+            "nombre": tarjeta.nombre,
+            "monto": round(float(total_tarjeta), 2),
+            "color": tarjeta.color,
+            "detalle": detalle
+        })
             
     return resultado

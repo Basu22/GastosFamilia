@@ -74,15 +74,21 @@ export default function InlineCreateForm({ tipo, mes, anio, onClose, defaultMedi
     mutationFn: async (data: any) => {
       let tarjeta_id = null;
       let reserva_id = null;
-      if (data.medio_pago) {
-        if (data.medio_pago.startsWith('tarjeta_')) tarjeta_id = parseInt(data.medio_pago.split('_')[1]);
-        if (data.medio_pago.startsWith('reserva_')) reserva_id = parseInt(data.medio_pago.split('_')[1]);
+      const finalMedioPago = data.medio_pago || defaultMedioPago;
+      if (finalMedioPago) {
+        if (finalMedioPago.startsWith('tarjeta_')) tarjeta_id = parseInt(finalMedioPago.split('_')[1]);
+        if (finalMedioPago.startsWith('reserva_')) reserva_id = parseInt(finalMedioPago.split('_')[1]);
       }
+
+      let es_fijo = data.es_fijo;
+      if (tipo === 'gasto_fijo') es_fijo = true;
+      if (tipo === 'gasto_variado') es_fijo = false;
 
       const payload = { 
         ...data, 
         tarjeta_id,
-        reserva_id
+        reserva_id,
+        es_fijo
       };
       delete payload.medio_pago;
       
@@ -218,7 +224,10 @@ export default function InlineCreateForm({ tipo, mes, anio, onClose, defaultMedi
               <label className="text-[10px] font-bold text-gray-400 uppercase">Medio de Pago</label>
               <select 
                 {...register('medio_pago')}
-                className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                disabled={!!defaultMedioPago}
+                className={`w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-blue-500 outline-none ${
+                  defaultMedioPago ? 'pointer-events-none opacity-50 bg-gray-50 dark:bg-neutral-800' : ''
+                }`}
               >
                 <option value="">Efectivo / Transf.</option>
                 {tarjetas?.map((t: any) => (
@@ -232,8 +241,16 @@ export default function InlineCreateForm({ tipo, mes, anio, onClose, defaultMedi
           )}
 
           {(tipo !== 'tarjeta' && tipo !== 'prestamo') && (
-            <div className="flex items-center gap-3 h-10 mt-4">
-              <input type="checkbox" {...register('es_fijo')} id="check-fijo-new" className="w-5 h-5 rounded border-gray-300" />
+            <div className={`flex items-center gap-3 h-10 mt-4 ${
+              (tipo === 'gasto_fijo' || tipo === 'gasto_variado') ? 'pointer-events-none opacity-50' : ''
+            }`}>
+              <input 
+                type="checkbox" 
+                {...register('es_fijo')} 
+                disabled={tipo === 'gasto_fijo' || tipo === 'gasto_variado'}
+                id="check-fijo-new" 
+                className="w-5 h-5 rounded border-gray-300" 
+              />
               <label htmlFor="check-fijo-new" className="text-xs font-bold text-gray-600 dark:text-neutral-400 cursor-pointer">Valor Fijo Mensual</label>
             </div>
           )}

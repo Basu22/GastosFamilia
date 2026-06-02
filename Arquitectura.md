@@ -538,6 +538,7 @@ El componente de Sobres y Reservas tiene un diseño de tarjeta personalizado con
 
 ### 7.6. Módulo de Filtro (Visualización y Detalle de Movimientos)
 El antiguo bloque "A Pagar" fue reestructurado y expandido bajo el nombre de **"Filtro"** en el [Dashboard](file:///home/flink/Documentos/Gastos%20Familia/frontend/src/pages/Dashboard.tsx):
+- **Consolidación y Simplificación**: Se eliminó y ocultó por completo el antiguo bloque inferior de "Detalle de Movimientos" (que mostraba listas colapsables duplicadas de ingresos, tarjetas, efectivo y reservas). Ahora, toda la visualización detallada, edición y adición de consumos está centralizada de forma exclusiva dentro del modal de este módulo de filtro (`ModalTarjetaDetalle`), mejorando la usabilidad y la limpieza visual en dispositivos móviles y de escritorio.
 - **Estructura de Visualización**:
   - **Por Tarjeta**: Muestra el total consolidado de tarjetas de crédito ordenado bajo el encabezado "A PAGAR". Las tarjetas se visualizan en una grilla simétrica de **3 columnas por fila** en pantallas grandes.
   - **Por Movimiento**: Agrupa e identifica todos los tipos de movimientos (Ingresos, Cuotas de Tarjeta, Gastos Fijos, Gastos Variables, y Efectivo/Transferencias) en una grilla de 3 columnas para optimizar la organización.
