@@ -155,6 +155,39 @@ Usa la imagen base `python:3.11-slim`. Instala `gcc` (para compilar bcrypt y lib
 - **`startup.sh`**: Script de inicialización de la app. Restablece la base de datos y ejecuta importaciones iniciales desde un archivo histórico de Excel.
 - **`check_integrity.sh`**: Script pre-deploy para verificar que no falten archivos clave en backend y frontend, y ejecuta el chequeo de tipos de TypeScript en el frontend (`npx tsc --noEmit`).
 
+### 3.3. Sincronización de Base de Datos (Producción → Desarrollo)
+Para facilitar el testing con datos productivos reales sin modificar la Raspberry Pi, el sistema implementa un mecanismo de sincronización HTTP integrado en la página de **Configuración** del frontend, bajo la pestaña **"Base de Datos"**.
+
+#### Flujo de Sincronización
+```
+Backend LOCAL (dev)                          Backend PROD (RPI)
+        │                                           │
+        │  POST /admin/sync-db                      │
+        │  ───────────────────►                     │
+        │       HTTP GET /admin/db-export            │
+        │       (con X-Admin-Token header)           │
+        │  ◄───────────────────                     │
+        │       gastos.db (binary stream)            │
+        │                                           │
+        ├── 1. Crea backup local (timestamp)        │
+        ├── 2. Reemplaza gastos.db                  │
+        ├── 3. Limpia backups > 3                   │
+        └── 4. Toca main.py → uvicorn reload        │
+```
+
+#### Endpoints del Router de Administración (`/admin`)
+| Método | Endpoint | Descripción | Entorno |
+|:---|:---|:---|:---|
+| `GET` | `/admin/db-export` | Retorna la DB SQLite como archivo binario (ejecuta WAL checkpoint previo) | Todos |
+| `GET` | `/admin/db-info` | Retorna tamaño, fecha de última modificación, entorno y backups disponibles | Todos |
+| `POST` | `/admin/sync-db` | Descarga la DB de producción via HTTP y reemplaza la local | Solo `development` |
+| `POST` | `/admin/restore-backup` | Restaura la DB desde un backup local seleccionado | Solo `development` |
+
+#### Seguridad
+- Todos los endpoints requieren un header `X-Admin-Token` con el valor de la variable `ADMIN_SYNC_TOKEN` (compartida entre ambos entornos via `.env`).
+- Los endpoints destructivos (`sync-db`, `restore-backup`) validan adicionalmente que `ENVIRONMENT=development` para prevenir ejecución accidental en producción.
+- El token se almacena en `localStorage` del navegador para persistir entre sesiones.
+
 ---
 
 ## 4. Estructura de Datos (SQLModel / SQLite)

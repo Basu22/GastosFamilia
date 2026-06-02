@@ -28,6 +28,8 @@ if [ ! -f .env ]; then
 fi
 echo "🔑 Sincronizando variables de entorno (.env)..."
 sudo -u $REAL_USER scp .env "$RPI_HOST:$RPI_PATH/.env"
+# Parchear ENVIRONMENT a production en la RPI (el .env local tiene development)
+sudo -u $REAL_USER ssh $RPI_HOST "sed -i 's/^ENVIRONMENT=development/ENVIRONMENT=production/' $RPI_PATH/.env"
 
 # 2.1 Sincronizar credenciales de Gmail (ya que están en .gitignore)
 echo "🔐 Sincronizando credenciales de Gmail..."

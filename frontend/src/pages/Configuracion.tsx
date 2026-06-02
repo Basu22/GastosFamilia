@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { Settings, Plus, CreditCard, Tag, Trash2, Edit3, Save, RefreshCw, Mail, Wallet } from 'lucide-react';
+import { Settings, Plus, CreditCard, Tag, Trash2, Edit3, Save, RefreshCw, Mail, Wallet, Database, Download, RotateCcw, HardDrive, Shield, CheckCircle, AlertTriangle } from 'lucide-react';
 import { ejecutarImportacion, getHistorialImportacion } from '../api/client';
 import LogAccordion from '../components/LogAccordion';
 
 import { getReservas, createReserva, updateReserva, deactivateReserva, ReservaCreate } from '../api/reservas';
+import { getDbInfo, syncDb, restoreBackup, setAdminToken, DbInfoResponse, SyncResultResponse } from '../api/admin';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -30,7 +31,7 @@ const ICONOS_DISPONIBLES = [
 
 export default function Configuracion() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'medios' | 'categorias' | 'gmail' | 'reservas'>('medios');
+  const [activeTab, setActiveTab] = useState<'medios' | 'categorias' | 'gmail' | 'reservas' | 'database'>('medios');
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const [nombre, setNombre] = useState('');
@@ -40,6 +41,8 @@ export default function Configuracion() {
   const [color, setColor] = useState('#3B82F6');
   const [montoFijo, setMontoFijo] = useState<number>(0);
   const [fechaBaja, setFechaBaja] = useState<string>('');
+  const [syncToken, setSyncToken] = useState<string>(localStorage.getItem('admin_sync_token') || '');
+  const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const { data: medios } = useQuery({ queryKey: ['medios-pago'], queryFn: () => axios.get(`${API_URL}/configuracion/medios-pago`).then(res => res.data) });
   const { data: categorias } = useQuery({ queryKey: ['categorias'], queryFn: () => axios.get(`${API_URL}/configuracion/categorias`).then(res => res.data) });
@@ -166,9 +169,16 @@ export default function Configuracion() {
           <Mail size={20} className={activeTab === 'gmail' ? 'text-blue-600 scale-110' : 'text-gray-400'} />
           <span className="leading-tight text-center">Importador<br className="md:hidden" /> Gmail</span>
         </button>
+        <button 
+          onClick={() => { setActiveTab('database'); resetForm(); setSyncMessage(null); }}
+          className={`flex-1 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 py-3 md:py-4 rounded-xl text-[10px] md:text-sm font-black uppercase tracking-tight md:tracking-widest transition-all duration-300 ${activeTab === 'database' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-lg shadow-blue-900/10' : 'text-gray-400 hover:text-gray-600 dark:hover:text-neutral-300'}`}
+        >
+          <Database size={20} className={activeTab === 'database' ? 'text-blue-600 scale-110' : 'text-gray-400'} />
+          <span className="leading-tight text-center">Base de<br className="md:hidden" /> Datos</span>
+        </button>
       </nav>
 
-      {activeTab !== 'gmail' && (
+      {activeTab !== 'gmail' && activeTab !== 'database' && (
         <>
           <section className="bg-white dark:bg-neutral-950 p-6 rounded-3xl border border-gray-100 dark:border-neutral-900 shadow-sm mx-4 lg:mx-0">
             <h2 className="text-lg font-bold mb-6 flex items-center gap-2">
@@ -353,6 +363,249 @@ export default function Configuracion() {
           </div>
         </section>
       )}
+
+      {/* SECCIÓN BASE DE DATOS */}
+      {activeTab === 'database' && <DatabaseTab syncToken={syncToken} setSyncToken={setSyncToken} syncMessage={syncMessage} setSyncMessage={setSyncMessage} />}
     </main>
+  );
+}
+
+// --- Helpers ---
+const formatBytes = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const formatFechaLocal = (iso: string): string => {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString('es-AR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+  } catch {
+    return iso;
+  }
+};
+
+// --- DatabaseTab Component ---
+interface DatabaseTabProps {
+  syncToken: string;
+  setSyncToken: (token: string) => void;
+  syncMessage: { type: 'success' | 'error'; text: string } | null;
+  setSyncMessage: (msg: { type: 'success' | 'error'; text: string } | null) => void;
+}
+
+function DatabaseTab({ syncToken, setSyncToken, syncMessage, setSyncMessage }: DatabaseTabProps) {
+  const queryClient = useQueryClient();
+  const [tokenVisible, setTokenVisible] = useState(false);
+
+  const handleTokenChange = (value: string) => {
+    setSyncToken(value);
+    setAdminToken(value);
+  };
+
+  // Query de info de DB (solo si hay token)
+  const { data: dbInfo, isLoading: loadingInfo, error: infoError } = useQuery<DbInfoResponse>({
+    queryKey: ['db-info'],
+    queryFn: getDbInfo,
+    enabled: !!syncToken,
+    retry: false,
+  });
+
+  // Mutation de sincronización
+  const syncMutation = useMutation({
+    mutationFn: syncDb,
+    onSuccess: (data: SyncResultResponse) => {
+      setSyncMessage({ type: 'success', text: data.mensaje });
+      queryClient.invalidateQueries({ queryKey: ['db-info'] });
+    },
+    onError: (error: unknown) => {
+      const msg = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+        || 'Error de conexión al sincronizar';
+      setSyncMessage({ type: 'error', text: msg });
+    }
+  });
+
+  // Mutation de restauración
+  const restoreMutation = useMutation({
+    mutationFn: (filename: string) => restoreBackup(filename),
+    onSuccess: (data: SyncResultResponse) => {
+      setSyncMessage({ type: 'success', text: data.mensaje });
+      queryClient.invalidateQueries({ queryKey: ['db-info'] });
+    },
+    onError: (error: unknown) => {
+      const msg = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+        || 'Error al restaurar backup';
+      setSyncMessage({ type: 'error', text: msg });
+    }
+  });
+
+  const isPending = syncMutation.isPending || restoreMutation.isPending;
+
+  return (
+    <section className="space-y-6 mx-4 lg:mx-0 animate-in fade-in slide-in-from-bottom-4 pb-10">
+      {/* CARD: Token de Acceso */}
+      <article className="bg-white dark:bg-neutral-950 p-6 rounded-3xl border border-gray-100 dark:border-neutral-900 shadow-sm">
+        <h2 className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-neutral-100 mb-4">
+          <Shield className="text-amber-500" size={22} /> Token de Administración
+        </h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Ingresá el token compartido con el servidor de producción para autorizar la sincronización.
+        </p>
+        <div className="flex gap-3 items-center">
+          <input
+            id="database-input-token"
+            type={tokenVisible ? 'text' : 'password'}
+            value={syncToken}
+            onChange={e => handleTokenChange(e.target.value)}
+            placeholder="Token secreto..."
+            className="flex-1 px-4 py-4 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-mono text-sm"
+          />
+          <button
+            id="database-btn-toggle-token"
+            type="button"
+            onClick={() => setTokenVisible(!tokenVisible)}
+            className="px-4 py-4 rounded-xl border border-gray-200 dark:border-neutral-800 text-gray-500 hover:text-blue-600 hover:border-blue-300 transition-all text-sm font-bold"
+          >
+            {tokenVisible ? 'Ocultar' : 'Mostrar'}
+          </button>
+        </div>
+      </article>
+
+      {/* MENSAJE DE ESTADO */}
+      {syncMessage && (
+        <div className={`rounded-xl border p-4 flex items-center gap-3 text-sm font-medium transition-all ${
+          syncMessage.type === 'success'
+            ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
+            : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'
+        }`}>
+          {syncMessage.type === 'success' ? <CheckCircle size={20} /> : <AlertTriangle size={20} />}
+          {syncMessage.text}
+        </div>
+      )}
+
+      {/* CARD: Info de la DB y Sincronización */}
+      {syncToken && (
+        <article className="bg-white dark:bg-neutral-950 p-6 rounded-3xl border border-gray-100 dark:border-neutral-900 shadow-sm">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
+            <div>
+              <h2 className="text-xl font-bold flex items-center gap-2 text-gray-900 dark:text-neutral-100">
+                <HardDrive className="text-blue-500" size={22} /> Base de Datos Local
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Sincronizá la DB de producción (RPI) para probar con datos reales.
+              </p>
+            </div>
+            <button
+              id="database-btn-sync"
+              onClick={() => { setSyncMessage(null); syncMutation.mutate(); }}
+              disabled={isPending || !syncToken}
+              className={`px-6 py-3 rounded-xl font-bold text-white transition-all flex items-center gap-2 shadow-lg ${
+                isPending
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700 active:scale-95 shadow-blue-200 dark:shadow-none'
+              }`}
+            >
+              <Download size={18} className={syncMutation.isPending ? 'animate-bounce' : ''} />
+              {syncMutation.isPending ? 'Descargando...' : 'Sincronizar desde Producción'}
+            </button>
+          </div>
+
+          {/* Info de la DB */}
+          {loadingInfo && (
+            <div className="animate-pulse space-y-3">
+              <div className="h-5 bg-gray-200 dark:bg-neutral-800 rounded w-1/3" />
+              <div className="h-5 bg-gray-200 dark:bg-neutral-800 rounded w-1/2" />
+              <div className="h-5 bg-gray-200 dark:bg-neutral-800 rounded w-1/4" />
+            </div>
+          )}
+
+          {infoError && (
+            <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 p-4 text-red-700 dark:text-red-400 text-sm">
+              Error al obtener info de la DB. Verificá que el token sea correcto.
+            </div>
+          )}
+
+          {dbInfo && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 bg-gray-50 dark:bg-neutral-900/50 rounded-2xl border border-gray-100 dark:border-neutral-800">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Tamaño</p>
+                <p className="text-lg font-black text-gray-900 dark:text-neutral-100">{formatBytes(dbInfo.size_bytes)}</p>
+              </div>
+              <div className="p-4 bg-gray-50 dark:bg-neutral-900/50 rounded-2xl border border-gray-100 dark:border-neutral-800">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Última Modificación</p>
+                <p className="text-lg font-black text-gray-900 dark:text-neutral-100">{formatFechaLocal(dbInfo.ultima_modificacion)}</p>
+              </div>
+              <div className="p-4 bg-gray-50 dark:bg-neutral-900/50 rounded-2xl border border-gray-100 dark:border-neutral-800">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Entorno</p>
+                <p className="text-lg font-black text-gray-900 dark:text-neutral-100 flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${dbInfo.environment === 'development' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                  {dbInfo.environment === 'development' ? 'Desarrollo' : 'Producción'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* URL de producción */}
+          {dbInfo && (
+            <p className="text-xs text-gray-400 mt-4 font-mono">
+              Origen: {dbInfo.rpi_api_url}
+            </p>
+          )}
+        </article>
+      )}
+
+      {/* CARD: Backups Disponibles */}
+      {dbInfo && dbInfo.backups.length > 0 && (
+        <article className="bg-white dark:bg-neutral-950 p-6 rounded-3xl border border-gray-100 dark:border-neutral-900 shadow-sm">
+          <h2 className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-neutral-100 mb-4">
+            <RotateCcw className="text-violet-500" size={22} /> Backups Disponibles
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Se crean automáticamente antes de cada sincronización. Se mantienen los últimos 3.
+          </p>
+          <div className="space-y-3">
+            {dbInfo.backups.map((backup) => (
+              <div
+                key={backup.filename}
+                className="flex items-center justify-between p-4 bg-gray-50 dark:bg-neutral-900/50 rounded-2xl border border-gray-100 dark:border-neutral-800 hover:border-violet-300 dark:hover:border-violet-700 transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <Database size={18} className="text-gray-400 group-hover:text-violet-500 transition-colors" />
+                  <div>
+                    <p className="text-sm font-bold text-gray-900 dark:text-neutral-100">{formatFechaLocal(backup.fecha)}</p>
+                    <p className="text-[10px] text-gray-400 font-mono uppercase tracking-wide">{formatBytes(backup.size_bytes)}</p>
+                  </div>
+                </div>
+                <button
+                  id={`database-btn-restore-${backup.filename}`}
+                  onClick={() => {
+                    if (window.confirm(`¿Restaurar la DB desde el backup del ${formatFechaLocal(backup.fecha)}?\n\nSe creará un backup de la DB actual antes de restaurar.`)) {
+                      setSyncMessage(null);
+                      restoreMutation.mutate(backup.filename);
+                    }
+                  }}
+                  disabled={isPending}
+                  className="px-4 py-2.5 rounded-xl text-sm font-bold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/30 hover:bg-violet-100 dark:hover:bg-violet-950/50 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Restaurar
+                </button>
+              </div>
+            ))}
+          </div>
+        </article>
+      )}
+
+      {/* EMPTY STATE sin token */}
+      {!syncToken && (
+        <div className="text-center py-12 text-gray-400">
+          <p className="text-4xl mb-3">🔐</p>
+          <p className="font-medium text-gray-500">Ingresá el token de admin para empezar</p>
+          <p className="text-sm mt-1">El token debe coincidir con el configurado en la RPI</p>
+        </div>
+      )}
+    </section>
   );
 }
