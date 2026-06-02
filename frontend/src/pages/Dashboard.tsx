@@ -9,6 +9,7 @@ import PanelArca from '../components/dashboard/PanelArca';
 import { PanelReservas } from '../components/reservas/PanelReservas';
 import ModalTarjetaDetalle from '../components/dashboard/ModalTarjetaDetalle';
 import { getReservas } from '../api/reservas';
+import { getCategorias } from '../api/configuracion';
 
 const DashboardSkeleton = () => (
   <div className="space-y-6 animate-pulse px-4 py-4 lg:px-8 lg:py-8">
@@ -23,8 +24,8 @@ export default function Dashboard() {
   const [mes, setMes] = useState(new Date().getMonth() + 1);
   const [anio, setAnio] = useState(new Date().getFullYear());
   const [showMonthPicker, setShowMonthPicker] = useState(false);
-  const [filtroPago, setFiltroPago] = useState<'tarjeta' | 'movimiento'>('tarjeta');
-  const [activeDetail, setActiveDetail] = useState<{ type: 'tarjeta'; name: string } | { type: 'movimiento'; name: 'cuota' | 'fijo' | 'variable' | 'efectivo' | 'ingreso' | 'prestamo' } | null>(null);
+  const [filtroPago, setFiltroPago] = useState<'tarjeta' | 'categoria'>('tarjeta');
+  const [activeDetail, setActiveDetail] = useState<{ type: 'tarjeta'; name: string } | { type: 'movimiento'; name: 'cuota' | 'fijo' | 'variable' | 'efectivo' | 'ingreso' | 'prestamo' } | { type: 'categoria'; name: string } | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['dashboard', mes, anio],
@@ -34,6 +35,11 @@ export default function Dashboard() {
   const { data: listReservas } = useQuery({
     queryKey: ['reservas'],
     queryFn: getReservas
+  });
+
+  const { data: listCategorias } = useQuery({
+    queryKey: ['categorias'],
+    queryFn: getCategorias
   });
 
   // Agrupación de movimientos para PC (por Medio de Pago)
@@ -96,9 +102,55 @@ export default function Dashboard() {
     return { ingresos, tarjetas, reservas, efectivo };
   }, [data, listReservas]);
 
+  const categoriasAgrupadas = useMemo(() => {
+    if (!listCategorias || !data?.movimientos_mes) return [];
+
+    const activeCats = listCategorias.filter((c: any) => c.activa !== false);
+
+    const grouped = activeCats.map((c: any) => {
+      const matchingMovs = data.movimientos_mes.filter((m: any) => {
+        const mCat = m.categoria || "Sin Categoría";
+        return mCat.toLowerCase() === c.nombre.toLowerCase();
+      });
+
+      const total = matchingMovs.reduce((acc: number, m: any) => acc + m.monto, 0);
+
+      return {
+        id: c.id,
+        nombre: c.nombre,
+        tipo: c.tipo,
+        color: c.color || '#64748B',
+        icono: c.icono || 'Tag',
+        total: total,
+        items: matchingMovs
+      };
+    });
+
+    // Check if there are movements without category or with unknown category
+    const knownCatNames = new Set(activeCats.map((c: any) => c.nombre.toLowerCase()));
+    const unknownMovs = data.movimientos_mes.filter((m: any) => {
+      const mCat = m.categoria || "Sin Categoría";
+      return !knownCatNames.has(mCat.toLowerCase());
+    });
+
+    if (unknownMovs.length > 0) {
+      const totalUnknown = unknownMovs.reduce((acc: number, m: any) => acc + m.monto, 0);
+      grouped.push({
+        id: -1,
+        nombre: "Sin Categoría",
+        tipo: "Ambos",
+        color: "#64748B",
+        icono: "Tag",
+        total: totalUnknown,
+        items: unknownMovs
+      });
+    }
+
+    return grouped.sort((a: any, b: any) => b.total - a.total);
+  }, [listCategorias, data]);
 
   const selectedDetailData = useMemo(() => {
-    if (!activeDetail || !data?.cuotas_por_tarjeta) return null;
+    if (!activeDetail || !data) return null;
 
     if (activeDetail.type === 'tarjeta') {
       const tarjeta = data.cuotas_por_tarjeta.find((t: any) => t.nombre === activeDetail.name);
@@ -120,6 +172,29 @@ export default function Dashboard() {
           { key: 'fijos', label: 'Gastos Fijos', items: fijos },
           { key: 'variables', label: 'Gastos Variables', items: variables },
         ]
+      };
+    } else if (activeDetail.type === 'categoria') {
+      const catObj = categoriasAgrupadas.find((c: any) => c.nombre === activeDetail.name);
+      if (!catObj) return null;
+
+      const items = catObj.items.map((m: any) => ({
+        id: m.id,
+        edit_tipo: m.tipo === 'tarjeta' ? 'tarjeta' : (m.tipo === 'asignacion_reserva' ? 'asignacion' : 'gasto'),
+        descripcion: m.descripcion,
+        monto: m.monto,
+        tipo: m.tipo === 'tarjeta' ? 'cuota' : (m.tipo === 'asignacion_reserva' ? 'asignación' : (m.es_fijo ? 'fijo' : 'variable')),
+        tarjeta_nombre: m.tarjeta_nombre || m.reserva_nombre || m.medio_pago || 'Efectivo / Transf.',
+        tarjeta_color: m.tarjeta_color || m.reserva_color || '#10B981',
+        categoria: m.categoria
+      }));
+
+      return {
+        type: 'movimiento' as const,
+        name: catObj.nombre,
+        color: catObj.color,
+        monto: catObj.total,
+        items: items,
+        category_type: catObj.tipo
       };
     } else if (activeDetail.name === 'efectivo') {
       const items: any[] = [];
@@ -237,27 +312,9 @@ export default function Dashboard() {
         items: items
       };
     }
-  }, [activeDetail, data, movimientosAgrupados]);
+  }, [activeDetail, data, movimientosAgrupados, categoriasAgrupadas]);
 
-  const totalesMovimiento = useMemo(() => {
-    if (!data?.cuotas_por_tarjeta) return { cuotas: 0, fijos: 0, variables: 0, efectivo: 0 };
-    
-    let cuotas = 0;
-    let fijos = 0;
-    let variables = 0;
-    
-    data.cuotas_por_tarjeta.forEach((t: any) => {
-      t.detalle?.forEach((item: any) => {
-        if (item.tipo === 'cuota') cuotas += item.monto;
-        else if (item.tipo === 'fijo') fijos += item.monto;
-        else if (item.tipo === 'variable') variables += item.monto;
-      });
-    });
 
-    const efectivoTotal = movimientosAgrupados.efectivo?.total || 0;
-    
-    return { cuotas, fijos, variables, efectivo: efectivoTotal };
-  }, [data, movimientosAgrupados]);
 
   if (isLoading) return <DashboardSkeleton />;
   if (error || !data) return (
@@ -302,7 +359,7 @@ export default function Dashboard() {
         detailData={selectedDetailData} 
         mesActual={mes}
         anioActual={anio}
-        activeName={activeDetail?.type === 'movimiento' ? activeDetail.name : undefined}
+        activeName={activeDetail ? activeDetail.name : undefined}
         onClose={() => setActiveDetail(null)} 
       />
       {/* Header con Selector de Fecha */}
@@ -487,14 +544,14 @@ export default function Dashboard() {
                     Por Tarjeta
                   </button>
                   <button 
-                    onClick={() => setFiltroPago('movimiento')}
+                    onClick={() => setFiltroPago('categoria')}
                     className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all ${
-                      filtroPago === 'movimiento' 
+                      filtroPago === 'categoria' 
                         ? 'bg-aura-lavender text-aura-bg shadow-lg shadow-aura-lavender/20' 
                         : 'text-gray-400 hover:text-white'
                     }`}
                   >
-                    Por Movimiento
+                    Por Categoría
                   </button>
                 </div>
               </div>
@@ -520,65 +577,24 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
-                  {/* Ingresos */}
-                  <div 
-                    className="glass-card p-4 border border-white/5 flex flex-col justify-between hover:border-white/20 hover:scale-[1.02] active:scale-95 transition-all gap-2 cursor-pointer"
-                    onClick={() => setActiveDetail({ type: 'movimiento', name: 'ingreso' })}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]" style={{ backgroundColor: '#10B981' }} />
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">Ingresos</span>
+                  {categoriasAgrupadas.map((c: any) => (
+                    <div 
+                      key={c.nombre} 
+                      className="glass-card p-4 border border-white/5 flex flex-col justify-between hover:border-white/20 hover:scale-[1.02] active:scale-95 transition-all gap-2 cursor-pointer"
+                      onClick={() => setActiveDetail({ type: 'categoria', name: c.nombre })}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.25)]" style={{ backgroundColor: c.color }} />
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">{c.nombre}</span>
+                      </div>
+                      <span className="text-lg font-black text-white tracking-tight">{formatARS(c.total)}</span>
                     </div>
-                    <span className="text-lg font-black text-white tracking-tight">{formatARS(data.ingreso)}</span>
-                  </div>
-
-                  {/* Cuotas de Tarjeta */}
-                  <div 
-                    className="glass-card p-4 border border-white/5 flex flex-col justify-between hover:border-white/20 hover:scale-[1.02] active:scale-95 transition-all gap-2 cursor-pointer"
-                    onClick={() => setActiveDetail({ type: 'movimiento', name: 'cuota' })}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(139,92,246,0.5)]" style={{ backgroundColor: '#8B5CF6' }} />
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">Cuotas de Tarjeta</span>
+                  ))}
+                  {categoriasAgrupadas.length === 0 && (
+                    <div className="col-span-full text-center py-12 text-gray-400">
+                      <p className="font-semibold text-gray-500">Sin categorías registradas</p>
                     </div>
-                    <span className="text-lg font-black text-white tracking-tight">{formatARS(totalesMovimiento.cuotas)}</span>
-                  </div>
-                  
-                  {/* Gastos Fijos */}
-                  <div 
-                    className="glass-card p-4 border border-white/5 flex flex-col justify-between hover:border-white/20 hover:scale-[1.02] active:scale-95 transition-all gap-2 cursor-pointer"
-                    onClick={() => setActiveDetail({ type: 'movimiento', name: 'fijo' })}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]" style={{ backgroundColor: '#3B82F6' }} />
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">Gastos Fijos</span>
-                    </div>
-                    <span className="text-lg font-black text-white tracking-tight">{formatARS(totalesMovimiento.fijos)}</span>
-                  </div>
-
-                  {/* Gastos Variables */}
-                  <div 
-                    className="glass-card p-4 border border-white/5 flex flex-col justify-between hover:border-white/20 hover:scale-[1.02] active:scale-95 transition-all gap-2 cursor-pointer"
-                    onClick={() => setActiveDetail({ type: 'movimiento', name: 'variable' })}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(236,72,153,0.5)]" style={{ backgroundColor: '#EC4899' }} />
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">Gastos Variables</span>
-                    </div>
-                    <span className="text-lg font-black text-white tracking-tight">{formatARS(totalesMovimiento.variables)}</span>
-                  </div>
-
-                  {/* Efectivo / Transferencia */}
-                  <div 
-                    className="glass-card p-4 border border-white/5 flex flex-col justify-between hover:border-white/20 hover:scale-[1.02] active:scale-95 transition-all gap-2 cursor-pointer"
-                    onClick={() => setActiveDetail({ type: 'movimiento', name: 'efectivo' })}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]" style={{ backgroundColor: '#10B981' }} />
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">Efectivo / Transf.</span>
-                    </div>
-                    <span className="text-lg font-black text-white tracking-tight">{formatARS(totalesMovimiento.efectivo)}</span>
-                  </div>
+                  )}
                 </div>
               )}
             </section>

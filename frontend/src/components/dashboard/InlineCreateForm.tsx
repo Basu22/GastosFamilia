@@ -34,9 +34,10 @@ interface InlineCreateFormProps {
   anio: number;
   onClose: () => void;
   defaultMedioPago?: string;
+  defaultCategoria?: string;
 }
 
-export default function InlineCreateForm({ tipo, mes, anio, onClose, defaultMedioPago }: InlineCreateFormProps) {
+export default function InlineCreateForm({ tipo, mes, anio, onClose, defaultMedioPago, defaultCategoria }: InlineCreateFormProps) {
   const queryClient = useQueryClient();
   const [entryMode, setEntryMode] = useState<'total' | 'cuota'>('total');
   const { data: tarjetas } = useQuery({ queryKey: ['tarjetas'], queryFn: getTarjetas });
@@ -47,7 +48,7 @@ export default function InlineCreateForm({ tipo, mes, anio, onClose, defaultMedi
     resolver: zodResolver(schema),
     defaultValues: {
       descripcion: '',
-      categoria: '',
+      categoria: defaultCategoria || '',
       monto: 0,
       entidad: '',
       cuotas: 1,
@@ -84,11 +85,14 @@ export default function InlineCreateForm({ tipo, mes, anio, onClose, defaultMedi
       if (tipo === 'gasto_fijo') es_fijo = true;
       if (tipo === 'gasto_variado') es_fijo = false;
 
+      const finalCategoria = data.categoria || defaultCategoria;
+
       const payload = { 
         ...data, 
         tarjeta_id,
         reserva_id,
-        es_fijo
+        es_fijo,
+        categoria: finalCategoria
       };
       delete payload.medio_pago;
       
@@ -145,7 +149,10 @@ export default function InlineCreateForm({ tipo, mes, anio, onClose, defaultMedi
             <label className="text-[10px] font-bold text-gray-400 uppercase">Categoría</label>
             <select
               {...register('categoria')}
-              className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
+              disabled={!!defaultCategoria}
+              className={`w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none ${
+                defaultCategoria ? 'pointer-events-none opacity-50 bg-gray-50 dark:bg-neutral-800' : ''
+              }`}
             >
               <option value="">Sin categoría</option>
               {categorias?.filter((c:any) => {

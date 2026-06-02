@@ -28,13 +28,14 @@ export interface GenericDetailData {
   tarjeta_id?: number;
   groups?: DetailGroup[];
   items?: DetalleItem[];
+  category_type?: 'Gasto' | 'Ingreso' | 'Ambos';
 }
 
 interface ModalTarjetaDetalleProps {
   detailData: GenericDetailData | null;
   mesActual: number;
   anioActual: number;
-  activeName?: 'cuota' | 'fijo' | 'variable' | 'efectivo' | 'ingreso' | 'prestamo';
+  activeName?: 'cuota' | 'fijo' | 'variable' | 'efectivo' | 'ingreso' | 'prestamo' | string;
   onClose: () => void;
 }
 
@@ -244,8 +245,13 @@ export default function ModalTarjetaDetalle({ detailData, mesActual, anioActual,
                 else if (activeName === 'variable') formTipo = 'gasto_variado';
                 else if (activeName === 'ingreso') formTipo = 'ingreso';
                 else if (activeName === 'efectivo') formTipo = 'gasto_variado';
+                else if (activeName === 'prestamo') formTipo = 'prestamo';
+                else if (detailData.category_type === 'Ingreso') formTipo = 'ingreso';
+                else if (detailData.category_type === 'Gasto' || detailData.category_type === 'Ambos') formTipo = 'gasto_variado';
 
                 if (!formTipo) return null;
+
+                const isIncome = activeName === 'ingreso' || detailData.category_type === 'Ingreso';
 
                 return (
                   <div className="space-y-3 border-b border-white/5 pb-4">
@@ -259,7 +265,7 @@ export default function ModalTarjetaDetalle({ detailData, mesActual, anioActual,
                         }`}
                       >
                         <Plus size={12} strokeWidth={3} className={`transition-transform duration-350 ${showCreate ? 'rotate-45' : ''}`} />
-                        {showCreate ? 'Cerrar' : `Agregar ${activeName === 'ingreso' ? 'Ingreso' : 'Gasto'}`}
+                        {showCreate ? 'Cerrar' : `Agregar ${isIncome ? 'Ingreso' : 'Gasto'}`}
                       </button>
                     </div>
 
@@ -271,6 +277,7 @@ export default function ModalTarjetaDetalle({ detailData, mesActual, anioActual,
                           anio={anioActual} 
                           onClose={() => setCreandoEnSeccion(null)}
                           defaultMedioPago=""
+                          defaultCategoria={detailData.category_type ? detailData.name : undefined}
                         />
                       </div>
                     )}
