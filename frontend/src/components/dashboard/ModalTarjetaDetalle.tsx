@@ -29,6 +29,7 @@ export interface GenericDetailData {
   groups?: DetailGroup[];
   items?: DetalleItem[];
   category_type?: 'Gasto' | 'Ingreso' | 'Ambos';
+  readOnly?: boolean;
 }
 
 interface ModalTarjetaDetalleProps {
@@ -108,17 +109,19 @@ export default function ModalTarjetaDetalle({ detailData, mesActual, anioActual,
             <span className="text-sm font-bold text-white tracking-tight">
               {formatARS(item.monto)}
             </span>
-            <button 
-              onClick={() => setEditingItem(isEditing ? null : { id: item.id, tipo: item.edit_tipo })}
-              className={`p-2 rounded-lg transition-all ${
-                isEditing 
-                  ? 'bg-aura-lavender text-aura-bg shadow-md' 
-                  : 'text-gray-400 hover:text-white hover:bg-white/10'
-              }`}
-              style={{ minWidth: '40px', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Edit3 size={16} />
-            </button>
+            {!detailData.readOnly && (
+              <button 
+                onClick={() => setEditingItem(isEditing ? null : { id: item.id, tipo: item.edit_tipo })}
+                className={`p-2 rounded-lg transition-all ${
+                  isEditing 
+                    ? 'bg-aura-lavender text-aura-bg shadow-md' 
+                    : 'text-gray-400 hover:text-white hover:bg-white/10'
+                }`}
+                style={{ minWidth: '40px', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Edit3 size={16} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -249,7 +252,7 @@ export default function ModalTarjetaDetalle({ detailData, mesActual, anioActual,
                 else if (detailData.category_type === 'Ingreso') formTipo = 'ingreso';
                 else if (detailData.category_type === 'Gasto' || detailData.category_type === 'Ambos') formTipo = 'gasto_variado';
 
-                if (!formTipo) return null;
+                if (!formTipo || detailData.readOnly) return null;
 
                 const isIncome = activeName === 'ingreso' || detailData.category_type === 'Ingreso';
 

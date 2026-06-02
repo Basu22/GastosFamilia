@@ -9,6 +9,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
+# Cargar variables de entorno antes de importar cualquier router
+load_dotenv()
+
 from database import create_db_and_tables, seed_initial_data
 from models import config, compra_deseada, whatsapp_log # Importante para que SQLModel cree las tablas
 from routers import auth, movimientos, tarjetas, gastos_mensuales, dashboard, importar, ingresos, proyeccion, configuracion, simulador, importaciones, whatsapp, prestamos, compras_deseadas, whatsapp_logs, reservas, admin
@@ -18,7 +21,7 @@ from sqlmodel import Session
 from database import engine
 from services.gmail_importer import importar_facturas
 
-load_dotenv()
+
 
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost").split(",")
 
@@ -27,9 +30,25 @@ scheduler = AsyncIOScheduler()
 
 def job_importador():
     print("⏰ Ejecutando importador de Gmail automático...")
+    from models.importacion import ImportacionLog
     with Session(engine) as session:
-        importar_facturas(session)
-        print("✅ Importación automática finalizada")
+        try:
+            importar_facturas(session)
+            print("✅ Importación automática finalizada")
+        except Exception as e:
+            print(f"❌ Error en la importación automática de Gmail: {e}")
+            log = ImportacionLog(
+                referente="SISTEMA", 
+                descripcion="Error Importación Automática", 
+                monto=0, 
+                mes=0, 
+                anio=0, 
+                accion="error", 
+                detalle=str(e)
+            )
+            session.add(log)
+            session.commit()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

@@ -25,7 +25,13 @@ export default function Dashboard() {
   const [anio, setAnio] = useState(new Date().getFullYear());
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [filtroPago, setFiltroPago] = useState<'tarjeta' | 'categoria'>('tarjeta');
-  const [activeDetail, setActiveDetail] = useState<{ type: 'tarjeta'; name: string } | { type: 'movimiento'; name: 'cuota' | 'fijo' | 'variable' | 'efectivo' | 'ingreso' | 'prestamo' } | { type: 'categoria'; name: string } | null>(null);
+  const [activeDetail, setActiveDetail] = useState<
+    | { type: 'tarjeta'; name: string }
+    | { type: 'movimiento'; name: 'cuota' | 'fijo' | 'variable' | 'efectivo' | 'ingreso' | 'prestamo' }
+    | { type: 'categoria'; name: string }
+    | { type: 'vencimiento'; name: 'quedan_2_cuotas' | 'ultima_cuota' }
+    | null
+  >(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['dashboard', mes, anio],
@@ -272,6 +278,28 @@ export default function Dashboard() {
         monto: data.total_prestamos || 0,
         items: items
       };
+    } else if (activeDetail.type === 'vencimiento') {
+      const restantesFiltro = activeDetail.name === 'quedan_2_cuotas' ? 2 : 1;
+      const filtered = data.proximos_vencimientos?.filter((v: any) => v.cuotas_restantes === restantesFiltro) || [];
+      const items = filtered.map((v: any, index: number) => ({
+        id: index,
+        edit_tipo: 'tarjeta' as const,
+        descripcion: v.descripcion,
+        monto: v.monto_cuota,
+        tipo: 'cuota',
+        tarjeta_nombre: v.tarjeta_nombre,
+        tarjeta_color: v.tarjeta_color
+      }));
+      const label = activeDetail.name === 'quedan_2_cuotas' ? 'Quedan 2 Cuotas' : 'Última Cuota';
+      const color = activeDetail.name === 'quedan_2_cuotas' ? '#C7D2FE' : '#A7F3D0';
+      return {
+        type: 'movimiento' as const,
+        name: label,
+        color: color,
+        monto: items.reduce((acc: number, item: any) => acc + item.monto, 0),
+        items: items,
+        readOnly: true
+      };
     } else {
       const items: any[] = [];
       data.movimientos_mes?.forEach((m: any) => {
@@ -458,63 +486,43 @@ export default function Dashboard() {
                 <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-white/90">Cuotas próximas a vencer</h3>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* COLUMNA: QUEDAN 2 */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between px-3">
-                    <span className="text-[10px] font-bold uppercase text-aura-lavender tracking-widest">Quedan 2 Cuotas</span>
-                    <span className="text-[10px] font-bold text-aura-lavender bg-aura-lavender/10 px-3 py-1 rounded-full border border-aura-lavender/20 uppercase tracking-wider">
-                      Total: {formatARS(data.proximos_vencimientos.filter((v: any) => v.cuotas_restantes === 2).reduce((acc: number, v: any) => acc + v.monto_cuota, 0))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Card 1: Quedan 2 Cuotas */}
+                <div 
+                  className="glass-card p-4 border border-white/5 flex flex-col justify-between hover:border-aura-lavender/30 hover:scale-[1.02] active:scale-95 transition-all gap-3 cursor-pointer group"
+                  onClick={() => setActiveDetail({ type: 'vencimiento', name: 'quedan_2_cuotas' })}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(199,210,254,0.5)] bg-[#C7D2FE]" />
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Quedan 2 Cuotas</span>
+                    </div>
+                    <span className="text-[9px] font-bold text-aura-lavender bg-aura-lavender/10 px-2 py-0.5 rounded-full border border-aura-lavender/20 uppercase tracking-wider group-hover:bg-aura-lavender group-hover:text-aura-bg transition-colors">
+                      Ver detalle
                     </span>
                   </div>
-                  <div className="space-y-3">
-                    {data.proximos_vencimientos.filter((v: any) => v.cuotas_restantes === 2).map((v: any, i: number) => (
-                      <div key={i} className="glass-card p-4 border-aura-lavender/10 flex items-center justify-between gap-4 transition-all hover:border-aura-lavender/30 group">
-                        <div className="flex items-center gap-4">
-                          <div className="w-1.5 h-8 rounded-full shadow-[0_0_12px_rgba(199,210,254,0.3)]" style={{ backgroundColor: v.tarjeta_color }} />
-                          <div>
-                            <p className="text-sm font-bold text-white leading-tight group-hover:text-aura-lavender transition-colors">{v.descripcion}</p>
-                            <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-1">{v.tarjeta_nombre}</p>
-                          </div>
-                        </div>
-                        <span className="text-sm font-bold text-aura-lavender tracking-tight">{formatARS(v.monto_cuota)}</span>
-                      </div>
-                    ))}
-                    {data.proximos_vencimientos.filter((v: any) => v.cuotas_restantes === 2).length === 0 && (
-                      <div className="text-center py-4 glass-card border-dashed border-white/5 opacity-50">
-                        <p className="text-[10px] text-gray-400 uppercase tracking-widest">Sin vencimientos el mes próximo</p>
-                      </div>
-                    )}
-                  </div>
+                  <span className="text-2xl font-black text-white tracking-tight group-hover:text-aura-lavender transition-colors">
+                    {formatARS(data.proximos_vencimientos.filter((v: any) => v.cuotas_restantes === 2).reduce((acc: number, v: any) => acc + v.monto_cuota, 0))}
+                  </span>
                 </div>
 
-                {/* COLUMNA: ÚLTIMA CUOTA */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between px-3">
-                    <span className="text-[10px] font-bold uppercase text-aura-mint tracking-widest">Última Cuota</span>
-                    <span className="text-[10px] font-bold text-aura-mint bg-aura-mint/10 px-3 py-1 rounded-full border border-aura-mint/20 uppercase tracking-wider">
-                      Total: {formatARS(data.proximos_vencimientos.filter((v: any) => v.cuotas_restantes === 1).reduce((acc: number, v: any) => acc + v.monto_cuota, 0))}
+                {/* Card 2: Última Cuota */}
+                <div 
+                  className="glass-card p-4 border border-white/5 flex flex-col justify-between hover:border-aura-mint/30 hover:scale-[1.02] active:scale-95 transition-all gap-3 cursor-pointer group"
+                  onClick={() => setActiveDetail({ type: 'vencimiento', name: 'ultima_cuota' })}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(167,243,208,0.5)] bg-[#A7F3D0]" />
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Última Cuota</span>
+                    </div>
+                    <span className="text-[9px] font-bold text-aura-mint bg-aura-mint/10 px-2 py-0.5 rounded-full border border-aura-mint/20 uppercase tracking-wider group-hover:bg-aura-mint group-hover:text-aura-bg transition-colors">
+                      Ver detalle
                     </span>
                   </div>
-                  <div className="space-y-3">
-                    {data.proximos_vencimientos.filter((v: any) => v.cuotas_restantes === 1).map((v: any, i: number) => (
-                      <div key={i} className="glass-card p-4 border-aura-mint/10 flex items-center justify-between gap-4 transition-all hover:border-aura-mint/30 group">
-                        <div className="flex items-center gap-4">
-                          <div className="w-1.5 h-8 rounded-full shadow-[0_0_12px_rgba(167,243,208,0.3)]" style={{ backgroundColor: v.tarjeta_color }} />
-                          <div>
-                            <p className="text-sm font-bold text-white leading-tight group-hover:text-aura-mint transition-colors">{v.descripcion}</p>
-                            <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-1">{v.tarjeta_nombre}</p>
-                          </div>
-                        </div>
-                        <span className="text-sm font-bold text-aura-mint tracking-tight">{formatARS(v.monto_cuota)}</span>
-                      </div>
-                    ))}
-                    {data.proximos_vencimientos.filter((v: any) => v.cuotas_restantes === 1).length === 0 && (
-                      <div className="text-center py-4 glass-card border-dashed border-white/5 opacity-50">
-                        <p className="text-[10px] text-gray-400 uppercase tracking-widest">Sin vencimientos este mes</p>
-                      </div>
-                    )}
-                  </div>
+                  <span className="text-2xl font-black text-white tracking-tight group-hover:text-aura-mint transition-colors">
+                    {formatARS(data.proximos_vencimientos.filter((v: any) => v.cuotas_restantes === 1).reduce((acc: number, v: any) => acc + v.monto_cuota, 0))}
+                  </span>
                 </div>
               </div>
             </section>

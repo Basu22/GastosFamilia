@@ -188,6 +188,11 @@ Backend LOCAL (dev)                          Backend PROD (RPI)
 - Los endpoints destructivos (`sync-db`, `restore-backup`) validan adicionalmente que `ENVIRONMENT=development` para prevenir ejecución accidental en producción.
 - El token se almacena en `localStorage` del navegador para persistir entre sesiones.
 
+#### Consideraciones Críticas de Integración (Troubleshooting)
+- **Puerto de Producción de la RPI:** Por diseño de infraestructura de la RPI, las peticiones externas al backend de producción deben enrutarse por el puerto **`8080`** (ej. `RPI_API_URL=http://192.168.1.185:8080`) en lugar del puerto `8082` asignado al proxy por defecto en contenedores locales.
+- **Precedencia de `load_dotenv()`:** En el archivo `backend/main.py` de FastAPI, `load_dotenv()` **DEBE** ejecutarse antes de la importación de cualquier router (incluyendo `routers.admin`). De lo contrario, los routers importados leerán las variables de entorno vacías, provocando fallas HTTP 500 internas (*"ADMIN_SYNC_TOKEN no configurado en el servidor"*).
+- **Procesos Huérfanos:** Para el correcto funcionamiento de los puertos de desarrollo, se debe evitar correr `uvicorn` de forma local en el host si ya hay contenedores Docker levantados compartiendo el puerto `8000`.
+
 ---
 
 ## 4. Estructura de Datos (SQLModel / SQLite)

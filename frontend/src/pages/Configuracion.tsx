@@ -88,8 +88,13 @@ export default function Configuracion() {
     onSuccess: () => { 
       queryClient.invalidateQueries({ queryKey: ['historial-importacion'] }); 
       alert("¡Importación finalizada!");
+    },
+    onError: (error: any) => {
+      const msg = error?.response?.data?.detail || 'Error al ejecutar la importación';
+      alert(`Error de Importación:\n\n${msg}`);
     }
   });
+
 
   const resetForm = () => {
     setEditingId(null);

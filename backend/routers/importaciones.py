@@ -11,9 +11,30 @@ router = APIRouter()
 @router.post("/ejecutar", response_model=List[ImportacionLog])
 def ejecutar_importacion_manual(db: Session = Depends(get_session)):
     """Ejecuta el proceso de importación de Gmail de forma manual."""
-    # Retorna la lista de logs generados en esta ejecución
-    logs = importar_facturas(db, dias_atras=30)
-    return logs
+    from fastapi import HTTPException
+    try:
+        logs = importar_facturas(db, dias_atras=30)
+        # Si la importación retornó un error de sistema interno capturado
+        if len(logs) == 1 and logs[0].accion == "error" and logs[0].referente == "SISTEMA":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Error en el importador de Gmail: {logs[0].detalle}"
+            )
+        return logs
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        detail_msg = str(e)
+        if "invalid_grant" in detail_msg or "expired or revoked" in detail_msg:
+            raise HTTPException(
+                status_code=400,
+                detail="El token de acceso a Gmail ha expirado o fue revocado. Es necesario volver a autenticar el sistema ejecutando el script de autorización."
+            )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error inesperado al ejecutar la importación: {detail_msg}"
+        )
+
 
 @router.get("/historial", response_model=List[ImportacionLog])
 def obtener_historial_importaciones(limit: int = 50, db: Session = Depends(get_session)):
