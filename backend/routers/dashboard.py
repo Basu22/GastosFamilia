@@ -70,6 +70,8 @@ def get_dashboard_summary(
     # 3. Gastos mensuales fijos/variables
     gastos_db = session.exec(select(GastoMensual)).all()
     total_gastos = 0.0
+    total_gastos_fijos = 0.0
+    total_gastos_variables = 0.0
     mes_actual_val = anio * 12 + mes
     
     for g in gastos_db:
@@ -83,6 +85,10 @@ def get_dashboard_summary(
             if getattr(g, "reserva_id", None) is not None:
                 continue # Los gastos con reserva NO suman al total_gastos porque la Asignacion ya los descontó
             total_gastos += g.monto
+            if g.es_fijo:
+                total_gastos_fijos += g.monto
+            else:
+                total_gastos_variables += g.monto
             
     # 3.5. Asignaciones a Reserva (Se restan del disponible, como si fueran un gasto fijo del mes)
     asignaciones_db = session.exec(
@@ -90,6 +96,7 @@ def get_dashboard_summary(
     ).all()
     total_asignaciones = sum(a.monto for a in asignaciones_db)
     total_gastos += total_asignaciones
+    total_gastos_fijos += total_asignaciones
             
     # 4. Préstamos del mes (desde cuotas individuales)
     cuotas_prestamo_mes = session.exec(
@@ -381,6 +388,8 @@ def get_dashboard_summary(
         total_cuotas=total_cuotas,
         total_prestamos=total_prestamos,
         total_gastos_mensuales=total_gastos,
+        total_gastos_fijos=total_gastos_fijos,
+        total_gastos_variables=total_gastos_variables,
         total_mes=total_mes,
         ahorro_proyectado=total_ingreso - total_mes,
         cuotas_por_tarjeta=cuotas_por_tarjeta,

@@ -34,7 +34,7 @@ interface ModalTarjetaDetalleProps {
   detailData: GenericDetailData | null;
   mesActual: number;
   anioActual: number;
-  activeName?: 'cuota' | 'fijo' | 'variable' | 'efectivo' | 'ingreso';
+  activeName?: 'cuota' | 'fijo' | 'variable' | 'efectivo' | 'ingreso' | 'prestamo';
   onClose: () => void;
 }
 

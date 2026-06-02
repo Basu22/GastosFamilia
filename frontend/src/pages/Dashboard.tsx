@@ -24,7 +24,7 @@ export default function Dashboard() {
   const [anio, setAnio] = useState(new Date().getFullYear());
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [filtroPago, setFiltroPago] = useState<'tarjeta' | 'movimiento'>('tarjeta');
-  const [activeDetail, setActiveDetail] = useState<{ type: 'tarjeta'; name: string } | { type: 'movimiento'; name: 'cuota' | 'fijo' | 'variable' | 'efectivo' | 'ingreso' } | null>(null);
+  const [activeDetail, setActiveDetail] = useState<{ type: 'tarjeta'; name: string } | { type: 'movimiento'; name: 'cuota' | 'fijo' | 'variable' | 'efectivo' | 'ingreso' | 'prestamo' } | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['dashboard', mes, anio],
@@ -175,18 +175,46 @@ export default function Dashboard() {
         monto: data.ingreso || 0,
         items: items
       };
+    } else if (activeDetail.name === 'prestamo') {
+      const items: any[] = [];
+      const prestamosMovs = data.movimientos_mes?.filter((m: any) => m.tipo === 'prestamo') || [];
+      prestamosMovs.forEach((item: any) => {
+        items.push({
+          id: item.id,
+          edit_tipo: 'prestamo',
+          descripcion: item.descripcion,
+          monto: item.monto,
+          tipo: 'préstamo',
+          tarjeta_nombre: 'Préstamos',
+          tarjeta_color: '#818CF8'
+        });
+      });
+
+      return {
+        type: 'movimiento' as const,
+        name: 'Préstamos',
+        color: '#818CF8',
+        monto: data.total_prestamos || 0,
+        items: items
+      };
     } else {
       const items: any[] = [];
-      data.cuotas_por_tarjeta.forEach((t: any) => {
-        t.detalle?.forEach((item: any) => {
-          if (item.tipo === activeDetail.name) {
-            items.push({
-              ...item,
-              tarjeta_nombre: t.nombre,
-              tarjeta_color: t.color
-            });
-          }
-        });
+      data.movimientos_mes?.forEach((m: any) => {
+        const isFijoMatch = activeDetail.name === 'fijo' && (m.tipo === 'gasto' && m.es_fijo || m.tipo === 'asignacion_reserva');
+        const isVariableMatch = activeDetail.name === 'variable' && (m.tipo === 'gasto' && !m.es_fijo);
+        const isCuotaMatch = activeDetail.name === 'cuota' && m.tipo === 'tarjeta';
+        
+        if (isFijoMatch || isVariableMatch || isCuotaMatch) {
+          items.push({
+            id: m.id,
+            edit_tipo: m.tipo === 'tarjeta' ? 'tarjeta' : (m.tipo === 'asignacion_reserva' ? 'asignacion' : 'gasto'),
+            descripcion: m.descripcion,
+            monto: m.monto,
+            tipo: m.tipo === 'tarjeta' ? 'cuota' : (m.tipo === 'asignacion_reserva' ? 'asignación' : (m.es_fijo ? 'fijo' : 'variable')),
+            tarjeta_nombre: m.tarjeta_nombre || m.reserva_nombre || m.medio_pago || 'Efectivo / Transf.',
+            tarjeta_color: m.tarjeta_color || m.reserva_color || '#10B981'
+          });
+        }
       });
 
       const total = items.reduce((acc, m) => acc + m.monto, 0);
@@ -238,6 +266,20 @@ export default function Dashboard() {
     </div>
   );
 
+  // Calculate max length to keep all fonts at the same size (excluding Balance)
+  const maxLen = Math.max(
+    formatARS(data.ingreso).length + 2,
+    formatARS(data.total_cuotas).length,
+    formatARS(data.total_gastos_fijos).length,
+    formatARS(data.total_gastos_variables).length,
+    formatARS(data.total_prestamos).length
+  );
+  const uniformTextSize = maxLen > 15 
+    ? 'text-base sm:text-lg lg:text-xl xl:text-2xl' 
+    : maxLen > 12 
+      ? 'text-lg sm:text-xl lg:text-2xl xl:text-[1.6rem]' 
+      : 'text-xl sm:text-2xl lg:text-3xl xl:text-4xl';
+
   const prevMonth = () => {
     if (mes === 1) { setMes(12); setAnio(anio - 1); }
     else setMes(mes - 1);
@@ -268,6 +310,23 @@ export default function Dashboard() {
         <div>
           <h1 id="dashboard-title" className="text-3xl lg:text-4xl font-bold text-white tracking-tight">Estado de Cuenta</h1>
           <p id="dashboard-subtitle" className="text-sm lg:text-base text-gray-400 mt-2 font-medium">Gestioná el balance familiar con claridad y paz.</p>
+        </div>
+
+        {/* Balance del Mes sin formato de card */}
+        <div id="header-balance-mes" className="flex items-center gap-3 self-start md:self-auto">
+          <div className={`p-2 rounded-xl bg-white/5 border border-white/10 ${data.ahorro_proyectado >= 0 ? 'text-[#A7F3D0]' : 'text-[#FCA5A5]'}`}>
+            <TrendingUp size={18} strokeWidth={2.5} />
+          </div>
+          <div>
+            <p className={`text-[10px] font-bold uppercase tracking-[0.15em] ${data.ahorro_proyectado >= 0 ? 'text-[#A7F3D0]/80' : 'text-[#FCA5A5]/80'}`}>
+              BALANCE DEL MES
+            </p>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <p className={`font-bold tracking-tighter leading-none ${data.ahorro_proyectado >= 0 ? 'text-[#A7F3D0]' : 'text-[#FCA5A5]'} ${uniformTextSize}`}>
+                {data.ahorro_proyectado >= 0 ? '+ ' : '- '}{formatARS(Math.abs(data.ahorro_proyectado))}
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center gap-4">
@@ -318,27 +377,13 @@ export default function Dashboard() {
       </header>
 
       {/* Métricas Principales */}
-      {(() => {
-        // Calculate max length to keep all fonts at the same size
-        const maxLen = Math.max(
-          formatARS(data.ingreso).length + 2,
-          formatARS(data.total_cuotas).length,
-          formatARS(data.total_gastos_mensuales).length,
-          formatARS(data.total_prestamos).length,
-          formatARS(data.ahorro_proyectado).length + 2
-        );
-        const uniformTextSize = maxLen > 15 ? 'text-lg lg:text-xl xl:text-2xl' : maxLen > 12 ? 'text-xl lg:text-2xl xl:text-[1.7rem]' : 'text-2xl lg:text-3xl xl:text-4xl';
-
-        return (
-          <section id="section-metrics" className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 px-4 lg:px-0">
-            <MetricCard id="metric-ingresos" label="Ingresos" value={data.ingreso} variant="success" icon={PiggyBank} textSizeClass={uniformTextSize} />
-            <MetricCard id="metric-cuotas" label="Cuotas Fijas" value={data.total_cuotas} variant="warning" icon={CreditCard} textSizeClass={uniformTextSize} />
-            <MetricCard id="metric-gastos" label="Gastos Fijos/Variables" value={data.total_gastos_mensuales} variant="danger" icon={Wallet} textSizeClass={uniformTextSize} />
-            <MetricCard id="metric-prestamos" label="Préstamos" value={data.total_prestamos} variant="info" icon={Landmark} textSizeClass={uniformTextSize} />
-            <MetricCard id="metric-ahorro" label="BALANCE DEL MES" value={data.ahorro_proyectado} variant={data.ahorro_proyectado >= 0 ? 'success' : 'danger'} icon={TrendingUp} textSizeClass={uniformTextSize} />
-          </section>
-        );
-      })()}
+      <section id="section-metrics" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 lg:gap-6 px-4 lg:px-0">
+        <MetricCard id="metric-ingresos" label="Ingresos" value={data.ingreso} variant="success" icon={PiggyBank} textSizeClass={uniformTextSize} onClick={() => setActiveDetail({ type: 'movimiento', name: 'ingreso' })} />
+        <MetricCard id="metric-gastos-fijos" label="Gastos Fijos" value={data.total_gastos_fijos} variant="danger" icon={Wallet} textSizeClass={uniformTextSize} onClick={() => setActiveDetail({ type: 'movimiento', name: 'fijo' })} />
+        <MetricCard id="metric-gastos-variables" label="Gastos Variables" value={data.total_gastos_variables} variant="danger" icon={Wallet} textSizeClass={uniformTextSize} onClick={() => setActiveDetail({ type: 'movimiento', name: 'variable' })} />
+        <MetricCard id="metric-cuotas" label="Cuotas Tarjetas" value={data.total_cuotas} variant="warning" icon={CreditCard} textSizeClass={uniformTextSize} onClick={() => setActiveDetail({ type: 'movimiento', name: 'cuota' })} />
+        <MetricCard id="metric-prestamos" label="Préstamos" value={data.total_prestamos} variant="info" icon={Landmark} textSizeClass={uniformTextSize} onClick={() => setActiveDetail({ type: 'movimiento', name: 'prestamo' })} />
+      </section>
 
       {/* GRID PRINCIPAL: Movimientos (L) | Gráficos (R - Desktop only) */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-10">

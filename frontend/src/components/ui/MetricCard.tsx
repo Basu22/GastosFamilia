@@ -10,6 +10,7 @@ interface MetricCardProps {
   variant?: 'default' | 'success' | 'danger' | 'warning' | 'info';
   subtitle?: string;
   textSizeClass?: string;
+  onClick?: () => void;
 }
 
 const MetricCard: FC<MetricCardProps> = ({ 
@@ -19,7 +20,8 @@ const MetricCard: FC<MetricCardProps> = ({
   icon: Icon, 
   variant = 'default', 
   subtitle,
-  textSizeClass = 'text-2xl lg:text-[1.6rem] xl:text-3xl'
+  textSizeClass = 'text-2xl lg:text-[1.6rem] xl:text-3xl',
+  onClick
 }) => {
   const styles = {
     default: {
@@ -54,7 +56,8 @@ const MetricCard: FC<MetricCardProps> = ({
   return (
     <article 
       id={id || `metric-card-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`} 
-      className={`p-4 lg:p-4 flex flex-col gap-3 transition-all duration-500 hover:scale-[1.02] group relative ${currentStyle.card}`}
+      className={`p-4 lg:p-4 flex flex-col gap-3 transition-all duration-500 hover:scale-[1.02] group relative overflow-hidden h-full justify-center ${currentStyle.card} ${onClick ? 'cursor-pointer active:scale-95' : ''}`}
+      onClick={onClick}
     >
       <div className="flex items-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
         <div className={`p-2 rounded-xl bg-white/5 border border-white/10 ${currentStyle.label}`}>
@@ -77,7 +80,7 @@ const MetricCard: FC<MetricCardProps> = ({
       </div>
 
       {/* Sutil línea de acento superior */}
-      <div className={`absolute top-0 left-0 right-0 h-1 rounded-t-full opacity-50 ${
+      <div className={`absolute top-0 left-0 right-0 h-1 opacity-50 ${
         variant === 'success' ? 'bg-[#A7F3D0]' : 
         variant === 'danger' ? 'bg-[#FCA5A5]' : 
         variant === 'warning' ? 'bg-[#FDE68A]' : 

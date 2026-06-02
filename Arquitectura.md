@@ -429,6 +429,28 @@ La lista de compras (wishlist) es independiente y no impacta el balance. Al marc
 - **Solo confirmar**: Pasa al histórico colapsado de comprados.
 - **Registrar como Gasto**: Navega al formulario de egresos de la app pre-completando la descripción y el monto estimado para agilizar la carga.
 
+### 5.6. Estructura y Cálculo de Métricas del Dashboard
+El Dashboard calcula y presenta seis métricas clave de forma consolidada para el período consultado:
+1. **Ingresos**: Suma total de todos los ingresos del período (tanto puntuales como recurrentes activos).
+2. **Cuotas Tarjetas**: Suma total de los montos correspondientes a las cuotas de todas las tarjetas activas en ese mes.
+3. **Gastos Fijos**: Suma consolidada de los egresos fijos del mes (`GastoMensual` con `es_fijo = True` y sin `reserva_id`) junto a todas las asignaciones directas a reservas (`AsignacionReserva`) del mes.
+4. **Gastos Variables**: Suma consolidada de los egresos variables del mes (`GastoMensual` con `es_fijo = False` y sin `reserva_id`).
+5. **Préstamos**: Suma total de las cuotas de préstamos vigentes (`CuotaPrestamo` del mes).
+6. **Balance del Mes**: Ingresos menos la suma de las otras cinco tarjetas, representando el ahorro neto proyectado del mes:
+   $$\text{Balance} = \text{Ingresos} - (\text{Cuotas Tarjetas} + \text{Gastos Fijos} + \text{Gastos Variables} + \text{Préstamos})$$
+
+El **Balance del Mes** se presenta de forma integrada en la cabecera del Dashboard (`header-balance-mes`) sin formato de tarjeta (completamente transparente, sin recuadro ni fondo gris, y sin texto de resta) para aliviar el ruido visual, utilizando la misma escala de fuente dinámica `uniformTextSize` que las tarjetas principales.
+
+Las cinco tarjetas de métricas restantes (*Ingresos*, *Gastos Fijos*, *Gastos Variables*, *Cuotas Tarjetas* y *Préstamos*) se visualizan juntas en la sección de métricas (`section-metrics`), la cual se organiza en una grilla responsiva: `grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5`. La escala tipográfica responsiva dinámica (`uniformTextSize`) se calcula en el ámbito principal de renderizado excluyendo al Balance de la longitud máxima para mantener consistencia de tamaño exacto entre todas las tarjetas y el balance del header.
+
+#### 5.6.1. Interactividad en las Tarjetas de Métricas
+Las cinco tarjetas de métricas del Dashboard son interactivas. Al hacer clic en cualquiera de ellas se activa el modal de detalle de movimientos (`ModalTarjetaDetalle`), el cual resuelve y muestra de forma filtrada los registros correspondientes al período consultado:
+- **Ingresos**: Detalla los ingresos mensuales.
+- **Gastos Fijos**: Detalla los gastos fijos del mes (`es_fijo = True`) y los fondeos de reservas.
+- **Gastos Variables**: Detalla los gastos variables cargados en el mes (`es_fijo = False`).
+- **Cuotas Tarjetas**: Detalla las cuotas de tarjetas de crédito activas.
+- **Préstamos**: Detalla las cuotas de préstamos vigentes.
+
 ---
 
 ## 6. Integraciones y Servicios Especiales
@@ -540,16 +562,26 @@ El componente de Sobres y Reservas tiene un diseño de tarjeta personalizado con
 El antiguo bloque "A Pagar" fue reestructurado y expandido bajo el nombre de **"Filtro"** en el [Dashboard](file:///home/flink/Documentos/Gastos%20Familia/frontend/src/pages/Dashboard.tsx):
 - **Consolidación y Simplificación**: Se eliminó y ocultó por completo el antiguo bloque inferior de "Detalle de Movimientos" (que mostraba listas colapsables duplicadas de ingresos, tarjetas, efectivo y reservas). Ahora, toda la visualización detallada, edición y adición de consumos está centralizada de forma exclusiva dentro del modal de este módulo de filtro (`ModalTarjetaDetalle`), mejorando la usabilidad y la limpieza visual en dispositivos móviles y de escritorio.
 - **Estructura de Visualización**:
-  - **Por Tarjeta**: Muestra el total consolidado de tarjetas de crédito ordenado bajo el encabezado "A PAGAR". Las tarjetas se visualizan en una grilla simétrica de **3 columnas por fila** en pantallas grandes.
+  - **Por Tarjeta**: Muestra el total consolidado de tarjetas de crédito ordenado bajo el encabezado "A PAGAR". Las tarjetas se visualizan en una grilla simétrica de **3 columnas por fila** en pantallas grandes. El backend devuelve todas las tarjetas de crédito activas sin omitir las de saldo `$0`, permitiendo al usuario seleccionarlas en cualquier momento.
   - **Por Movimiento**: Agrupa e identifica todos los tipos de movimientos (Ingresos, Cuotas de Tarjeta, Gastos Fijos, Gastos Variables, y Efectivo/Transferencias) en una grilla de 3 columnas para optimizar la organización.
 - **Detalle Dinámico y Acciones Integradas (ModalTarjetaDetalle)**:
   - Al abrir el modal detallado, se renderiza la lista de consumos. Si se visualiza por Tarjeta, agrupa los ítems por tipo; si se visualiza por Movimiento, los lista de manera plana incluyendo una etiqueta de procedencia de fondos.
   - Cuenta con un botón de adición rápida `+` (en el encabezado de grupo en tarjetas o en el tope del modal en movimientos) que abre el formulario `InlineCreateForm` para registrar nuevos consumos al vuelo sin abandonar el modal.
   - Cada fila posee un botón de edición que despliega el formulario `InlineEditForm` directamente debajo del ítem seleccionado, permitiendo cambios interactivos reactivos.
+  - **Subtotales Vacíos y Placeholders**: El modal detallado por tarjeta siempre renderiza las tres secciones fijas (**Cuotas de Tarjeta**, **Gastos Fijos**, **Gastos Variables**), incluso si no tienen consumos cargados, permitiendo el acceso al botón `+`. Se muestra un placeholder decorativo `"Sin consumos cargados este mes"` en cursiva en secciones vacías.
+- **Lógica Temporal de Gastos Variables con Tarjeta**: Los gastos variables (no fijos) vinculados a una tarjeta de crédito impactan en las métricas y resúmenes de la tarjeta en el **mismo período en el que fueron realizados** (`mes_actual_val == g_val`), evitando inconsistencias con el balance mensual de caja.
+- **Bloqueo y Seguridad en Carga Rápida (InlineCreateForm)**:
+  - Al cargar consumos desde el modal de una tarjeta, el selector **"Medio de Pago"** se preselecciona y bloquea (`disabled` + `pointer-events-none`) para que el usuario no pueda alterar la tarjeta de origen.
+  - Al cargar consumos bajo la sección de **Gastos Fijos**, el checkbox **"Valor Fijo Mensual"** se inicializa tildado y se deshabilita para evitar desmarques involuntarios.
+  - Al cargar consumos bajo **Gastos Variables**, el checkbox se deshabilita destildado.
+  - La lógica de mutación asíncrona fuerza y sobreescribe estas propiedades en el payload para garantizar la integridad relacional frente a las exclusiones del formulario.
 - **Formateador de Cuotas de Tarjeta (Regex Parser)**:
   - En los modales del módulo de filtros, cuando el movimiento está financiado por tarjeta, se extrae el índice de cuotas (ej: `(X/Y)`) al final de la descripción original mediante una expresión regular (`/\s*\((\d+)\/(\d+)\)$/`).
   - La descripción del movimiento se limpia para remover el sufijo `(X/Y)`.
   - El badge del tipo de consumo se muestra como `CUOTAS` (en plural) y se renderiza de forma contigua el texto en mayúsculas `CUOTA X/Y` en color gris, manteniendo el estilo original de AURA.
+
+### 7.7. Componentes de Métrica (MetricCard)
+Las tarjetas de métricas del tope del Dashboard implementan la clase `overflow-hidden` para asegurar que las líneas decorativas superiores absolutas se recorten simétricamente siguiendo el borde redondeado del contenedor, previniendo desbordes visuales fuera de los límites de la tarjeta.
 
 ---
 

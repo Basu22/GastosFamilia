@@ -51,6 +51,8 @@ class DashboardSummary(BaseModel):
     total_cuotas: float
     total_prestamos: float = 0.0
     total_gastos_mensuales: float
+    total_gastos_fijos: float = 0.0
+    total_gastos_variables: float = 0.0
     total_mes: float
     ahorro_proyectado: float
     cuotas_por_tarjeta: List[CuotaTarjeta]
