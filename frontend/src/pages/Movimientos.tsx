@@ -129,6 +129,15 @@ export default function Movimientos() {
   const montoTotal = formCuotas.watch('monto_total') as number;
   const cantCuotas = formCuotas.watch('cuotas') as number;
   const fechaInicio = formCuotas.watch('fecha_primera_cuota') as string;
+  const medioPagoCuotas = formCuotas.watch('medio_pago') as string;
+  const isReservaOrCashSelection = !medioPagoCuotas || medioPagoCuotas.startsWith('reserva_');
+
+  useEffect(() => {
+    if (isReservaOrCashSelection) {
+      formCuotas.setValue('cuotas', 1);
+      setEntryMode('total');
+    }
+  }, [isReservaOrCashSelection, formCuotas]);
 
   const handleMontoCuotaChange = (val: number | undefined) => {
     if (val && cantCuotas) {
@@ -474,25 +483,27 @@ export default function Movimientos() {
               </div>
 
               {/* Selector de Modo de Entrada */}
-              <div className="col-span-full space-y-3">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">¿Cómo querés ingresar el monto?</label>
-                <div className="flex bg-gray-100 dark:bg-neutral-900 p-1 rounded-xl w-full md:w-80">
-                  <button 
-                    type="button" 
-                    onClick={() => setEntryMode('total')}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${entryMode === 'total' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-sm' : 'text-gray-500'}`}
-                  >
-                    MONTO TOTAL
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => setEntryMode('cuota')}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${entryMode === 'cuota' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-sm' : 'text-gray-500'}`}
-                  >
-                    VALOR CUOTA
-                  </button>
+              {!isReservaOrCashSelection && (
+                <div className="col-span-full space-y-3">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">¿Cómo querés ingresar el monto?</label>
+                  <div className="flex bg-gray-100 dark:bg-neutral-900 p-1 rounded-xl w-full md:w-80">
+                    <button 
+                      type="button" 
+                      onClick={() => setEntryMode('total')}
+                      className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${entryMode === 'total' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-sm' : 'text-gray-500'}`}
+                    >
+                      MONTO TOTAL
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => setEntryMode('cuota')}
+                      className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${entryMode === 'cuota' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-sm' : 'text-gray-500'}`}
+                    >
+                      VALOR CUOTA
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="space-y-2">
                 <label className={`text-sm font-semibold ${entryMode === 'total' ? 'text-gray-700 dark:text-neutral-300' : 'text-gray-400'}`}>Monto Total</label>
@@ -512,64 +523,68 @@ export default function Movimientos() {
                 {formCuotas.formState.errors.monto_total && <p className="text-red-500 text-xs font-medium">{formCuotas.formState.errors.monto_total.message}</p>}
               </div>
 
-              <div className="space-y-2">
-                <label className={`text-sm font-semibold ${entryMode === 'cuota' ? 'text-gray-700 dark:text-neutral-300' : 'text-gray-400'}`}>Monto de la Cuota</label>
-                <NumericFormat 
-                  value={cantCuotas > 0 ? Number(((montoTotal || 0) / cantCuotas).toFixed(2)) : 0} 
-                  onValueChange={(v) => {
-                    if (entryMode === 'cuota') handleMontoCuotaChange(v.floatValue);
-                  }}
-                  disabled={entryMode === 'total'}
-                  thousandSeparator="." decimalSeparator="," prefix="$ " 
-                  className={`w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-xl font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-opacity ${entryMode === 'total' ? 'opacity-50' : ''}`} 
-                />
-              </div>
+              {!isReservaOrCashSelection && (
+                <div className="space-y-2">
+                  <label className={`text-sm font-semibold ${entryMode === 'cuota' ? 'text-gray-700 dark:text-neutral-300' : 'text-gray-400'}`}>Monto de la Cuota</label>
+                  <NumericFormat 
+                    value={cantCuotas > 0 ? Number(((montoTotal || 0) / cantCuotas).toFixed(2)) : 0} 
+                    onValueChange={(v) => {
+                      if (entryMode === 'cuota') handleMontoCuotaChange(v.floatValue);
+                    }}
+                    disabled={entryMode === 'total'}
+                    thousandSeparator="." decimalSeparator="," prefix="$ " 
+                    className={`w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-xl font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-opacity ${entryMode === 'total' ? 'opacity-50' : ''}`} 
+                  />
+                </div>
+              )}
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Fecha Inicio</label>
                 <input type="date" {...formCuotas.register('fecha_primera_cuota')} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-              <div className="col-span-full space-y-4">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Cantidad de Cuotas</label>
-                  <div className="flex bg-gray-100 dark:bg-neutral-900 p-1 rounded-xl w-48">
-                    <button 
-                      type="button" 
-                      onClick={() => setCuotasMode('preset')}
-                      className={`flex-1 py-1.5 text-[10px] font-bold rounded-lg transition-all ${cuotasMode === 'preset' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-sm' : 'text-gray-500'}`}
-                    >
-                      SUGERENCIAS
-                    </button>
-                    <button 
-                      type="button" 
-                      onClick={() => setCuotasMode('manual')}
-                      className={`flex-1 py-1.5 text-[10px] font-bold rounded-lg transition-all ${cuotasMode === 'manual' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-sm' : 'text-gray-500'}`}
-                    >
-                      MANUAL
-                    </button>
-                  </div>
-                </div>
-
-                {cuotasMode === 'preset' ? (
-                  <div className="grid grid-cols-6 gap-2">
-                    {[1, 3, 6, 12, 18, 24].map(n => (
-                      <button key={n} type="button" onClick={() => formCuotas.setValue('cuotas', n)} className={`py-3 rounded-xl font-bold border transition-all ${cantCuotas === n ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white dark:bg-neutral-900 text-gray-500 border-gray-100 dark:border-neutral-800 hover:bg-gray-50'}`}>{n}</button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <input 
-                      type="number" 
-                      {...formCuotas.register('cuotas', { valueAsNumber: true })} 
-                      className="w-full px-4 pr-20 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-xl font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                      min="1"
-                    />
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-neutral-500 font-bold text-[10px] uppercase tracking-[0.2em] pointer-events-none">
-                      CUOTAS
+              {!isReservaOrCashSelection && (
+                <div className="col-span-full space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Cantidad de Cuotas</label>
+                    <div className="flex bg-gray-100 dark:bg-neutral-900 p-1 rounded-xl w-48">
+                      <button 
+                        type="button" 
+                        onClick={() => setCuotasMode('preset')}
+                        className={`flex-1 py-1.5 text-[10px] font-bold rounded-lg transition-all ${cuotasMode === 'preset' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-sm' : 'text-gray-500'}`}
+                      >
+                        SUGERENCIAS
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => setCuotasMode('manual')}
+                        className={`flex-1 py-1.5 text-[10px] font-bold rounded-lg transition-all ${cuotasMode === 'manual' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-sm' : 'text-gray-500'}`}
+                      >
+                        MANUAL
+                      </button>
                     </div>
                   </div>
-                )}
-              </div>
+
+                  {cuotasMode === 'preset' ? (
+                    <div className="grid grid-cols-6 gap-2">
+                      {[1, 3, 6, 12, 18, 24].map(n => (
+                        <button key={n} type="button" onClick={() => formCuotas.setValue('cuotas', n)} className={`py-3 rounded-xl font-bold border transition-all ${cantCuotas === n ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white dark:bg-neutral-900 text-gray-500 border-gray-100 dark:border-neutral-800 hover:bg-gray-50'}`}>{n}</button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <input 
+                        type="number" 
+                        {...formCuotas.register('cuotas', { valueAsNumber: true })} 
+                        className="w-full px-4 pr-20 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-xl font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                        min="1"
+                      />
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-neutral-500 font-bold text-[10px] uppercase tracking-[0.2em] pointer-events-none">
+                        CUOTAS
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             {previewData && (
               <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 flex gap-3">

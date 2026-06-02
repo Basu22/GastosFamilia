@@ -57,6 +57,15 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
 
   const montoTotal = watch('monto');
   const cantCuotas = watch('cuotas');
+  const medioPago = watch('medio_pago');
+  const isReservaOrCashSelection = !medioPago || medioPago.startsWith('reserva_');
+
+  useEffect(() => {
+    if (isReservaOrCashSelection) {
+      setValue('cuotas', 1);
+      setEntryMode('total');
+    }
+  }, [isReservaOrCashSelection, setValue]);
 
   const handleMontoCuotaChange = (val: number | undefined) => {
     if (val && cantCuotas) {
@@ -214,37 +223,52 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
           {/* Monto (Dinamico para Tarjeta y Prestamo) */}
           {(tipo === 'tarjeta' || tipo === 'prestamo') ? (
             <div className="col-span-full space-y-4 bg-white dark:bg-neutral-900 p-3 rounded-xl border border-gray-100 dark:border-neutral-800">
-              <div className="flex items-center justify-between">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Modo de entrada</label>
-                <div className="flex bg-gray-100 dark:bg-black p-0.5 rounded-lg">
-                  <button type="button" onClick={() => setEntryMode('total')} className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all ${entryMode === 'total' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-sm' : 'text-gray-500'}`}>TOTAL</button>
-                  <button type="button" onClick={() => setEntryMode('cuota')} className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all ${entryMode === 'cuota' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-sm' : 'text-gray-500'}`}>CUOTA</button>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+              {!isReservaOrCashSelection ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Modo de entrada</label>
+                    <div className="flex bg-gray-100 dark:bg-black p-0.5 rounded-lg">
+                      <button type="button" onClick={() => setEntryMode('total')} className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all ${entryMode === 'total' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-sm' : 'text-gray-500'}`}>TOTAL</button>
+                      <button type="button" onClick={() => setEntryMode('cuota')} className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all ${entryMode === 'cuota' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-sm' : 'text-gray-500'}`}>CUOTA</button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className={`text-[10px] font-bold ${entryMode === 'total' ? 'text-gray-600' : 'text-gray-400'}`}>Monto Total</label>
+                      <Controller name="monto" control={control} render={({ field: { onChange, value, ref } }) => (
+                        <NumericFormat 
+                          getInputRef={ref} value={value} 
+                          onValueChange={(v) => { onChange(v.floatValue); if(entryMode === 'total') handleMontoTotalChange(v.floatValue); }}
+                          disabled={entryMode === 'cuota'}
+                          thousandSeparator="." decimalSeparator="," prefix="$ " 
+                          className={`w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-opacity ${entryMode === 'cuota' ? 'opacity-50' : ''}`} 
+                        />
+                      )} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className={`text-[10px] font-bold ${entryMode === 'cuota' ? 'text-gray-600' : 'text-gray-400'}`}>Monto Cuota</label>
+                      <NumericFormat 
+                        value={cantCuotas && cantCuotas > 0 ? Number(((montoTotal || 0) / cantCuotas).toFixed(2)) : 0}
+                        onValueChange={(v) => { if(entryMode === 'cuota') handleMontoCuotaChange(v.floatValue); }}
+                        disabled={entryMode === 'total'}
+                        thousandSeparator="." decimalSeparator="," prefix="$ " 
+                        className={`w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-opacity ${entryMode === 'total' ? 'opacity-50' : ''}`} 
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
                 <div className="space-y-1">
-                  <label className={`text-[10px] font-bold ${entryMode === 'total' ? 'text-gray-600' : 'text-gray-400'}`}>Monto Total</label>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase">Monto</label>
                   <Controller name="monto" control={control} render={({ field: { onChange, value, ref } }) => (
                     <NumericFormat 
-                      getInputRef={ref} value={value} 
-                      onValueChange={(v) => { onChange(v.floatValue); if(entryMode === 'total') handleMontoTotalChange(v.floatValue); }}
-                      disabled={entryMode === 'cuota'}
+                      getInputRef={ref} value={value} onValueChange={(v) => onChange(v.floatValue)}
                       thousandSeparator="." decimalSeparator="," prefix="$ " 
-                      className={`w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-opacity ${entryMode === 'cuota' ? 'opacity-50' : ''}`} 
+                      className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" 
                     />
                   )} />
                 </div>
-                <div className="space-y-1">
-                  <label className={`text-[10px] font-bold ${entryMode === 'cuota' ? 'text-gray-600' : 'text-gray-400'}`}>Monto Cuota</label>
-                  <NumericFormat 
-                    value={cantCuotas && cantCuotas > 0 ? Number(((montoTotal || 0) / cantCuotas).toFixed(2)) : 0}
-                    onValueChange={(v) => { if(entryMode === 'cuota') handleMontoCuotaChange(v.floatValue); }}
-                    disabled={entryMode === 'total'}
-                    thousandSeparator="." decimalSeparator="," prefix="$ " 
-                    className={`w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-opacity ${entryMode === 'total' ? 'opacity-50' : ''}`} 
-                  />
-                </div>
-              </div>
+              )}
             </div>
           ) : (
             <div className="space-y-1">
@@ -287,42 +311,44 @@ export default function InlineEditForm({ id, tipo, mesActual, anioActual, onClos
                   />
                 )}
               </div>
-              <div className="col-span-full space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Cuotas</label>
-                  <div className="flex bg-gray-100 dark:bg-black p-0.5 rounded-lg">
-                    <button type="button" onClick={() => setCuotasMode('preset')} className={`px-2 py-1 text-[8px] font-bold rounded-md transition-all ${cuotasMode === 'preset' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-sm' : 'text-gray-500'}`}>SUG.</button>
-                    <button type="button" onClick={() => setCuotasMode('manual')} className={`px-2 py-1 text-[8px] font-bold rounded-md transition-all ${cuotasMode === 'manual' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-sm' : 'text-gray-500'}`}>MAN.</button>
-                  </div>
-                </div>
-                
-                {cuotasMode === 'preset' ? (
-                  <div className="grid grid-cols-6 gap-1.5">
-                    {[1, 3, 6, 12, 18, 24].map(n => (
-                      <button 
-                        key={n} 
-                        type="button" 
-                        onClick={() => setValue('cuotas', n)} 
-                        className={`py-2 rounded-lg text-[10px] font-bold border transition-all ${cantCuotas === n ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white dark:bg-neutral-900 text-gray-500 border-gray-100 dark:border-neutral-800'}`}
-                      >
-                        {n}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <input 
-                      type="number"
-                      {...register('cuotas', { valueAsNumber: true })}
-                      className="w-full px-4 pr-16 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none"
-                      min="1"
-                    />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-bold text-gray-400 uppercase tracking-widest pointer-events-none">
-                      CUOTAS
+              {!isReservaOrCashSelection && (
+                <div className="col-span-full space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Cuotas</label>
+                    <div className="flex bg-gray-100 dark:bg-black p-0.5 rounded-lg">
+                      <button type="button" onClick={() => setCuotasMode('preset')} className={`px-2 py-1 text-[8px] font-bold rounded-md transition-all ${cuotasMode === 'preset' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-sm' : 'text-gray-500'}`}>SUG.</button>
+                      <button type="button" onClick={() => setCuotasMode('manual')} className={`px-2 py-1 text-[8px] font-bold rounded-md transition-all ${cuotasMode === 'manual' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-sm' : 'text-gray-500'}`}>MAN.</button>
                     </div>
                   </div>
-                )}
-              </div>
+                  
+                  {cuotasMode === 'preset' ? (
+                    <div className="grid grid-cols-6 gap-1.5">
+                      {[1, 3, 6, 12, 18, 24].map(n => (
+                        <button 
+                          key={n} 
+                          type="button" 
+                          onClick={() => setValue('cuotas', n)} 
+                          className={`py-2 rounded-lg text-[10px] font-bold border transition-all ${cantCuotas === n ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white dark:bg-neutral-900 text-gray-500 border-gray-100 dark:border-neutral-800'}`}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <input 
+                        type="number"
+                        {...register('cuotas', { valueAsNumber: true })}
+                        className="w-full px-4 pr-16 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                        min="1"
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-bold text-gray-400 uppercase tracking-widest pointer-events-none">
+                        CUOTAS
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
 

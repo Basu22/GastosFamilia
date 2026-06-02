@@ -1,14 +1,20 @@
-import { Wallet, X } from 'lucide-react';
+import { useState } from 'react';
+import { Wallet, X, Edit3 } from 'lucide-react';
 import { formatARS } from '../../utils/format';
 import { SaldoReserva } from '../../api/reservas';
+import InlineEditForm from '../dashboard/InlineEditForm';
 
 interface ModalReservaDetalleProps {
   reserva: SaldoReserva;
   movimientos: any[];
+  mes: number;
+  anio: number;
   onClose: () => void;
 }
 
-export default function ModalReservaDetalle({ reserva, movimientos, onClose }: ModalReservaDetalleProps) {
+export default function ModalReservaDetalle({ reserva, movimientos, mes, anio, onClose }: ModalReservaDetalleProps) {
+  const [editingItem, setEditingItem] = useState<{ id: number; tipo: 'tarjeta' | 'gasto' | 'ingreso' | 'prestamo' } | null>(null);
+
   // Filter movements for this reserve
   const detalles = movimientos.filter(m => {
     const esConsumo = m.reserva_nombre === reserva.nombre;
@@ -45,6 +51,7 @@ export default function ModalReservaDetalle({ reserva, movimientos, onClose }: M
           <button 
             onClick={onClose}
             className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white"
+            style={{ minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             <X size={20} />
           </button>
@@ -54,25 +61,62 @@ export default function ModalReservaDetalle({ reserva, movimientos, onClose }: M
           {detalles.length > 0 ? (
             detalles.map((item, idx) => {
               const isFondeo = item.tipo === 'asignacion_reserva';
+              const isEditing = editingItem?.id === item.id && editingItem?.tipo === item.tipo;
+
               return (
-                <div 
-                  key={idx} 
-                  className="flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-xl transition-colors border border-white/5"
-                >
-                  <div>
-                    <p className="text-[11px] font-bold text-white leading-tight">{item.descripcion}</p>
-                    <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full mt-1 inline-block"
-                          style={{ 
-                            backgroundColor: isFondeo ? '#10B98130' : '#EF444430',
-                            color: isFondeo ? '#10B981' : '#EF4444'
-                          }}>
-                      {isFondeo ? 'Fondeo' : 'Consumo'}
-                    </span>
+                <div key={idx} className="space-y-2">
+                  <div 
+                    className={`flex items-center justify-between p-4 rounded-xl transition-all duration-300 border ${
+                      isEditing 
+                        ? 'bg-blue-600/10 border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.1)]' 
+                        : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-bold text-white leading-tight">{item.descripcion}</p>
+                        <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full mt-1 inline-block"
+                              style={{ 
+                                backgroundColor: isFondeo ? '#10B98130' : '#EF444430',
+                                color: isFondeo ? '#10B981' : '#EF4444'
+                              }}>
+                          {isFondeo ? 'Fondeo' : 'Consumo'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 ml-4 shrink-0">
+                      <span className="text-[11px] font-bold tracking-tight animate-none"
+                            style={{ color: isFondeo ? '#10B981' : '#FCA5A5' }}>
+                        {isFondeo ? '+' : '-'}{formatARS(item.monto)}
+                      </span>
+                      {!isFondeo && (
+                        <button 
+                          onClick={() => setEditingItem(isEditing ? null : { id: item.id, tipo: item.tipo })}
+                          className={`p-2 rounded-lg transition-all ${
+                            isEditing 
+                              ? 'bg-blue-600 text-white shadow-md' 
+                              : 'text-gray-400 hover:text-white hover:bg-white/10'
+                          }`}
+                          style={{ minWidth: '40px', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <Edit3 size={14} />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <span className="text-[11px] font-bold tracking-tight"
-                        style={{ color: isFondeo ? '#10B981' : '#FCA5A5' }}>
-                    {isFondeo ? '+' : '-'}{formatARS(item.monto)}
-                  </span>
+
+                  {isEditing && (
+                    <div className="glass-card p-4 border-white/10 my-2 animate-in slide-in-from-top-4 duration-300">
+                      <InlineEditForm 
+                        id={item.id} 
+                        tipo={item.tipo} 
+                        mesActual={mes} 
+                        anioActual={anio} 
+                        onClose={() => setEditingItem(null)} 
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })

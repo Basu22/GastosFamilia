@@ -117,6 +117,8 @@ export const PanelReservas: React.FC<Props> = ({ mes, anio, disponible, movimien
         <ModalReservaDetalle
           reserva={reservaDetalle}
           movimientos={movimientos || []}
+          mes={mes}
+          anio={anio}
           onClose={() => setReservaDetalle(null)}
         />
       )}

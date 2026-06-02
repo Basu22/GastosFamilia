@@ -328,7 +328,7 @@ def get_dashboard_summary(
                 "tipo": "tarjeta",
                 "origen": "Cuotas",
                 "medio_pago": medio_pago,
-                "descripcion": f"{m.descripcion} ({n_cuota}/{m.cuotas})",
+                "descripcion": m.descripcion if r else f"{m.descripcion} ({n_cuota}/{m.cuotas})",
                 "monto": m.monto_cuota,
                 "monto_total": m.monto_total,
                 "cuota_actual": n_cuota,

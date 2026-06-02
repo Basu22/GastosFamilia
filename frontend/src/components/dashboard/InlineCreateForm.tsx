@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -60,6 +60,15 @@ export default function InlineCreateForm({ tipo, mes, anio, onClose, defaultMedi
   });
 
   const cantCuotas = watch('cuotas');
+  const medioPago = watch('medio_pago');
+  const isReservaOrCashSelection = !medioPago || medioPago.startsWith('reserva_');
+
+  useEffect(() => {
+    if (isReservaOrCashSelection) {
+      setValue('cuotas', 1);
+      setEntryMode('total');
+    }
+  }, [isReservaOrCashSelection, setValue]);
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
@@ -142,7 +151,7 @@ export default function InlineCreateForm({ tipo, mes, anio, onClose, defaultMedi
             </select>
           </div>
 
-          {(tipo === 'tarjeta' || tipo === 'prestamo') ? (
+          {(tipo === 'tarjeta' || tipo === 'prestamo') && !isReservaOrCashSelection ? (
             <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-4 bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-gray-100 dark:border-neutral-800">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
