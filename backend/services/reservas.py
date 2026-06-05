@@ -1,3 +1,4 @@
+import datetime
 from sqlmodel import Session, select
 from typing import List, Dict, Any
 from sqlalchemy import func
@@ -8,15 +9,52 @@ from models.ajuste_reserva import AjusteReserva
 from models.movimiento import Movimiento
 from models.gasto_mensual import GastoMensual
 
+def parse_date(d):
+    if not d:
+        return None
+    if isinstance(d, str):
+        return datetime.date.fromisoformat(d.split('T')[0])
+    return d
+
 def calcular_saldo_reserva(reserva_id: int, hasta_mes: int, hasta_anio: int, session: Session) -> float:
     # 1. Total Asignado
-    total_asignado = session.exec(
-        select(func.coalesce(func.sum(AsignacionReserva.monto), 0))
+    reserva = session.get(Reserva, reserva_id)
+    if not reserva:
+        return 0.0
+
+    asignaciones = session.exec(
+        select(AsignacionReserva)
         .where(
             AsignacionReserva.reserva_id == reserva_id,
             (AsignacionReserva.anio * 12 + AsignacionReserva.mes) <= (hasta_anio * 12 + hasta_mes)
         )
-    ).first() or 0.0
+    ).all()
+    
+    asignaciones_dict = {(a.anio * 12 + a.mes): a.monto for a in asignaciones}
+    
+    r_created_at = parse_date(reserva.created_at)
+    start_val = r_created_at.year * 12 + r_created_at.month if r_created_at else (hasta_anio * 12 + hasta_mes)
+    if asignaciones_dict:
+        start_val = min(start_val, min(asignaciones_dict.keys()))
+        
+    end_val = hasta_anio * 12 + hasta_mes
+    
+    total_asignado = 0.0
+    r_fecha_baja = parse_date(reserva.fecha_baja)
+    for val in range(start_val, end_val + 1):
+        mes_val = val % 12
+        anio_val = val // 12
+        if mes_val == 0:
+            mes_val = 12
+            anio_val -= 1
+            
+        if r_fecha_baja and r_fecha_baja <= datetime.date(anio_val, mes_val, 1):
+            continue
+            
+        if val in asignaciones_dict:
+            total_asignado += asignaciones_dict[val]
+        elif reserva.activa and reserva.monto_fijo_mensual > 0:
+            total_asignado += reserva.monto_fijo_mensual
 
     # 2. Total Consumido (Movimientos / Cuotas / Tarjetas)
     total_consumido = session.exec(
@@ -84,7 +122,17 @@ def get_saldos_todas_reservas(hasta_mes: int, hasta_anio: int, session: Session)
                 AsignacionReserva.mes == hasta_mes,
                 AsignacionReserva.anio == hasta_anio
             )
-        ).first() or 0.0
+        ).first()
+        
+        if asignacion_mes is None:
+            if r.activa and r.monto_fijo_mensual > 0:
+                r_fecha_baja = parse_date(r.fecha_baja)
+                if not (r_fecha_baja and r_fecha_baja <= datetime.date(hasta_anio, hasta_mes, 1)):
+                    asignacion_mes = r.monto_fijo_mensual
+                else:
+                    asignacion_mes = 0.0
+            else:
+                asignacion_mes = 0.0
         
         consumo_mes = session.exec(
             select(func.coalesce(func.sum(Movimiento.monto_total), 0))

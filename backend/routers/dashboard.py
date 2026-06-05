@@ -3,8 +3,14 @@ from sqlmodel import Session, select
 from typing import List, Dict, Any
 from datetime import date
 import datetime
-from models.reserva import Reserva
-from models.asignacion_reserva import AsignacionReserva
+
+def parse_date(d):
+    if not d:
+        return None
+    if isinstance(d, str):
+        return datetime.date.fromisoformat(d.split('T')[0])
+    return d
+
 from models.reserva import Reserva
 from models.asignacion_reserva import AsignacionReserva
 
@@ -95,6 +101,16 @@ def get_dashboard_summary(
         select(AsignacionReserva).where(AsignacionReserva.mes == mes, AsignacionReserva.anio == anio)
     ).all()
     total_asignaciones = sum(a.monto for a in asignaciones_db)
+    
+    reservas_activas = session.exec(select(Reserva).where(Reserva.activa == True)).all()
+    reservas_asignadas_este_mes = {a.reserva_id for a in asignaciones_db}
+    
+    for r in reservas_activas:
+        if r.monto_fijo_mensual > 0 and r.id not in reservas_asignadas_este_mes:
+            r_fecha_baja = parse_date(r.fecha_baja)
+            if not (r_fecha_baja and r_fecha_baja <= datetime.date(anio, mes, 1)):
+                total_asignaciones += r.monto_fijo_mensual
+
     total_gastos += total_asignaciones
     total_gastos_fijos += total_asignaciones
             
@@ -164,9 +180,22 @@ def get_dashboard_summary(
                     continue
                 step_gastos += g.monto
                 
-        # Asignaciones proyectadas (las asignaciones pasadas no se proyectan automáticamente salvo que hiciéramos asignaciones fijas,
-        # pero asumimos que el usuario no tiene "asignaciones fijas" por ahora, o sí? Dejamos step_asignaciones = 0)
+        # Asignaciones proyectadas
         step_asignaciones = 0.0
+        
+        step_asignaciones_db = session.exec(
+            select(AsignacionReserva).where(AsignacionReserva.mes == curr_mes, AsignacionReserva.anio == curr_anio)
+        ).all()
+        step_asignadas_ids = {a.reserva_id for a in step_asignaciones_db}
+        step_asignaciones += sum(a.monto for a in step_asignaciones_db)
+        
+        reservas_activas_proyeccion = session.exec(select(Reserva).where(Reserva.activa == True)).all()
+        for r in reservas_activas_proyeccion:
+            if r.monto_fijo_mensual > 0 and r.id not in step_asignadas_ids:
+                r_fecha_baja = parse_date(r.fecha_baja)
+                if not (r_fecha_baja and r_fecha_baja <= datetime.date(curr_anio, curr_mes, 1)):
+                    step_asignaciones += r.monto_fijo_mensual
+
         step_gastos += step_asignaciones
                 
         # Préstamos proyectados (desde cuotas individuales)
@@ -312,7 +341,25 @@ def get_dashboard_summary(
             "fecha_referencia": f"{anio}-{mes:02d}-01"
         })
         # Las asignaciones no van a categorias de gastos, o si quieres sí. Lo dejamos fuera de categorias por ahora.
-            
+        
+    for r in reservas_activas:
+        if r.monto_fijo_mensual > 0 and r.id not in reservas_asignadas_este_mes:
+            r_fecha_baja = parse_date(r.fecha_baja)
+            if not (r_fecha_baja and r_fecha_baja <= datetime.date(anio, mes, 1)):
+                movimientos_mes.append({
+                    "id": f"res_{r.id}",
+                    "tipo": "asignacion_reserva",
+                    "origen": "Asignación a Reserva",
+                    "medio_pago": "Efectivo / Transf.",
+                    "descripcion": f"Fondeo: {r.nombre}",
+                    "monto": r.monto_fijo_mensual,
+                    "es_fijo": True,
+                    "previsionado": True,
+                    "activo": True,
+                    "categoria": "Ahorro/Reserva",
+                    "fecha_referencia": f"{anio}-{mes:02d}-01"
+                })
+
     # Agregar Movimientos de Tarjeta (Cuotas activas)
     for m in movs_all:
         if cuota_activa_en_mes(m, mes, anio):
