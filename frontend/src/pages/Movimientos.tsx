@@ -666,27 +666,31 @@ export default function Movimientos() {
   };
 
   return (
-    <main id="page-movimientos" className="max-w-4xl mx-auto space-y-6 px-4 py-4 lg:px-8 lg:py-8 pb-24 lg:pb-12">
+    <main id="page-movimientos" className="max-w-4xl mx-auto space-y-6 px-4 py-4 lg:px-8 lg:py-8 pb-24 lg:pb-12 relative min-h-screen">
+      {/* Background Ambient Orbs */}
+      <div className="fixed top-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-aura-coral/5 blur-[120px] pointer-events-none -z-10 animate-pulse"></div>
+      <div className="fixed bottom-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-[#818CF8]/5 blur-[120px] pointer-events-none -z-10 animate-pulse" style={{ animationDelay: '2s' }}></div>
+
       <header id="header-movimientos">
-        <p className="text-gray-500 dark:text-neutral-500 font-medium text-xs uppercase tracking-wider">Gestión Financiera</p>
-        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-neutral-100">Movimientos</h1>
+        <p className="text-aura-mint/60 font-bold text-[10px] uppercase tracking-[0.2em]">Gestión Financiera</p>
+        <h1 className="text-2xl lg:text-3xl font-bold text-white tracking-tight mt-1">Movimientos</h1>
       </header>
 
       {/* Tabs Principales */}
-      <nav className="flex bg-gray-100 dark:bg-neutral-900 p-1.5 rounded-2xl shadow-inner transition-all">
+      <nav className="flex glass-card p-1.5 rounded-2xl shadow-inner transition-all overflow-x-auto">
         {[
-          { id: 'egresos', label: 'Egresos', icon: TrendingDown, color: 'text-red-500', bg: 'bg-red-50' },
-          { id: 'tarjetas', label: 'Tarjetas', icon: CreditCard, color: 'text-blue-500', bg: 'bg-blue-50' },
-          { id: 'prestamos', label: 'Préstamos', icon: Landmark, color: 'text-indigo-500', bg: 'bg-indigo-50' },
-          { id: 'ingresos', label: 'Ingresos', icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+          { id: 'egresos', label: 'Egresos', icon: TrendingDown, color: 'text-aura-coral', bg: 'bg-aura-coral/10' },
+          { id: 'tarjetas', label: 'Tarjetas', icon: CreditCard, color: 'text-aura-lavender', bg: 'bg-aura-lavender/10' },
+          { id: 'prestamos', label: 'Préstamos', icon: Landmark, color: 'text-[#818CF8]', bg: 'bg-[#818CF8]/10' },
+          { id: 'ingresos', label: 'Ingresos', icon: TrendingUp, color: 'text-aura-mint', bg: 'bg-aura-mint/10' },
         ].map((t) => (
           <button
             key={t.id}
             onClick={() => { setActiveTab(t.id as TabType); handleCancel(); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs lg:text-sm font-bold transition-all ${
+            className={`flex-1 min-w-[90px] flex items-center justify-center gap-2 py-3 rounded-xl text-xs lg:text-sm font-bold transition-all duration-300 ${
               activeTab === t.id 
-                ? `bg-white dark:bg-neutral-800 shadow-md ${t.color}` 
-                : 'text-gray-500 dark:text-neutral-500 hover:text-gray-700'
+                ? `bg-white/10 shadow-lg border border-white/10 ${t.color}` 
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
             }`}
           >
             <t.icon size={18} />
@@ -697,14 +701,16 @@ export default function Movimientos() {
 
       {/* Formulario Dinámico de Creación (Solo visible si NO estamos editando) */}
       {!editingId && (
-        <section className={`rounded-2xl border p-4 lg:p-8 transition-all shadow-sm ${
-          activeTab === 'egresos' ? 'bg-red-50/20 border-red-100 dark:border-red-900/30' : 
-          activeTab === 'tarjetas' ? 'bg-blue-50/20 border-blue-100 dark:border-blue-900/30' : 
-          activeTab === 'prestamos' ? 'bg-indigo-50/20 border-indigo-100 dark:border-indigo-900/30' :
-          'bg-emerald-50/20 border-emerald-100 dark:border-emerald-900/30'
+        <section className={`glass-card p-4 lg:p-8 transition-all shadow-xl border-t-2 ${
+          activeTab === 'egresos' ? 'border-t-aura-coral/50' : 
+          activeTab === 'tarjetas' ? 'border-t-aura-lavender/50' : 
+          activeTab === 'prestamos' ? 'border-t-indigo-400/50' :
+          'border-t-aura-mint/50'
         }`}>
-          <h2 className="text-lg font-bold mb-6 flex items-center gap-2 text-gray-900 dark:text-neutral-100">
-            <Plus size={20} />
+          <h2 className="text-lg font-bold mb-6 flex items-center gap-2 text-white">
+            <Plus size={20} className={
+              activeTab === 'egresos' ? 'text-aura-coral' : activeTab === 'tarjetas' ? 'text-aura-lavender' : activeTab === 'prestamos' ? 'text-indigo-400' : 'text-aura-mint'
+            } />
             Nuevo {activeTab === 'egresos' ? 'Gasto Mensual' : activeTab === 'tarjetas' ? 'Compra en Cuotas' : activeTab === 'prestamos' ? 'Préstamo' : 'Ingreso'}
           </h2>
           {renderForm()}

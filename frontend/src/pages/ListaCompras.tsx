@@ -84,20 +84,25 @@ export default function ListaCompras() {
   const comprados = compras.filter((c: any) => c.estado === 'comprado');
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div id="page-lista-compras" className="max-w-4xl mx-auto space-y-8 px-4 py-4 lg:px-8 lg:py-8 pb-24 relative min-h-screen">
+      {/* Background Ambient Orbs */}
+      <div className="fixed top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-aura-gold/5 blur-[120px] pointer-events-none -z-10 animate-pulse"></div>
+      <div className="fixed bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-aura-coral/5 blur-[120px] pointer-events-none -z-10 animate-pulse" style={{ animationDelay: '2s' }}></div>
+
       <header className="flex items-center gap-4 mb-8">
-        <div className="bg-blue-500/20 p-3 rounded-2xl border border-blue-500/30">
-          <ShoppingCart className="text-blue-400 w-8 h-8" />
+        <div className="p-3 bg-aura-gold/10 border border-aura-gold/20 rounded-xl shadow-lg shadow-aura-gold/5">
+          <ShoppingCart className="text-aura-gold" size={28} />
         </div>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Lista de Compras</h1>
-          <p className="text-gray-400 text-sm">Cosas que queremos o necesitamos comprar</p>
+          <h1 className="text-2xl lg:text-3xl font-bold text-white tracking-tight">Lista de Compras</h1>
+          <p className="text-aura-gold/60 font-medium text-[10px] uppercase tracking-[0.2em] mt-1">Cosas que queremos o necesitamos comprar</p>
         </div>
       </header>
 
       {/* Formulario de Carga Rápida */}
-      <section className="bg-[#1E293B]/40 backdrop-blur-xl border border-[#334155]/30 rounded-3xl p-6 shadow-2xl">
-        <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+      <section className="glass-card rounded-3xl p-6 lg:p-8 shadow-2xl relative overflow-hidden border-white/5">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-aura-gold/5 blur-[80px] pointer-events-none rounded-full"></div>
+        <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end relative z-10">
           <div className="md:col-span-2 space-y-2">
             <label className="text-xs font-bold uppercase tracking-widest text-gray-500 ml-1">Descripción</label>
             <input
@@ -118,10 +123,10 @@ export default function ListaCompras() {
           <button
             type="submit"
             disabled={createMutation.isPending}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20"
+            className="w-full h-[58px] aura-btn-primary rounded-2xl font-black text-lg transition-all active:scale-95 flex items-center justify-center gap-2 shadow-xl shadow-aura-gold/10 disabled:opacity-50"
           >
-            <Plus size={20} />
-            <span>Agregar</span>
+            <Plus size={20} className="text-aura-bg" />
+            <span className="text-aura-bg">Agregar</span>
           </button>
 
           <div className="md:col-span-2 space-y-2">
@@ -172,14 +177,14 @@ export default function ListaCompras() {
             <div
               key={item.id}
               className={cn(
-                "group relative bg-[#1E293B]/40 backdrop-blur-md border border-[#334155]/30 rounded-2xl p-5 flex items-center justify-between transition-all hover:bg-[#1E293B]/60",
-                item.prioridad === 'alta' ? "border-l-4 border-l-red-500" : item.prioridad === 'media' ? "border-l-4 border-l-yellow-500" : "border-l-4 border-l-emerald-500"
+                "group relative glass-card rounded-2xl p-5 flex items-center justify-between transition-all hover:bg-white/5",
+                item.prioridad === 'alta' ? "border-l-4 border-l-aura-coral border-y-white/5 border-r-white/5" : item.prioridad === 'media' ? "border-l-4 border-l-aura-gold border-y-white/5 border-r-white/5" : "border-l-4 border-l-aura-mint border-y-white/5 border-r-white/5"
               )}
             >
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-1">
                   <span className="text-lg font-bold text-white">{item.descripcion}</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#0F172A] border border-[#334155]/50 text-gray-400 uppercase tracking-widest">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-gray-400 uppercase tracking-widest">
                     {item.categoria}
                   </span>
                 </div>
@@ -242,24 +247,25 @@ export default function ListaCompras() {
 
       {/* Modal de Confirmación / Conversión */}
       {confirmModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-md bg-black/40 animate-fade-in">
-          <div className="bg-[#1E293B] border border-[#334155] rounded-3xl p-8 max-w-md w-full shadow-2xl">
-            <div className="bg-blue-500/20 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 border border-blue-500/30">
-              <ShoppingCart className="text-blue-400 w-8 h-8" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-md bg-aura-bg/80 animate-fade-in">
+          <div className="glass-card border border-white/10 rounded-3xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-40 h-40 bg-aura-gold/10 blur-[60px] pointer-events-none rounded-full"></div>
+            <div className="bg-aura-gold/10 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 border border-aura-gold/30 relative z-10">
+              <ShoppingCart className="text-aura-gold w-8 h-8" />
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">¿Lo compraste?</h2>
+            <h2 className="text-2xl font-bold text-white mb-2 relative z-10">¿Lo compraste?</h2>
             <p className="text-gray-400 mb-8">Confirmá si ya compraste <span className="text-white font-bold">"{confirmModal.desc}"</span>. ¿Querés registrarlo como un gasto real?</p>
             
-            <div className="space-y-3">
+            <div className="space-y-3 relative z-10">
               <button
                 onClick={handleRegisterAsExpense}
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-blue-900/20"
+                className="w-full aura-btn-primary rounded-2xl font-bold py-4 transition-all shadow-lg text-aura-bg"
               >
                 Registrar como Gasto
               </button>
               <button
                 onClick={() => markBoughtMutation.mutate(confirmModal.id)}
-                className="w-full bg-[#334155]/50 hover:bg-[#334155] text-gray-200 font-bold py-4 rounded-2xl transition-all"
+                className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 font-bold py-4 rounded-2xl transition-all"
               >
                 Solo marcar como comprado
               </button>

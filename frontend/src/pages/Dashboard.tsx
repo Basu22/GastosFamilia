@@ -382,7 +382,11 @@ export default function Dashboard() {
   };
 
   return (
-    <main id="dashboard-container" className="space-y-10 lg:space-y-12 animate-in fade-in duration-700 pb-12">
+    <main id="dashboard-container" className="space-y-10 lg:space-y-12 animate-in fade-in duration-700 pb-12 relative min-h-screen">
+      {/* Background Ambient Orbs */}
+      <div className="fixed top-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-aura-mint/5 blur-[120px] pointer-events-none -z-10"></div>
+      <div className="fixed bottom-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-aura-lavender/5 blur-[120px] pointer-events-none -z-10"></div>
+
       <ModalTarjetaDetalle 
         detailData={selectedDetailData} 
         mesActual={mes}
@@ -571,14 +575,14 @@ export default function Dashboard() {
                     {data.cuotas_por_tarjeta.map((t: any) => (
                       <div 
                         key={t.nombre} 
-                        className="glass-card p-4 border border-white/5 flex flex-col justify-between hover:border-white/20 hover:scale-[1.02] active:scale-95 transition-all gap-2 cursor-pointer"
+                        className="glass-card p-5 border border-white/5 flex flex-col justify-between hover:border-aura-mint/30 hover:shadow-xl hover:shadow-aura-mint/5 hover:-translate-y-1 transition-all duration-300 gap-3 cursor-pointer group"
                         onClick={() => setActiveDetail({ type: 'tarjeta', name: t.nombre })}
                       >
                         <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.5)]" style={{ backgroundColor: t.color || '#64748B' }} />
-                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">{t.nombre}</span>
+                          <div className="w-2.5 h-2.5 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.5)] group-hover:scale-125 transition-transform" style={{ backgroundColor: t.color || '#64748B' }} />
+                          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider truncate group-hover:text-aura-mint transition-colors">{t.nombre}</span>
                         </div>
-                        <span className="text-lg font-black text-white tracking-tight">{formatARS(t.monto)}</span>
+                        <span className="text-xl font-black text-white tracking-tight">{formatARS(t.monto)}</span>
                       </div>
                     ))}
                   </div>
@@ -588,14 +592,14 @@ export default function Dashboard() {
                   {categoriasAgrupadas.map((c: any) => (
                     <div 
                       key={c.nombre} 
-                      className="glass-card p-4 border border-white/5 flex flex-col justify-between hover:border-white/20 hover:scale-[1.02] active:scale-95 transition-all gap-2 cursor-pointer"
+                      className="glass-card p-5 border border-white/5 flex flex-col justify-between hover:border-pink-500/30 hover:shadow-xl hover:shadow-pink-500/5 hover:-translate-y-1 transition-all duration-300 gap-3 cursor-pointer group"
                       onClick={() => setActiveDetail({ type: 'categoria', name: c.nombre })}
                     >
                       <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.25)]" style={{ backgroundColor: c.color }} />
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">{c.nombre}</span>
+                        <div className="w-2.5 h-2.5 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.25)] group-hover:scale-125 transition-transform" style={{ backgroundColor: c.color }} />
+                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider truncate group-hover:text-pink-400 transition-colors">{c.nombre}</span>
                       </div>
-                      <span className="text-lg font-black text-white tracking-tight">{formatARS(c.total)}</span>
+                      <span className="text-xl font-black text-white tracking-tight">{formatARS(c.total)}</span>
                     </div>
                   ))}
                   {categoriasAgrupadas.length === 0 && (

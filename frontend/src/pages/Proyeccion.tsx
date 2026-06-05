@@ -440,48 +440,52 @@ export default function Proyeccion() {
   const promedioAhorro = proyeccion.reduce((s, m) => s + m.ahorro_proyectado, 0) / proyeccion.length;
 
   return (
-    <section id="page-proyeccion" className="max-w-5xl mx-auto space-y-8">
-      <header id="header-proyeccion" className="flex items-start gap-3">
-        <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-          <BarChart2 className="text-blue-600 dark:text-blue-400" size={24} />
+    <section id="page-proyeccion" className="max-w-5xl mx-auto space-y-8 relative min-h-screen px-4 py-4 lg:px-8 lg:py-8 pb-24">
+      {/* Background Ambient Orbs */}
+      <div className="fixed top-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-aura-mint/5 blur-[120px] pointer-events-none -z-10 animate-pulse"></div>
+      <div className="fixed bottom-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-aura-coral/5 blur-[120px] pointer-events-none -z-10 animate-pulse" style={{ animationDelay: '2s' }}></div>
+
+      <header id="header-proyeccion" className="flex items-start gap-4">
+        <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl shadow-lg shadow-blue-500/5">
+          <BarChart2 className="text-blue-400" size={28} />
         </div>
         <div>
-          <h1 id="title-proyeccion" className="text-2xl font-bold text-gray-900 dark:text-neutral-100">
+          <h1 id="title-proyeccion" className="text-2xl lg:text-3xl font-bold text-white tracking-tight">
             Proyección Financiera
           </h1>
-          <p className="text-gray-500 dark:text-neutral-400 text-sm">
-            Próximos 12 meses · Tocá cualquier fila para ajustar valores
+          <p className="text-blue-400/60 font-medium text-[10px] uppercase tracking-[0.2em] mt-1">
+            Próximos 12 meses · Tocá cualquier fila para ajustar
           </p>
         </div>
       </header>
 
       {/* Métricas resumen */}
-      <section id="proyeccion-metricas" className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-4">
-        <article className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/50 rounded-xl p-3 lg:p-4 transition-colors">
-          <p className="text-[10px] lg:text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-500 opacity-70">Mejor Mes</p>
-          <p className="text-lg lg:text-xl font-black text-emerald-700 dark:text-emerald-400 mt-1 leading-tight">{formatARS(mejorMes.ahorro_proyectado)}</p>
-          <p className="text-[10px] lg:text-xs text-emerald-600 dark:text-emerald-500/70 mt-0.5 font-semibold">{MESES_CORTO[mejorMes.mes]} {mejorMes.anio}</p>
+      <section id="proyeccion-metricas" className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-5">
+        <article className="glass-card aura-glow-mint border-emerald-500/20 p-4 transition-colors">
+          <p className="text-[10px] lg:text-xs font-bold uppercase tracking-wider text-emerald-400 opacity-70">Mejor Mes</p>
+          <p className="text-xl lg:text-2xl font-black text-emerald-400 mt-1 leading-tight">{formatARS(mejorMes.ahorro_proyectado)}</p>
+          <p className="text-[10px] lg:text-xs text-emerald-500/70 mt-0.5 font-semibold">{MESES_CORTO[mejorMes.mes]} {mejorMes.anio}</p>
         </article>
-        <article className={`border rounded-xl p-3 lg:p-4 transition-colors ${peorMes.ahorro_proyectado < 0 ? 'bg-red-50 dark:bg-red-950/20 border-red-100 dark:border-red-900/50' : 'bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/50'}`}>
-          <p className={`text-[10px] lg:text-xs font-bold uppercase tracking-wider opacity-70 ${peorMes.ahorro_proyectado < 0 ? 'text-red-700 dark:text-red-500' : 'text-amber-700 dark:text-amber-500'}`}>Mes Ajustado</p>
-          <p className={`text-lg lg:text-xl font-black mt-1 leading-tight ${peorMes.ahorro_proyectado < 0 ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}`}>{formatARS(peorMes.ahorro_proyectado)}</p>
-          <p className={`text-[10px] lg:text-xs mt-0.5 font-semibold ${peorMes.ahorro_proyectado < 0 ? 'text-red-600 dark:text-red-500/70' : 'text-amber-600 dark:text-amber-500/70'}`}>{MESES_CORTO[peorMes.mes]} {peorMes.anio}</p>
+        <article className={`glass-card p-4 transition-colors ${peorMes.ahorro_proyectado < 0 ? 'aura-glow-coral border-red-500/20' : 'aura-glow-gold border-amber-500/20'}`}>
+          <p className={`text-[10px] lg:text-xs font-bold uppercase tracking-wider opacity-70 ${peorMes.ahorro_proyectado < 0 ? 'text-red-400' : 'text-amber-400'}`}>Mes Ajustado</p>
+          <p className={`text-xl lg:text-2xl font-black mt-1 leading-tight ${peorMes.ahorro_proyectado < 0 ? 'text-red-400' : 'text-amber-400'}`}>{formatARS(peorMes.ahorro_proyectado)}</p>
+          <p className={`text-[10px] lg:text-xs mt-0.5 font-semibold ${peorMes.ahorro_proyectado < 0 ? 'text-red-500/70' : 'text-amber-500/70'}`}>{MESES_CORTO[peorMes.mes]} {peorMes.anio}</p>
         </article>
-        <article className="bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/50 rounded-xl p-3 lg:p-4 transition-colors">
-          <p className="text-[10px] lg:text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-500 opacity-70">Ahorro Promedio</p>
-          <p className={`text-lg lg:text-xl font-black mt-1 leading-tight ${promedioAhorro >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-red-700 dark:text-red-400'}`}>{formatARS(promedioAhorro)}</p>
-          <p className="text-[10px] lg:text-xs text-blue-600 dark:text-blue-500/70 mt-0.5 font-semibold">por mes</p>
+        <article className="glass-card aura-glow-lavender border-blue-500/20 p-4 transition-colors">
+          <p className="text-[10px] lg:text-xs font-bold uppercase tracking-wider text-blue-400 opacity-70">Ahorro Promedio</p>
+          <p className={`text-xl lg:text-2xl font-black mt-1 leading-tight ${promedioAhorro >= 0 ? 'text-blue-400' : 'text-red-400'}`}>{formatARS(promedioAhorro)}</p>
+          <p className="text-[10px] lg:text-xs text-blue-500/70 mt-0.5 font-semibold">por mes</p>
         </article>
-        <article className={`border rounded-xl p-3 lg:p-4 transition-colors ${mesesEnRojo > 0 ? 'bg-red-50 dark:bg-red-950/20 border-red-100 dark:border-red-900/50' : 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/50'}`}>
-          <p className={`text-[10px] lg:text-xs font-bold uppercase tracking-wider opacity-70 ${mesesEnRojo > 0 ? 'text-red-700 dark:text-red-500' : 'text-emerald-700 dark:text-emerald-500'}`}>Meses en Rojo</p>
-          <p className={`text-2xl lg:text-3xl font-black mt-1 leading-tight ${mesesEnRojo > 0 ? 'text-red-700 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'}`}>{mesesEnRojo}</p>
-          <p className={`text-[10px] lg:text-xs mt-0.5 font-semibold ${mesesEnRojo > 0 ? 'text-red-600 dark:text-red-500/70' : 'text-emerald-600 dark:text-emerald-500/70'}`}>de 12 proyectados</p>
+        <article className={`glass-card p-4 transition-colors ${mesesEnRojo > 0 ? 'aura-glow-coral border-red-500/20' : 'aura-glow-mint border-emerald-500/20'}`}>
+          <p className={`text-[10px] lg:text-xs font-bold uppercase tracking-wider opacity-70 ${mesesEnRojo > 0 ? 'text-red-400' : 'text-emerald-400'}`}>Meses en Rojo</p>
+          <p className={`text-2xl lg:text-3xl font-black mt-1 leading-tight ${mesesEnRojo > 0 ? 'text-red-400' : 'text-emerald-400'}`}>{mesesEnRojo}</p>
+          <p className={`text-[10px] lg:text-xs mt-0.5 font-semibold ${mesesEnRojo > 0 ? 'text-red-500/70' : 'text-emerald-500/70'}`}>de 12 proyectados</p>
         </article>
       </section>
 
       {/* Gráfico de barras apiladas */}
-      <section id="proyeccion-grafico" className="bg-white dark:bg-neutral-900 rounded-3xl border border-gray-100 dark:border-neutral-800 p-4 lg:p-6 transition-colors">
-        <h2 className="font-bold text-gray-800 dark:text-neutral-200 mb-6">Vista General — 12 Meses</h2>
+      <section id="proyeccion-grafico" className="glass-card p-6 lg:p-8 transition-colors">
+        <h2 className="font-bold text-white mb-6">Vista General — 12 Meses</h2>
         <ResponsiveContainer width="100%" height={280}>
           <BarChart data={datosGrafico} margin={{ top: 5, right: 10, left: -10, bottom: 0 }} barSize={24}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" opacity={0.3} />
@@ -512,14 +516,14 @@ export default function Proyeccion() {
       </section>
 
       {/* Tabla interactiva */}
-      <section id="proyeccion-tabla" className="bg-white dark:bg-neutral-900 rounded-3xl border border-gray-100 dark:border-neutral-800 overflow-hidden transition-colors">
-        <div className="px-4 py-4 lg:px-6 border-b border-gray-100 dark:border-neutral-800 flex items-center justify-between">
-          <h2 className="font-bold text-gray-800 dark:text-neutral-200">
+      <section id="proyeccion-tabla" className="glass-card overflow-hidden transition-colors border-white/5">
+        <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between bg-white/5">
+          <h2 className="font-bold text-white">
             Detalle Mes a Mes
           </h2>
-          <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+          <p className="text-[10px] text-aura-gold/80 flex items-center gap-1.5 font-bold uppercase tracking-widest">
             <Edit3 size={12} />
-            Tocá una fila para editar valores proyectados
+            Editar Proyección
           </p>
         </div>
 

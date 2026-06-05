@@ -135,63 +135,69 @@ export default function Configuracion() {
   };
 
   return (
-    <main className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
+    <main className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 px-4 py-4 lg:px-8 lg:py-8 pb-24 relative min-h-screen">
+      {/* Background Ambient Orbs */}
+      <div className="fixed top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-aura-lavender/5 blur-[120px] pointer-events-none -z-10 animate-pulse"></div>
+      <div className="fixed bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-aura-mint/5 blur-[120px] pointer-events-none -z-10 animate-pulse" style={{ animationDelay: '2s' }}></div>
+
       <header className="flex items-center justify-between px-4 lg:px-0">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-neutral-100 flex items-center gap-2">
-            <Settings className="text-blue-600" size={28} /> Configuración
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Settings className="text-aura-lavender" size={28} /> Configuración
           </h1>
-          <p className="text-sm text-gray-500 mt-1">Gestioná tus medios de pago y categorías</p>
+          <p className="text-[10px] text-aura-lavender/60 uppercase font-bold tracking-[0.2em] mt-1">Gestioná tus medios de pago y categorías</p>
         </div>
       </header>
 
-      <nav className="flex p-1.5 bg-gray-100/80 dark:bg-neutral-900/80 backdrop-blur-sm rounded-2xl mx-4 lg:mx-0 border border-gray-200 dark:border-neutral-800">
+      <nav className="flex p-1.5 glass-card rounded-2xl mx-4 lg:mx-0 border-white/5 overflow-x-auto no-scrollbar">
         <button 
           onClick={() => { setActiveTab('medios'); resetForm(); }}
-          className={`flex-1 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 py-3 md:py-4 rounded-xl text-[10px] md:text-sm font-black uppercase tracking-tight md:tracking-widest transition-all duration-300 ${activeTab === 'medios' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-lg shadow-blue-900/10' : 'text-gray-400 hover:text-gray-600 dark:hover:text-neutral-300'}`}
+          className={`flex-1 min-w-[100px] flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 py-3 md:py-4 rounded-xl text-[10px] md:text-sm font-black uppercase tracking-tight md:tracking-widest transition-all duration-300 ${activeTab === 'medios' ? 'bg-white/10 text-aura-lavender shadow-lg shadow-aura-lavender/10 border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
         >
-          <CreditCard size={20} className={activeTab === 'medios' ? 'text-blue-600 scale-110' : 'text-gray-400'} />
+          <CreditCard size={20} className={activeTab === 'medios' ? 'text-aura-lavender scale-110' : 'text-gray-400'} />
           <span className="leading-tight text-center">Medios<br className="md:hidden" /> de Pago</span>
         </button>
         <button 
           onClick={() => { setActiveTab('categorias'); resetForm(); }}
-          className={`flex-1 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 py-3 md:py-4 rounded-xl text-[10px] md:text-sm font-black uppercase tracking-tight md:tracking-widest transition-all duration-300 ${activeTab === 'categorias' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-lg shadow-blue-900/10' : 'text-gray-400 hover:text-gray-600 dark:hover:text-neutral-300'}`}
+          className={`flex-1 min-w-[100px] flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 py-3 md:py-4 rounded-xl text-[10px] md:text-sm font-black uppercase tracking-tight md:tracking-widest transition-all duration-300 ${activeTab === 'categorias' ? 'bg-white/10 text-aura-lavender shadow-lg shadow-aura-lavender/10 border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
         >
-          <Tag size={20} className={activeTab === 'categorias' ? 'text-blue-600 scale-110' : 'text-gray-400'} />
+          <Tag size={20} className={activeTab === 'categorias' ? 'text-aura-lavender scale-110' : 'text-gray-400'} />
           <span className="leading-tight text-center">Categorías</span>
         </button>
         <button 
           onClick={() => { setActiveTab('reservas'); resetForm(); }}
-          className={`flex-1 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 py-3 md:py-4 rounded-xl text-[10px] md:text-sm font-black uppercase tracking-tight md:tracking-widest transition-all duration-300 ${activeTab === 'reservas' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-lg shadow-blue-900/10' : 'text-gray-400 hover:text-gray-600 dark:hover:text-neutral-300'}`}
+          className={`flex-1 min-w-[100px] flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 py-3 md:py-4 rounded-xl text-[10px] md:text-sm font-black uppercase tracking-tight md:tracking-widest transition-all duration-300 ${activeTab === 'reservas' ? 'bg-white/10 text-aura-lavender shadow-lg shadow-aura-lavender/10 border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
         >
-          <Wallet size={20} className={activeTab === 'reservas' ? 'text-blue-600 scale-110' : 'text-gray-400'} />
+          <Wallet size={20} className={activeTab === 'reservas' ? 'text-aura-lavender scale-110' : 'text-gray-400'} />
           <span className="leading-tight text-center">Reservas</span>
         </button>
         <button 
           onClick={() => { setActiveTab('gmail'); resetForm(); }}
-          className={`flex-1 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 py-3 md:py-4 rounded-xl text-[10px] md:text-sm font-black uppercase tracking-tight md:tracking-widest transition-all duration-300 ${activeTab === 'gmail' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-lg shadow-blue-900/10' : 'text-gray-400 hover:text-gray-600 dark:hover:text-neutral-300'}`}
+          className={`flex-1 min-w-[100px] flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 py-3 md:py-4 rounded-xl text-[10px] md:text-sm font-black uppercase tracking-tight md:tracking-widest transition-all duration-300 ${activeTab === 'gmail' ? 'bg-white/10 text-aura-lavender shadow-lg shadow-aura-lavender/10 border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
         >
-          <Mail size={20} className={activeTab === 'gmail' ? 'text-blue-600 scale-110' : 'text-gray-400'} />
+          <Mail size={20} className={activeTab === 'gmail' ? 'text-aura-lavender scale-110' : 'text-gray-400'} />
           <span className="leading-tight text-center">Importador<br className="md:hidden" /> Gmail</span>
         </button>
         <button 
           onClick={() => { setActiveTab('database'); resetForm(); setSyncMessage(null); }}
-          className={`flex-1 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 py-3 md:py-4 rounded-xl text-[10px] md:text-sm font-black uppercase tracking-tight md:tracking-widest transition-all duration-300 ${activeTab === 'database' ? 'bg-white dark:bg-neutral-800 text-blue-600 shadow-lg shadow-blue-900/10' : 'text-gray-400 hover:text-gray-600 dark:hover:text-neutral-300'}`}
+          className={`flex-1 min-w-[100px] flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 py-3 md:py-4 rounded-xl text-[10px] md:text-sm font-black uppercase tracking-tight md:tracking-widest transition-all duration-300 ${activeTab === 'database' ? 'bg-white/10 text-aura-lavender shadow-lg shadow-aura-lavender/10 border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
         >
-          <Database size={20} className={activeTab === 'database' ? 'text-blue-600 scale-110' : 'text-gray-400'} />
+          <Database size={20} className={activeTab === 'database' ? 'text-aura-lavender scale-110' : 'text-gray-400'} />
           <span className="leading-tight text-center">Base de<br className="md:hidden" /> Datos</span>
         </button>
       </nav>
 
       {activeTab !== 'gmail' && activeTab !== 'database' && (
         <>
-          <section className="bg-white dark:bg-neutral-950 p-6 rounded-3xl border border-gray-100 dark:border-neutral-900 shadow-sm mx-4 lg:mx-0">
-            <h2 className="text-lg font-bold mb-6 flex items-center gap-2">
-              {editingId ? <Edit3 size={20} className="text-amber-500" /> : <Plus size={20} className="text-blue-500" />}
-              {editingId ? 'Editar' : 'Nuevo'} {activeTab === 'medios' ? 'Medio de Pago' : activeTab === 'categorias' ? 'Categoría' : 'Reserva'}
-            </h2>
-            
-            <form onSubmit={handleSubmit} className="space-y-6">
+          <section className="glass-card p-6 rounded-3xl border-white/5 shadow-2xl mx-4 lg:mx-0 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-aura-lavender/5 blur-[80px] pointer-events-none rounded-full"></div>
+            <div className="relative z-10">
+              <h2 className="text-lg font-bold mb-6 flex items-center gap-2 text-white">
+                {editingId ? <Edit3 size={20} className="text-aura-gold" /> : <Plus size={20} className="text-aura-lavender" />}
+                {editingId ? 'Editar' : 'Nuevo'} {activeTab === 'medios' ? 'Medio de Pago' : activeTab === 'categorias' ? 'Categoría' : 'Reserva'}
+              </h2>
+              
+              <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Nombre</label>
@@ -284,18 +290,19 @@ export default function Configuracion() {
                 {editingId && (
                   <button type="button" onClick={resetForm} className="px-6 py-4 bg-gray-100 text-gray-500 rounded-xl font-bold hover:bg-gray-200 transition-all">Cancelar</button>
                 )}
-                <button type="submit" className="flex-1 py-4 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-200 dark:shadow-none hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-2">
+                <button type="submit" className="flex-1 py-4 aura-btn-primary text-aura-bg font-bold rounded-xl shadow-lg shadow-aura-lavender/20 active:scale-95 transition-all flex items-center justify-center gap-2">
                   <Save size={20} /> {editingId ? 'Actualizar' : 'Guardar'}
                 </button>
               </div>
             </form>
+            </div>
           </section>
 
           <section className="px-4 lg:px-0 pb-10">
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 mt-8">Listado Actual</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {(activeTab === 'medios' ? medios : activeTab === 'categorias' ? categorias : reservas)?.map((item: any) => (
-                <article key={item.id} className="group relative bg-white dark:bg-neutral-900/30 p-5 rounded-2xl border border-gray-100 dark:border-neutral-800 hover:border-blue-500/30 hover:shadow-xl hover:shadow-blue-900/5 transition-all flex items-center justify-between overflow-hidden">
+                <article key={item.id} className="group relative glass-card p-5 rounded-2xl border-white/5 hover:border-aura-lavender/30 hover:shadow-xl hover:shadow-aura-lavender/10 transition-all flex items-center justify-between overflow-hidden">
                   {/* Barra de color lateral */}
                   <div className="absolute top-0 left-0 w-1 h-full transition-all group-hover:w-1.5" style={{ backgroundColor: item.color }} />
                   
@@ -305,7 +312,7 @@ export default function Configuracion() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h4 className="font-black text-gray-900 dark:text-neutral-100 tracking-tight">{item.nombre}</h4>
+                        <h4 className="font-black text-white tracking-tight">{item.nombre}</h4>
                         {activeTab === 'categorias' && (
                           <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tighter ${item.tipo === 'Ingreso' ? 'bg-emerald-100 text-emerald-700' : item.tipo === 'Ambos' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>
                             {item.tipo}

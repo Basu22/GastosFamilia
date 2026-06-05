@@ -89,14 +89,18 @@ export default function Tarjetas() {
   };
 
   return (
-    <main id="page-tarjetas" className="max-w-4xl mx-auto space-y-8">
-      <header id="header-tarjetas" className="flex items-center gap-3">
-        <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-          <CreditCard className="text-blue-600 dark:text-blue-400" size={24} />
+    <main id="page-tarjetas" className="max-w-4xl mx-auto space-y-8 px-4 py-4 lg:px-8 lg:py-8 relative min-h-screen">
+      {/* Background Ambient Orbs */}
+      <div className="fixed top-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-aura-lavender/5 blur-[120px] pointer-events-none -z-10 animate-pulse"></div>
+      <div className="fixed bottom-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-aura-mint/5 blur-[120px] pointer-events-none -z-10 animate-pulse" style={{ animationDelay: '2s' }}></div>
+
+      <header id="header-tarjetas" className="flex items-center gap-4">
+        <div className="p-3 bg-aura-lavender/10 border border-aura-lavender/20 rounded-xl shadow-lg shadow-aura-lavender/5">
+          <CreditCard className="text-aura-lavender" size={28} />
         </div>
         <div>
-          <h1 id="title-tarjetas" className="text-2xl font-bold text-gray-900 dark:text-neutral-100">Mis Tarjetas</h1>
-          <p className="text-gray-500 dark:text-neutral-400 text-sm">Gestioná las tarjetas de crédito de la familia</p>
+          <h1 id="title-tarjetas" className="text-2xl lg:text-3xl font-bold text-white tracking-tight">Mis Tarjetas</h1>
+          <p className="text-aura-mint/60 font-medium text-[10px] uppercase tracking-[0.2em] mt-1">Gestión de Medios de Pago</p>
         </div>
       </header>
 
@@ -109,11 +113,11 @@ export default function Tarjetas() {
               key={t.id} 
               id={`tarjeta-${t.id}`}
               onClick={() => handleEditClick(t)}
-              className={`bg-white dark:bg-neutral-900 rounded-xl border p-5 flex flex-col justify-between h-32 relative overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer ${editingId === t.id ? 'border-blue-500 ring-2 ring-blue-200 dark:ring-blue-900/50' : 'border-gray-200 dark:border-neutral-800'}`}
+              className={`glass-card rounded-2xl p-6 flex flex-col justify-between h-40 relative overflow-hidden shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group ${editingId === t.id ? 'border-aura-lavender ring-2 ring-aura-lavender/20' : 'border-white/5 hover:border-aura-lavender/30'}`}
             >
               <div 
-                className="absolute top-0 left-0 w-full h-2" 
-                style={{ backgroundColor: t.color || '#ccc' }}
+                className="absolute top-0 left-0 w-full h-1" 
+                style={{ backgroundColor: t.color || '#ccc', boxShadow: `0 0 10px ${t.color || '#ccc'}` }}
               />
               <div className="flex justify-between items-start mt-2">
                 <div>
@@ -135,8 +139,11 @@ export default function Tarjetas() {
         )}
       </section>
 
-      <section id="section-nueva-tarjeta" className="bg-white dark:bg-neutral-900 rounded-3xl border border-gray-100 dark:border-neutral-800 shadow-sm p-4 lg:p-8 transition-colors">
-        <div className="flex justify-between items-center mb-6">
+      <section id="section-nueva-tarjeta" className="glass-card rounded-3xl p-6 lg:p-10 transition-colors shadow-2xl border border-white/5 mt-10 relative overflow-hidden">
+        {/* Subtle glow for form */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-aura-lavender/5 blur-[80px] pointer-events-none rounded-full"></div>
+        
+        <div className="flex justify-between items-center mb-6 relative z-10">
           <h2 className="text-lg font-bold text-gray-900 dark:text-neutral-100 flex items-center gap-2">
             {editingId ? (
               <><Edit3 size={20} className="text-blue-500 dark:text-blue-400" /> Editando Tarjeta</>
@@ -250,11 +257,11 @@ export default function Tarjetas() {
               type="submit"
               disabled={isSubmitting || createMutation.isPending || updateMutation.isPending || deleteMutation.isPending}
               className={`w-full md:w-auto px-8 flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-white transition-all disabled:opacity-70 disabled:active:scale-100 ${
-                editingId ? 'bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98]' : 'bg-blue-600 hover:bg-blue-700 active:scale-[0.98]'
+                editingId ? 'bg-aura-mint/20 text-aura-mint border border-aura-mint/50 hover:bg-aura-mint/30 active:scale-[0.98]' : 'aura-btn-primary active:scale-[0.98]'
               }`}
             >
               {createMutation.isPending || updateMutation.isPending ? 'Guardando...' : (
-                <><Save size={20} /> {editingId ? 'Actualizar Tarjeta' : 'Guardar Tarjeta'}</>
+                <><Save size={20} className={editingId ? 'text-aura-mint' : 'text-aura-bg'}/> <span className={editingId ? '' : 'text-aura-bg'}>{editingId ? 'Actualizar Tarjeta' : 'Guardar Tarjeta'}</span></>
               )}
             </button>
           </div>

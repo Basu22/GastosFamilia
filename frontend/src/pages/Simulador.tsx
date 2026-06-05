@@ -88,23 +88,31 @@ export default function Simulador() {
   }, []);
 
   return (
-    <main id="page-simulador" className="max-w-6xl mx-auto space-y-6 pb-24 lg:pb-8">
+    <main id="page-simulador" className="max-w-6xl mx-auto space-y-6 px-4 py-4 lg:px-8 lg:py-8 pb-24 lg:pb-8 relative min-h-screen">
+      {/* Background Ambient Orbs */}
+      <div className="fixed top-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-[#818CF8]/5 blur-[120px] pointer-events-none -z-10 animate-pulse"></div>
+      <div className="fixed bottom-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-aura-lavender/5 blur-[120px] pointer-events-none -z-10 animate-pulse" style={{ animationDelay: '2s' }}></div>
+
       {/* Header */}
-      <header className="px-4 lg:px-0">
-        <h1 className="text-2xl lg:text-3xl font-black text-gray-900 dark:text-neutral-100 flex items-center gap-3">
-          <div className="p-2 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200 dark:shadow-none">
-            <Calculator size={24} />
-          </div>
-          Simulador de Cuotas
-        </h1>
-        <p className="text-sm text-gray-500 dark:text-neutral-400 mt-2 font-medium">
-          Calculá el impacto de una compra antes de realizarla.
-        </p>
+      <header className="px-4 lg:px-0 flex items-center gap-4">
+        <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl shadow-lg shadow-indigo-500/5">
+          <Calculator className="text-indigo-400" size={28} />
+        </div>
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold text-white tracking-tight">
+            Simulador de Cuotas
+          </h1>
+          <p className="text-indigo-400/60 font-medium text-[10px] uppercase tracking-[0.2em] mt-1">
+            Calculá el impacto de una compra antes de realizarla
+          </p>
+        </div>
       </header>
 
       {/* Formulario */}
-      <section id="simulador-form" className="bg-white dark:bg-neutral-900 rounded-3xl border border-gray-100 dark:border-neutral-800 p-6 shadow-sm mx-4 lg:mx-0">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <section id="simulador-form" className="glass-card rounded-3xl p-6 shadow-2xl mx-4 lg:mx-0 border-white/5 relative overflow-hidden">
+        {/* Subtle glow */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[#818CF8]/5 blur-[80px] pointer-events-none rounded-full"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10">
           
           {/* Descripción */}
           <div className="space-y-2">
@@ -214,12 +222,12 @@ export default function Simulador() {
           <button 
             onClick={handleSimular}
             disabled={mutation.isPending}
-            className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-lg shadow-xl shadow-blue-200 dark:shadow-none transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50"
+            className="w-full h-14 aura-btn-primary rounded-2xl font-black text-lg shadow-xl shadow-indigo-500/10 transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50"
           >
-            {mutation.isPending ? 'Calculando...' : (
+            {mutation.isPending ? <span className="text-aura-bg">Calculando...</span> : (
               <>
-                <TrendingUp size={24} />
-                SIMULAR IMPACTO MENSUAL
+                <TrendingUp size={24} className="text-aura-bg" />
+                <span className="text-aura-bg">SIMULAR IMPACTO MENSUAL</span>
               </>
             )}
           </button>
@@ -243,11 +251,11 @@ export default function Simulador() {
           {/* VISTA DESKTOP — Tabla existente */}
           <div className="hidden lg:block px-0 overflow-x-auto pb-4">
           <div className="inline-block min-w-full align-middle">
-            <div className="overflow-hidden border border-gray-100 dark:border-neutral-800 rounded-3xl shadow-sm bg-white dark:bg-neutral-900">
-              <table className="min-w-full divide-y divide-gray-100 dark:divide-neutral-800">
-                <thead className="bg-gray-50 dark:bg-neutral-800/50">
+            <div className="overflow-hidden glass-card rounded-3xl shadow-xl border-white/5">
+              <table className="min-w-full divide-y divide-white/5">
+                <thead className="bg-white/5">
                   <tr>
-                    <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Concepto</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-black text-white/50 uppercase tracking-widest">Concepto</th>
                     {mutation.data.map((mes, idx) => (
                       <th key={idx} className="px-6 py-4 text-center text-[10px] font-black text-gray-900 dark:text-neutral-100 uppercase tracking-widest min-w-[120px]">
                         {MESES_CORTO[mes.mes]} {mes.anio}
@@ -445,14 +453,14 @@ function CapsulaMes({ mes }: CapsulaMesProps) {
   const [expandido, setExpandido] = useState(false);
 
   return (
-    <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-gray-100 dark:border-neutral-800 shadow-sm overflow-hidden">
+    <div className="glass-card rounded-3xl overflow-hidden shadow-lg border-white/5">
 
       {/* Header: Mes/Año + toggle */}
       <button
         onClick={() => setExpandido(!expandido)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-neutral-800/50 transition-colors hover:bg-gray-100 dark:hover:bg-neutral-800"
+        className="w-full flex items-center justify-between px-4 py-3 bg-white/5 transition-colors hover:bg-white/10"
       >
-        <span className="text-sm font-black text-gray-900 dark:text-neutral-100 uppercase tracking-wide">
+        <span className="text-sm font-black text-white uppercase tracking-wide">
           {MESES_CORTO[mes.mes]} {mes.anio}
         </span>
         <ChevronDown
